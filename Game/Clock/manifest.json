@@ -1,0 +1,38 @@
+{
+  "id": "clock-overlay",
+  "name": "Clock Overlay",
+  "version": "0.1.0",
+  "launch": {
+    "type": "web",
+    "url": "http://localhost:3000"
+  },
+  "connection": {
+    "transport": "websocket",
+    "port": 8765
+  },
+  "actions": [
+    {
+      "id": "add_time",
+      "name": "Add Time",
+      "parameters": {
+        "hours": { "type": "number", "required": true, "minimum": 0.01, "step": 0.01 }
+      }
+    },
+    {
+      "id": "subtract_time",
+      "name": "Subtract Time",
+      "parameters": {
+        "hours": { "type": "number", "required": true, "minimum": 0.01, "step": 0.01 }
+      }
+    },
+    {
+      "id": "set_time",
+      "name": "Set Time",
+      "parameters": {
+        "hours": { "type": "number", "required": true, "minimum": 0, "step": 0.01 }
+      }
+    },
+    { "id": "pause_timer", "name": "Pause Timer", "parameters": {} },
+    { "id": "resume_timer", "name": "Resume Timer", "parameters": {} }
+  ]
+}

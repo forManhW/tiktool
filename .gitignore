@@ -1,0 +1,7 @@
+node_modules/
+.env
+server-test.out
+server-test.err
+
+data/sessions.json
+data/tiktool.db

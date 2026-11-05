@@ -1,0 +1,14 @@
+{
+  "id": "blocks-live",
+  "name": "Blocks: Xây vs Phá",
+  "version": "0.1.0",
+  "launch": { "type": "web", "url": "http://localhost:3090/game/Blocks/" },
+  "connection": { "transport": "websocket", "port": 8765 },
+  "actions": [
+    { "id": "add_steps", "name": "Phe Xây: cộng bậc", "parameters": { "amount": { "type": "number", "required": true, "minimum": 5 } } },
+    { "id": "remove_steps", "name": "Phe Phá: phá bậc", "parameters": { "amount": { "type": "number", "required": true, "minimum": 5 } } },
+    { "id": "add_wins", "name": "Phe Xây: cộng ván", "parameters": { "amount": { "type": "number", "required": true, "minimum": 1 } } },
+    { "id": "remove_wins", "name": "Phe Phá: trừ ván", "parameters": { "amount": { "type": "number", "required": true, "minimum": 1 } } },
+    { "id": "reset_game", "name": "Reset game", "parameters": {} }
+  ]
+}

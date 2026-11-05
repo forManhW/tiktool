@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Blocks: Xây vs Phá</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="state.css"></head>
+<body>
+  <main class="game" aria-label="Blocks xây tháp livestream">
+    <header class="hud">
+      <section class="progress"><div class="progress-copy"><span>BẬC HIỆN TẠI</span><strong id="step-readout">0 / 100</strong><small id="remaining-readout">Còn 100 bậc để mở đếm ngược</small></div><div class="progress-rail"><i id="progress-fill"></i></div></section>
+      <section class="wins"><span>VÁN THẮNG</span><strong id="wins-readout">0 / 10</strong></section>
+    </header>
+    <section id="arena" class="arena">
+      <div class="skyline"><i></i><i></i><i></i></div>
+      <div id="build-feed" class="gift-feed build-feed" aria-live="polite"></div>
+      <div id="break-feed" class="gift-feed break-feed" aria-live="polite"></div>
+      <div id="countdown" class="countdown" hidden><span>GIỮ ĐỈNH</span><strong>10.0</strong></div>
+      <div id="effect" class="effect" aria-live="polite"></div>
+      <div id="tower" class="tower" aria-label="Tháp bậc"></div>
+      <div id="incoming" class="incoming"><b></b></div>
+      <div id="hero" class="hero" aria-label="Nhân vật"><span class="cape"></span><span class="head"></span><span class="body"></span></div>
+      <div id="burst" class="burst" aria-hidden="true"></div>
+      <div class="foundation"><strong id="foundation-readout">MÓNG 10</strong><span></span></div>
+    </section>
+    <footer class="play-hint"><kbd>SPACE</kbd><span>NHẢY LÊN BẬC ĐANG TRƯỢT</span><b id="connection-status">DEMO MODE</b></footer>
+    <aside id="setup" class="setup" aria-modal="true" role="dialog"><form id="setup-form"><p class="eyebrow">THIẾT LẬP PHIÊN LIVE</p><h1>Blocks<br><em>Xây vs Phá</em></h1><p>Streamer nhấn Space để dựng tháp. Gift sẽ đưa nhân vật lên cao hoặc phá sập bậc.</p><label>Bậc để thắng một ván<input id="target-steps" type="number" min="1" value="100" required></label><label>Độ bền móng<input id="foundation-hp" type="number" min="1" value="10" required></label><label>Tổng số ván thắng<input id="target-wins" type="number" min="1" value="10" required></label><label>Ván thắng khởi đầu<input id="initial-wins" type="number" value="0" required></label><p id="setup-error" class="setup-error" role="alert"></p><button type="submit">BẮT ĐẦU PHIÊN</button></form></aside>
+    <section id="finished" class="finished" hidden><p>ĐÃ HOÀN THÀNH</p><strong id="finish-copy">10 / 10</strong><button id="reset-button" type="button">CHƠI PHIÊN MỚI</button></section>
+  </main><script src="app.js"></script>
+</body></html>

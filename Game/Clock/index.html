@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090909" />
+    <title>Clock Overlay</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="clock" aria-live="polite">
+      <img id="subtract-dog" class="subtract-dog" src="assets/effects/add-time/1h/what_da_dog_doin.png" alt="Chihuahua hiệp sĩ" aria-hidden="true" />
+      <img id="sub-time-dog" class="sub-time-dog" src="assets/effects/sub-time/1h/bong.png" alt="Chihuahua cầm gậy" aria-hidden="true" />
+      <output id="timer" class="timer" aria-label="Thời gian còn lại">24:00:00</output>
+    </main>
+    <audio id="subtract-sound" preload="auto" src="assets/effects/add-time/1h/what_da_dog_doin.mp3"></audio>
+    <audio id="sub-time-sound" preload="auto" src="assets/effects/sub-time/1h/bong.mp3"></audio>
+
+    <script src="app.js"></script>
+  </body>
+</html>

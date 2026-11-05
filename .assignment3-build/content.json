@@ -1,0 +1,53 @@
+{
+  "scripts": [
+    {
+      "title": "TikTool: Hoạch định nguồn lực và ước tính chi phí",
+      "sec": 15,
+      "script": "Em xin trình bày việc hoạch định nguồn lực và ước tính chi phí qua dự án TikTool. Bài sử dụng một kịch bản MVP để cho thấy cách chuyển phạm vi công việc thành lịch thực hiện và ngân sách."
+    },
+    {
+      "title": "Phạm vi ví dụ TikTool",
+      "sec": 30,
+      "script": "TikTool là ứng dụng desktop chạy trên máy người livestream. Hệ thống nhận sự kiện LIVE, áp dụng mapping và gửi lệnh cho game. Ví dụ, quà Rose có thể thêm thời gian vào Clock hoặc thêm khối vào Tháp PK. Phạm vi bài gồm hai demo, overlay OBS và công cụ kiểm thử. Đây là kịch bản xây dựng MVP từ đầu, không phải chi phí đã phát sinh hay phần việc còn lại của dự án."
+    },
+    {
+      "title": "Hoạch định nguồn lực",
+      "sec": 40,
+      "script": "Hoạch định nguồn lực là xác định cần ai, cần công cụ gì, bao nhiêu và dùng vào lúc nào. Ta bắt đầu từ phạm vi, chia nhỏ công việc, xác định kỹ năng và kiểm tra lịch khả dụng. Trong ví dụ, một người đảm nhiệm các vai trò nhưng chỉ làm 20 giờ mỗi tuần, nên các vai trò không tương đương nhiều nhân viên. Thiết bị có sẵn gồm laptop và Internet. Công nghệ theo mã nguồn hiện tại gồm Electron, Node.js, adapter Python, WebSocket và SQLite. Đầu ra là danh sách nguồn lực và lịch phân bổ."
+    },
+    {
+      "title": "Kế hoạch 80 giờ trong 4 tuần",
+      "sec": 45,
+      "script": "Kế hoạch chia MVP thành các gói công việc. Tuần một dành 8 giờ phân tích và 12 giờ giao diện. Tuần hai làm 20 giờ cho Hub, listener và rule engine. Tuần ba hoàn thành 4 giờ Hub còn lại rồi tích hợp game và OBS trong 16 giờ. Tuần bốn dành 16 giờ kiểm thử tích hợp và sửa lỗi, cùng 4 giờ tài liệu. Các kiểm tra nhỏ diễn ra ngay khi lập trình. Tổng effort là 80 giờ. Vì chỉ có 20 giờ khả dụng mỗi tuần, thời gian lịch là 4 tuần. Lịch này chưa có dự phòng tiến độ."
+    },
+    {
+      "title": "Ước tính chi phí",
+      "sec": 45,
+      "script": "Ước tính chi phí dự báo số tiền cần để thực hiện phạm vi công việc. Bài dùng bottom-up, nghĩa là tính chi phí từng gói rồi cộng lại. Ví dụ, game và OBS cần 16 giờ. Nhân với đơn giá giả định 150 nghìn đồng một giờ, ta được 2,4 triệu đồng. Với gói Hub có độ bất định cao hơn, em minh họa PERT bằng ba mức 16, 24 và 32 giờ. Công thức lấy mức thường gặp nhân bốn rồi chia tổng cho sáu, cho kết quả 24 giờ. 24 giờ này đã có trong kế hoạch, không cộng thêm lần nữa."
+    },
+    {
+      "title": "Chi phí nhân lực theo công việc",
+      "sec": 40,
+      "script": "Bảng này áp dụng cùng đơn giá giả định cho cả sáu gói công việc. Tổng 80 giờ nhân 150 nghìn đồng bằng 12 triệu đồng. Gói Hub là khoản lớn nhất với 3,6 triệu đồng do phải xử lý kết nối, mapping và điều phối lệnh. Kiểm thử vẫn có ngân sách riêng để kiểm tra combo quà, cooldown và đồng bộ overlay. Một người có thể tự làm mà không trả lương trực tiếp, nhưng 12 triệu vẫn phản ánh giá trị kinh tế của thời gian. Cần phân biệt giá trị này với tiền mặt thực chi."
+    },
+    {
+      "title": "Ngân sách dự kiến 14.375.000 đồng",
+      "sec": 40,
+      "script": "Ngoài nhân lực, bài giả định 300 nghìn đồng kiểm thử LIVE và 200 nghìn đồng điện, Internet. Laptop có sẵn và ứng dụng chạy local nên không phát sinh mua máy hay thuê máy chủ trong kịch bản này. Chi phí cơ sở là 12,5 triệu đồng. Dự phòng 15% tương đương 1,875 triệu, đưa ngân sách lên 14,375 triệu đồng. Tỷ lệ dự phòng là giả định minh họa, cần điều chỉnh khi có dữ liệu rủi ro thực tế. Ngân sách chưa bao gồm bảo trì sau MVP hoặc phát hành thương mại."
+    },
+    {
+      "title": "Rủi ro và điều chỉnh kế hoạch",
+      "sec": 45,
+      "script": "Rủi ro chính là kết nối LIVE và xử lý combo quà khiến gói Hub cần thêm thời gian. Giả sử phát sinh 8 giờ, chi phí tăng 1,2 triệu đồng, vẫn nằm trong khoản dự phòng 1,875 triệu. Nhưng ngân sách dự phòng không tạo thêm thời gian làm việc: với 20 giờ một tuần, 88 giờ sẽ cần 4,4 tuần. Cách kiểm soát là ghi giờ và chi phí thực tế hàng tuần, dùng Event Injector khi LIVE gián đoạn, rồi ước tính lại nếu mở rộng phạm vi. Kết luận, hoạch định nguồn lực tạo lịch khả thi, còn ước tính chi phí tạo cơ sở cho ngân sách. Ví dụ TikTool có một người, 80 giờ và ngân sách 14,375 triệu đồng."
+    }
+  ],
+  "hours": [
+    8,
+    12,
+    24,
+    16,
+    16,
+    4
+  ],
+  "budget": 14375000
+}
