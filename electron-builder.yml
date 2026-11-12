@@ -1,0 +1,59 @@
+# Đóng gói TikTool thành bộ cài Windows: npm run dist  →  release/TikTool-Setup-<version>.exe
+appId: vn.tiktool.desktop
+productName: TikTool
+copyright: Copyright © 2026 TikTool
+directories:
+  output: release
+  buildResources: build
+asar: true
+files:
+  - desktop.js
+  - preload.js
+  - server.js
+  - live_adapter.py
+  - core/**
+  - sdk/**
+  - public/**
+  - Game/**
+  - "!Game/**/node_modules/**"
+  - "!Game/**/test/**"
+  - "!Game/**/tools/**"
+  - "!Game/**/nghe-thu/**"
+  - "!Game/**/raw/**"
+  - "!Game/**/*.md"
+  - "!Game/**/package*.json"
+  - package.json
+# Adapter TikTok (PyInstaller) nằm ngoài asar vì phải chạy được như file .exe thật.
+extraResources:
+  - from: vendor/tiktok-adapter
+    to: tiktok-adapter
+  # Dữ liệu khởi đầu từ data/ (npm run build:seed): danh sách quà + ảnh quà, mapping, ảnh hiệu ứng.
+  - from: vendor/seed
+    to: seed
+  # Giọng đọc AI chạy trên máy: Piper (MIT, kèm espeak-ng GPL-3) + model giọng tiếng Việt.
+  # ⚠ GIẤY PHÉP: giọng vi_VN-vais1000-medium được huấn luyện tiếp từ giọng "lessac" có giấy phép CẤM thương mại.
+  #   Trước khi phát bộ cài cho người khác / bán VIP: thay bằng giọng có giấy phép thương mại (xem docs/GIONG_DOC_AI.md).
+  - from: vendor/tts
+    to: tts
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: TikTool-Setup-${version}.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: TikTool
+  # Gỡ app vẫn giữ mapping/cấu hình trong %APPDATA%/TikTool.
+  deleteAppDataOnUninstall: false
+# Chặn sửa app.asar và chạy Electron như Node/debugger (docs/KE_HOACH_NEN_TANG.md mục 5.1).
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true

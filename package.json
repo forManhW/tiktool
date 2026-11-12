@@ -1,20 +1,30 @@
 {
   "name": "tiktok-game-hub",
-  "version": "0.1.0",
+  "version": "0.3.2",
   "private": true,
-  "description": "Local TikTok LIVE interactive game desktop app",
+  "description": "TikTool - game tương tác TikTok LIVE",
   "main": "desktop.js",
   "scripts": {
     "start": "node server.js",
     "desktop": "electron .",
     "clock": "npx serve Game/Clock -l 3000",
-    "tower": "npx serve Game/TowerPK -l 3001"
+    "tower": "npx serve Game/TowerPK -l 3001",
+    "test": "node --test test/*.test.js",
+    "build:adapter": "powershell -ExecutionPolicy Bypass -File scripts/build-adapter.ps1",
+    "pack": "electron-builder --dir",
+    "dist": "npm run build:seed && npm run build:tts && electron-builder --win",
+    "build:seed": "node scripts/build-seed.js",
+    "build:tts": "node scripts/fetch-tts.js",
+    "import:players": "node scripts/import-players.js"
   },
   "dependencies": {
     "tiktok-live-connector": "2.5.0",
     "ws": "8.18.3"
   },
   "devDependencies": {
-    "electron": "^39.2.7"
-  }
+    "electron": "^39.2.7",
+    "electron-builder": "^26.0.12"
+  },
+  "productName": "TikTool",
+  "author": "TikTool"
 }

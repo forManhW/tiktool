@@ -2,12 +2,60 @@
   "id": "tower-pk",
   "name": "Tháp PK: Xây vs Phá",
   "version": "0.1.0",
-  "launch": { "type": "web", "url": "http://localhost:3001" },
-  "connection": { "transport": "websocket", "port": 8765 },
+  "launch": {
+    "type": "web",
+    "url": "http://localhost:3001"
+  },
+  "connection": {
+    "transport": "websocket",
+    "port": 8765
+  },
   "actions": [
-    { "id": "build_block", "name": "Phe Xây: thêm khối", "parameters": { "amount": { "type": "number", "required": false, "minimum": 1 } } },
-    { "id": "sabotage", "name": "Phe Phá: phá khối", "parameters": { "amount": { "type": "number", "required": false, "minimum": 1 } } },
-    { "id": "shield", "name": "Phe Xây: khiên bảo vệ", "parameters": { "seconds": { "type": "number", "required": false, "minimum": 1 } } },
-    { "id": "reset_match", "name": "Reset trận đấu", "parameters": {} }
-  ]
+    {
+      "id": "build_block",
+      "name": "Phe Xây: thêm khối",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": false,
+          "minimum": 1
+        }
+      }
+    },
+    {
+      "id": "sabotage",
+      "name": "Phe Phá: phá khối",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": false,
+          "minimum": 1
+        }
+      }
+    },
+    {
+      "id": "shield",
+      "name": "Phe Xây: khiên bảo vệ",
+      "parameters": {
+        "seconds": {
+          "type": "number",
+          "required": false,
+          "minimum": 1
+        }
+      }
+    },
+    {
+      "id": "reset_match",
+      "name": "Reset trận đấu",
+      "parameters": {}
+    }
+  ],
+  "triggers": [
+    "gift",
+    "like",
+    "comment",
+    "follow",
+    "share"
+  ],
+  "liveEvents": []
 }

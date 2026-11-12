@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nga Mi Tu Tiên</title>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+<section id="settings">
+  <div class="card">
+    <h1>Nga Mi Tu Tiên · Cài đặt</h1>
+    <p class="note">Hiện khi mở game và mỗi lần bấm Thoát (hoặc phím Esc). Ô số nào cũng có <b>gợi ý</b> bên dưới; quên luật thì bấm <b>Điền gợi ý</b> ở cuối trang.</p>
+
+    <details class="rules" open>
+      <summary>Luật chơi (đọc nhanh)</summary>
+      <div id="rulesBox"></div>
+    </details>
+
+    <h2>Giọng nói &amp; âm thanh</h2>
+    <label class="row"><span>Giọng nói AI<small>Tắt thì chỉ hiện chữ trên màn hình</small><span id="voiceWarn"></span></span><input id="sVoice" type="checkbox"></label>
+    <label class="row"><span>Âm lượng giọng</span><input id="sVolume" type="range" min="0" max="1" step="0.05"></label>
+    <label class="row"><span>Âm thanh lên cấp<small>Phát mỗi khi nhân vật thăng cấp</small></span><input id="sSfx" type="checkbox"></label>
+    <div class="row"><span>Âm lượng âm thanh</span><span><input id="sSfxVolume" type="range" min="0" max="1" step="0.05"> <button id="testSfx" type="button">Nghe thử</button></span></div>
+    <label class="row"><span>Đọc nhắc luật mỗi (giây)<small>Còn bao lâu tới tỉ thí, comment gì, cách nhập môn. 0 = chỉ hiện chữ, không đọc.</small><small class="hint" data-for="sInfo">Gợi ý: {v} giây. Live đông, nhiều thông báo thì tăng lên 60.</small></span><input id="sInfo" type="number" min="0" max="600" step="5"></label>
+    <label class="row"><span>Đọc cả tiểu cảnh<small>Tắt thì chỉ đọc khi lên đại cảnh giới (vd. Trúc Cơ, Kết Đan). Live đông nên tắt cho đỡ ồn.</small></span><input id="sStage" type="checkbox"></label>
+    <div class="row"><span>Thử giọng</span><button id="testVoice" type="button">Nghe thử</button></div>
+
+    <h2>Tỉ thí 2 phe</h2>
+    <label class="row"><span>Bật tỉ thí<small>Tắt thì chỉ tu luyện</small></span><input id="sDuel" type="checkbox"></label>
+    <label class="row"><span>Chu kỳ tỉ thí (phút)<small>Gồm cả thời gian tu luyện và thời gian trận.</small><small class="hint" data-for="sEvery">Gợi ý: {v} phút (= 7 phút tu luyện + 3 phút tỉ thí).</small></span><input id="sEvery" type="number" min="5" max="120"></label>
+    <label class="row"><span>Thời lượng trận (phút)<small>Người xem comment 1 / 2 để vào phe. Tu vi góp sau khi vào phe = điểm của phe.</small><small class="hint" data-for="sDur">Gợi ý: {v} phút. Phải nhỏ hơn chu kỳ.</small></span><input id="sDur" type="number" min="1" max="30"></label>
+
+    <h2>Quái rồng</h2>
+    <label class="row"><span>Đánh quái rồng<small>Rồng xuất hiện ở phút cuối chu kỳ, đánh tới khi rồng chết. Tu vi góp = sát thương.</small></span><input id="sBoss" type="checkbox"></label>
+    <label class="row"><span>Máu (rồng &amp; người tẩu hỏa)<small>Tổng tu vi mọi người cần góp để giết rồng / giải cứu người tẩu hỏa.</small><small class="hint" data-for="sBossHp">Gợi ý: {v}. Với mapping gợi ý (100 tim = 100 tu vi) là khoảng {tim} tim. Ít người xem thì hạ xuống 10.000.</small></span><input id="sBossHp" type="number" min="100" step="1000" style="width:110px"></label>
+    <label class="row"><span>Rồng xuất hiện sau (phút)<small>Tính từ đầu chu kỳ; rồng chết thì chu kỳ tính lại.</small><small class="hint" data-for="sBossEvery">Gợi ý: {v} phút (sau 3 lượt tỉ thí).</small></span><input id="sBossEvery" type="number" min="5" max="240"></label>
+
+    <h2>Tẩu hỏa nhập ma</h2>
+    <label class="row"><span>Bật tẩu hỏa nhập ma<small>Ai tu luyện quá nhanh thì bị tẩu hỏa, đánh đồng môn mất tu vi; mọi người góp tu vi để giải cứu.</small></span><input id="sTauHoa" type="checkbox"></label>
+    <label class="row"><span>Tẩu hỏa khi nhận ≥ (tu vi)<small>…trong số giây ở ô dưới.</small><small class="hint" data-for="sTauHoaTuvi">Gợi ý: {v}. Muốn hiếm hơn thì tăng lên 10.000.</small></span><input id="sTauHoaTuvi" type="number" min="100" step="500" style="width:110px"></label>
+    <label class="row"><span>Trong (giây)<small class="hint" data-for="sTauHoaSec">Gợi ý: {v} giây.</small></span><input id="sTauHoaSec" type="number" min="5" max="600" step="5"></label>
+
+    <h2>Sự kiện khác</h2>
+    <label class="row"><span>Thiên kiếp<small>Lên đại cảnh giới từ Nguyên Anh trở lên thì lôi kiếp giáng xuống 15 giây; đồng môn thả tim, tặng quà hộ pháp. Đủ kết giới: +5% tu vi, hộ pháp nhiều nhất +1.000. Không đủ: không phạt.</small></span><input id="sKiep" type="checkbox"></label>
+    <label class="row"><span>Linh Khí Triều Dâng<small>Ngẫu nhiên 15–25 phút một lần, 60 giây mọi tu vi nhân đôi.</small></span><input id="sLinhKhi" type="checkbox"></label>
+
+    <h2>Dữ liệu</h2>
+    <div class="row"><span>Xóa tu vi tuần này<small>Tu vi giữ qua các buổi live trong tuần, tự reset 0h thứ Hai. Top tuần xuất ở thẻ game trên TikTool.</small></span><button id="resetData" type="button">Xóa</button></div>
+    <div class="row"><span>Điền gợi ý<small>Đưa tất cả ô số và công tắc về giá trị gợi ý (chưa lưu cho tới khi bấm Vào game).</small></span><button id="useDefaults" type="button">Điền gợi ý</button></div>
+    <p class="note" id="demoNote">Đang mở trực tiếp, không qua TikTool: game sẽ không nhận sự kiện nào. Hãy mở game bằng nút Start Game trong TikTool.</p>
+    <button id="enterBtn" class="primary" type="button">Vào game</button>
+  </div>
+</section>
+
+<button id="exitBtn" type="button" class="hidden" title="Thoát (Esc)">Thoát</button>
+<div id="stage" class="hidden"></div>
+
+<script src="/sdk/tiktool-game.js"></script>
+<script src="src/config.js"></script>
+<script src="src/cultivation.js"></script>
+<script src="src/duel.js"></script>
+<script src="src/boss.js"></script>
+<script src="src/possession.js"></script>
+<script src="src/announcer.js"></script>
+<script src="src/game.js"></script>
+<script src="src/render.js"></script>
+<script src="src/sound.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var query = new URLSearchParams(location.search);
+  var isDemo = !(query.get("session") && query.get("token"));
+  // Giọng đọc: ưu tiên giọng AI chạy trên máy (Piper, qua hub TikTool /api/tts). Hub không có giọng AI thì dùng giọng
+  // tiếng Việt của Windows (nếu máy có cài).
+  var webSpeaker = NgaMi.webSpeechSpeaker(), aiSpeaker = NgaMi.httpSpeaker("/api/tts"), useAi = false, aiVoice = "";
+  var speaker = {
+    available: function () { return useAi || webSpeaker.available(); },
+    cancel: function () { aiSpeaker.cancel(); webSpeaker.cancel(); },
+    prepare: function (text) { return useAi ? aiSpeaker.prepare(text) : null; },
+    speak: function (text, cfg, prepared) { return useAi ? aiSpeaker.speak(text, cfg, prepared) : webSpeaker.speak(text, cfg); }
+  };
+  // Kiểm tra giọng AI lúc mở và mỗi 10 giây: hub khởi động lại xong là game tự dùng lại giọng AI, không cần tải lại trang.
+  function checkAiVoice() {
+    fetch("/api/tts/status").then(function (r) { return r.json(); })
+      .then(function (st) { var was = useAi; useAi = !!st.available; aiVoice = st.voice || ""; if (was !== useAi) showVoiceStatus(); })
+      .catch(function () { /* hub tạm không trả lời: giữ lựa chọn hiện tại */ });
+  }
+  checkAiVoice();
+  setInterval(checkAiVoice, 10000);
+  function showVoiceStatus() {
+    $("voiceWarn").textContent = useAi ? " Đang dùng giọng AI trên máy (" + aiVoice + ")."
+      : webSpeaker.available() ? " Đang dùng giọng tiếng Việt của Windows." : " Chưa có giọng tiếng Việt: hub TikTool thiếu giọng AI và Windows chưa cài giọng vi-VN.";
+  }
+  var levelUpSound = NgaMi.createSfx("src/assets/game/" + NgaMi.DEFAULTS.sounds.levelUp);
+  // Mỗi lần nhân vật thăng cấp (kể cả khi tắt đọc tiểu cảnh) thì phát âm thanh lên cấp. Chỉ phát ở cửa sổ game, không phát ở overlay.
+  function onAnnounce(item) {
+    if ((item.kind === "level_up" || item.kind === "realm_up") && game && game.settings.sfx && game.running) levelUpSound.play(game.settings.sfxVolume);
+  }
+  // Tu vi tuần lưu trong hub TikTool (SQLite), localStorage chỉ giữ bản sao dự phòng khi hub tạm không trả lời.
+  var unloading = false;
+  var store = NgaMi.hubStore({ gameId: "ngami-tutien", prefix: NgaMi.DEFAULTS.save.key, unloading: function () { return unloading; } });
+  var game = new NgaMi.Game(NgaMi.DEFAULTS, { storage: store, speaker: speaker, scope: isDemo ? "demo" : "live", show: onAnnounce });
+  // Đọc dữ liệu tuần từ hub rồi gộp với bản trong máy (mỗi người lấy tu vi lớn hơn). Lần đầu chạy bản mới: dữ liệu cũ
+  // trong localStorage được đẩy lên hub ở lần lưu ngay sau đó.
+  store.load(game.saveKey(), game.week).then(function (hub) {
+    if (hub) game.mergeSaved(hub);
+    game.sect.dirty = true; game.save();
+  });
+  // Đóng cửa sổ game: lưu ngay, không chờ chu kỳ 5 giây.
+  window.addEventListener("beforeunload", function () { unloading = true; game.sect.dirty = true; game.save(); });
+  var view = NgaMi.createRenderer($("stage"), NgaMi.DEFAULTS, { assetBase: "src/assets/game/" });
+
+  var live = window.TikTool ? TikTool.connect({
+    gameId: "ngami-tutien",
+    getState: function () { return game.getState(); },
+    // State gửi lên TikTool ở vòng lặp bên dưới (chỉ khi đổi), không gửi theo từng lệnh.
+    onAction: function (a, p, s) { return game.handleAction(a, p, s); },
+    onLiveEvent: function (e) { game.handleLiveEvent(e); },   // tim/quà thô: tham gia + giữ chỗ, không cộng tu vi
+    onState: function (state) { view.render(state); },    // chế độ overlay mirror: chỉ vẽ lại state nhận được
+    onStatus: function (s) { document.title = "Nga Mi Tu Tiên · " + s; }
+  }) : { emit: function () {}, isOverlay: false };
+
+  if (live.isOverlay) {   // overlay: không có màn Cài đặt, không đọc giọng
+    $("settings").classList.add("hidden"); $("stage").classList.remove("hidden");
+    return;
+  }
+  if (!isDemo) $("demoNote").classList.add("hidden");
+
+  function fillSettings() {
+    var s = game.settings;
+    $("sVoice").checked = s.voice; $("sVolume").value = s.volume; $("sStage").checked = s.announceStageUps; $("sInfo").value = s.infoVoiceEverySec == null ? 30 : s.infoVoiceEverySec;
+    $("sSfx").checked = s.sfx !== false; $("sSfxVolume").value = s.sfxVolume == null ? 0.8 : s.sfxVolume;
+    $("sDuel").checked = s.duel; $("sEvery").value = s.duelEveryMin; $("sDur").value = s.duelDurationMin;
+    $("sBoss").checked = s.boss !== false; $("sBossHp").value = s.bossHp; $("sBossEvery").value = s.bossEveryMin;
+    $("sTauHoa").checked = s.tauHoa !== false; $("sTauHoaTuvi").value = s.tauHoaTuvi; $("sTauHoaSec").value = s.tauHoaWindowSec;
+    $("sKiep").checked = s.kiep !== false; $("sLinhKhi").checked = s.linhKhi !== false;
+    setTimeout(showVoiceStatus, 500);
+  }
+  // ---------- Gợi ý & luật chơi: lấy số từ config để luôn khớp với game ----------
+  var D = NgaMi.defaultSettings(NgaMi.DEFAULTS), CFG = NgaMi.DEFAULTS;
+  function vn(n) { return Number(n).toLocaleString("vi-VN"); }
+  var HINT_KEYS = { sInfo: "infoVoiceEverySec", sEvery: "duelEveryMin", sDur: "duelDurationMin", sBossHp: "bossHp", sBossEvery: "bossEveryMin", sTauHoaTuvi: "tauHoaTuvi", sTauHoaSec: "tauHoaWindowSec" };
+  Array.prototype.forEach.call(document.querySelectorAll(".hint[data-for]"), function (h) {
+    h.textContent = h.textContent.replace("{v}", vn(D[HINT_KEYS[h.dataset.for]])).replace("{tim}", vn(D.bossHp));
+  });
+  (function () {
+    var b = CFG.boss, d = CFG.duel, ps = CFG.possession;
+    var trucCo = CFG.realms.filter(function (r) { return r.id === "truc_co"; })[0];
+    var items = [
+      "<b>Vào tông môn:</b> thả tim hoặc tặng quà là có chỗ ngồi (tối đa " + CFG.capacity + " người). Không tương tác " + Math.round(CFG.idleMs / 60000) + " phút thì mờ dần rồi rời chỗ, tu vi vẫn giữ.",
+      "<b>Tu vi:</b> game chỉ nhận số tu vi TikTool gửi sang. Mapping gợi ý ở TikTool: <b>100 tim = 100 tu vi</b>, <b>Rose = 50 tu vi</b>; quà khác tự đặt theo giá xu.",
+      "<b>Cảnh giới:</b> 10 đại cảnh giới" + (trucCo ? ", lên Trúc Cơ cần " + vn(trucCo.stages[0]) + " tu vi" : "") + ". Top 3 ngồi ghế Chưởng môn, Tả / Hữu hộ pháp.",
+      "<b>Tỉ thí:</b> comment <b>1</b> vào " + d.sides[0].name + ", <b>2</b> vào " + d.sides[1].name + "; ai không chọn thì ngồi dưới xem và tu luyện. Phe thắng mỗi người +" + vn(d.winBonus) + " tu vi, công đầu phe thắng được x" + d.mvpMultiplier + " tu vi đã góp và 1 lượt vòng quay; hòa mỗi người +" + vn(d.drawBonus) + ".",
+      "<b>Quái rồng:</b> mỗi " + (b.attackEveryMs / 1000) + " giây rồng đánh 1 người -" + b.attackDamage + " tu vi, đòn thứ " + b.fireEvery + " phun lửa cả tông môn -" + b.fireDamage + ". Người gây sát thương nhiều nhất +" + vn(b.mvpBonus) + " tu vi và 1 lượt vòng quay.",
+      "<b>Tẩu hỏa nhập ma:</b> người bị tẩu hỏa đánh đồng môn mất tu vi; ai góp tu vi giải cứu được x" + ps.rewardMultiplier + " phần đã góp khi giải cứu xong.",
+      "<b>Pháp bảo:</b> mỗi quà gắn 1 pháp bảo trong TikTool (" + CFG.items.map(function (it) { return it.name; }).join(", ") + "). Cộng tu vi như tu luyện, mỗi món một hiệu ứng.",
+      "<b>Linh thú:</b> trứng (Linh Thú Đản) nở ngẫu nhiên " + CFG.pets.types.map(function (t) { return t.name + " " + t.weight + "%"; }).join(", ") + ". Mỗi sao +5% (Ngọc Thố: tu vi, Hỏa Kỳ Lân: sát thương, Kim Phượng: cả hai), tối đa 3 sao; đủ 3 sao mà nở trùng thì được 1 lượt vòng quay. Linh thú reset theo tuần.",
+      "<b>Thiên kiếp:</b> lên đại cảnh giới từ Nguyên Anh trở lên thì độ kiếp 15 giây; đồng môn góp tu vi hộ pháp. Đủ kết giới: +" + CFG.tribulation.successBonusPct + "% tu vi, hộ pháp nhiều nhất +" + vn(CFG.tribulation.topHelperBonus) + ".",
+      "<b>Linh Khí Triều Dâng:</b> ngẫu nhiên 15–25 phút một lần, 60 giây mọi tu vi x" + CFG.surge.multiplier + ".",
+      "<b>Vòng quay:</b> " + CFG.wheel.prizes.map(function (p) { return vn(p.tuvi); }).join(" / ") + " tu vi.",
+      "<b>Lưu theo tuần:</b> tu vi giữ qua các buổi live, reset 0h thứ Hai."
+    ];
+    $("rulesBox").innerHTML = "<ul>" + items.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
+  })();
+  $("useDefaults").onclick = function () {
+    var cur = game.settings;
+    game.settings = Object.assign({}, cur, D);
+    fillSettings();
+    game.settings = cur;               // chỉ điền vào ô; bấm Vào game mới lưu
+  };
+
+  function readSettings() {
+    return game.applySettings({ voice: $("sVoice").checked, volume: Number($("sVolume").value), announceStageUps: $("sStage").checked, infoVoiceEverySec: Math.max(0, Number($("sInfo").value) || 0), sfx: $("sSfx").checked, sfxVolume: Number($("sSfxVolume").value),
+      duel: $("sDuel").checked, duelEveryMin: Number($("sEvery").value), duelDurationMin: Number($("sDur").value),
+      boss: $("sBoss").checked, bossHp: Number($("sBossHp").value), bossEveryMin: Number($("sBossEvery").value),
+      tauHoa: $("sTauHoa").checked, tauHoaTuvi: Number($("sTauHoaTuvi").value), tauHoaWindowSec: Number($("sTauHoaSec").value),
+      kiep: $("sKiep").checked, linhKhi: $("sLinhKhi").checked });
+  }
+  function showSettings() {
+    game.exit();
+    fillSettings();
+    $("stage").classList.add("hidden"); $("exitBtn").classList.add("hidden"); $("settings").classList.remove("hidden");
+    live.emit();
+  }
+  function enterGame() {
+    readSettings(); game.enter();
+    $("settings").classList.add("hidden"); $("stage").classList.remove("hidden"); $("exitBtn").classList.remove("hidden");
+    view.fit(); view.render(game.getState());
+    live.emit();
+  }
+
+  $("enterBtn").onclick = enterGame;
+  $("exitBtn").onclick = showSettings;
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && game.running) showSettings();
+  });
+  $("testSfx").onclick = function () { levelUpSound.play(Number($("sSfxVolume").value)); };
+  // Nghe thử: báo rõ đang dùng giọng nào và có phát được không, để biết lỗi nằm ở game hay ở âm lượng máy.
+  $("testVoice").onclick = function () {
+    readSettings();
+    $("voiceWarn").textContent = " Đang đọc thử bằng " + (useAi ? "giọng AI (" + aiVoice + ")" : "giọng Windows") + "…";
+    Promise.resolve(speaker.speak("Chúc mừng đạo hữu Minh Anh đạt cảnh giới Luyện Khí tầng 7", game.cfg.voice))
+      .then(function (ok) {
+        $("voiceWarn").textContent = ok === false ? " Không phát được giọng." + (useAi ? "" : " Máy chưa có giọng tiếng Việt và hub chưa có giọng AI.")
+          : " Đã phát xong. Không nghe thấy thì kiểm tra Volume Mixer của Windows (TikTool có bị tắt tiếng?) và loa đang chọn.";
+      }, function (e) { $("voiceWarn").textContent = " Lỗi giọng AI: " + (e && e.message || e); });
+  };
+  $("resetData").onclick = function () { if (confirm("Xóa tu vi của TẤT CẢ người chơi trong tuần này? Không hoàn tác được.")) game.resetAllData(); };
+
+  // Vẽ lại 4 lần/giây. Chỉ gửi state lên TikTool khi state thật sự đổi (khi rảnh khoảng 1 lần/giây vì đồng hồ),
+  // để hub không bị dội state liên tục làm lệnh tim/quà chạy trễ.
+  var lastSent = "";
+  setInterval(function () {
+    game.tick(Date.now());
+    if (!game.running) return;
+    var state = game.getState(), sig = JSON.stringify(state);
+    view.render(state);
+    if (sig !== lastSent) { lastSent = sig; live.emit(); }
+  }, 250);
+
+  fillSettings();
+  window.__ngami = { game: game, view: view };   // để kiểm tra trong DevTools
+}());
+</script>
+</body>
+</html>

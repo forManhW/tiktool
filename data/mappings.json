@@ -14,7 +14,10 @@
     "id": "d88633d6-9992-4f74-ada9-f10147f746b4",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-09-25T09:28:46.419Z"
+    "updatedAt": "2026-09-25T09:28:46.419Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "gameId": "tower-pk",
@@ -31,7 +34,10 @@
     "id": "11994441-1f9a-4a2a-ab28-f8feab88872c",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-09-25T09:31:06.496Z"
+    "updatedAt": "2026-09-25T09:31:06.496Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "gameId": "blocks-live",
@@ -48,7 +54,10 @@
     "id": "6c8a30e6-72f4-4f7b-a60e-b8c13b2848a6",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-09-25T10:42:40.481Z"
+    "updatedAt": "2026-09-25T10:42:40.481Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "gameId": "blocks-live",
@@ -65,7 +74,10 @@
     "id": "db1dd074-3ec3-4b45-affd-5b9b7786d6a5",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-09-25T10:43:09.775Z"
+    "updatedAt": "2026-09-25T10:43:09.775Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "gameId": "clock-overlay",
@@ -82,7 +94,10 @@
     "id": "bb4222ff-8183-4cb6-8f5e-2a37c2c2be40",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-09-28T06:48:05.492Z"
+    "updatedAt": "2026-09-28T06:48:05.492Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "subtract_time",
@@ -99,7 +114,10 @@
     "id": "edb7c3be-35c8-46e2-954d-56acb8a953e9",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-09-28T06:55:39.286Z"
+    "updatedAt": "2026-09-28T06:55:39.286Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "add_time",
@@ -116,7 +134,10 @@
     "id": "e28b77c8-04be-4cc6-91cb-6662c06da45e",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-13T00:32:39.534Z"
+    "updatedAt": "2026-10-13T00:32:39.534Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "subtract_time",
@@ -133,7 +154,10 @@
     "id": "e4cb111f-7b64-4184-9dbe-cd5637c93874",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-13T00:32:47.604Z"
+    "updatedAt": "2026-10-13T00:32:47.604Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "add_time",
@@ -150,7 +174,10 @@
     "id": "481ba1fd-b270-4f3b-b615-99d8a1674abe",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-13T00:32:55.307Z"
+    "updatedAt": "2026-10-13T00:32:55.307Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "subtract_time",
@@ -167,7 +194,10 @@
     "id": "70b5587c-a67c-4bea-abc2-88107687fdb6",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-13T00:33:03.522Z"
+    "updatedAt": "2026-10-13T00:33:03.522Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "build_floors",
@@ -184,7 +214,10 @@
     "id": "ebfd9289-01cb-4074-9174-baac9ecac846",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-02T09:54:59.125Z"
+    "updatedAt": "2026-10-02T09:54:59.125Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "break_floors",
@@ -201,7 +234,10 @@
     "id": "88adffb6-9853-414a-95fc-36f92b159813",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-02T09:55:15.484Z"
+    "updatedAt": "2026-10-02T09:55:15.484Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "build_floors",
@@ -218,7 +254,10 @@
     "id": "15ba84e8-ecb0-450e-b983-b8dae9466b76",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-09T06:47:34.442Z"
+    "updatedAt": "2026-10-09T06:47:34.442Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "break_floors",
@@ -235,7 +274,10 @@
     "id": "a5d56beb-d77a-477b-8ec1-d8fe776fb628",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-09T06:47:51.460Z"
+    "updatedAt": "2026-10-09T06:47:51.460Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "add_time",
@@ -252,7 +294,10 @@
     "id": "d18f28c2-2b67-45e8-a9b9-3a16ae90515f",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-13T00:34:53.066Z"
+    "updatedAt": "2026-10-13T00:34:53.066Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
   },
   {
     "action": "subtract_time",
@@ -269,6 +314,322 @@
     "id": "601550f3-00e7-4b11-a7ff-1c752b1ea100",
     "priority": 0,
     "enabled": true,
-    "updatedAt": "2026-10-13T00:34:45.451Z"
+    "updatedAt": "2026-10-13T00:34:45.451Z",
+    "userCooldownMs": 0,
+    "repeat": "multiply",
+    "maxPerEvent": 100
+  },
+  {
+    "eventType": "comment",
+    "matchMode": "exact",
+    "keywords": [
+      "1"
+    ],
+    "action": "vao_phe",
+    "params": {
+      "side": 1
+    },
+    "priority": 20,
+    "gameId": "ngami-tutien",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "repeat": "multiply",
+    "maxPerEvent": 100,
+    "id": "0ab908f8-fc94-4678-a1d1-af88e7a01aa2",
+    "updatedAt": "2026-11-10T04:05:28.019Z"
+  },
+  {
+    "eventType": "comment",
+    "matchMode": "exact",
+    "keywords": [
+      "2"
+    ],
+    "action": "vao_phe",
+    "params": {
+      "side": 2
+    },
+    "priority": 20,
+    "gameId": "ngami-tutien",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "repeat": "multiply",
+    "maxPerEvent": 100,
+    "id": "8b2ca9db-bb28-4d20-8109-c32df198aab0",
+    "updatedAt": "2026-11-10T04:05:28.019Z"
+  },
+  {
+    "eventType": "comment",
+    "matchMode": "any",
+    "keywords": [],
+    "action": "binh_luan",
+    "params": {},
+    "priority": 0,
+    "gameId": "ngami-tutien",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "repeat": "multiply",
+    "maxPerEvent": 100,
+    "id": "f63b2d2c-5aa3-447f-ae85-56b46a03f917",
+    "updatedAt": "2026-11-10T04:05:28.019Z"
+  },
+  {
+    "eventType": "like",
+    "likeScope": "user",
+    "likeEvery": 100,
+    "action": "tu_luyen",
+    "params": {
+      "amount": 100
+    },
+    "gameId": "ngami-tutien",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "priority": 0,
+    "enabled": true,
+    "repeat": "multiply",
+    "maxPerEvent": 100,
+    "id": "bad3818b-444c-4b80-90fe-5e17758d652d",
+    "updatedAt": "2026-11-10T06:30:28.745Z"
+  },
+  {
+    "eventType": "gift",
+    "giftId": "5655",
+    "action": "tu_luyen",
+    "params": {
+      "amount": 50
+    },
+    "priority": 0,
+    "gameId": "ngami-tutien",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "repeat": "multiply",
+    "maxPerEvent": 100,
+    "id": "ebf73dab-f596-4d5a-96eb-9faafca7167c",
+    "updatedAt": "2026-11-10T04:13:53.451Z",
+    "giftName": "Rose",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/eba3a9bb85c33e017f3648eaf88d7189~tplv-obj.webp"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "tu_luyen",
+    "params": {
+      "amount": 10000
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "9340",
+    "giftName": "Birthday Cake",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/3ac5ec732f6f4ba7b1492248bfea83d6~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "aba70fee-3d36-4924-a5d0-96d35a509589",
+    "updatedAt": "2026-11-10T12:26:18.426Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "linh_thach",
+    "params": {
+      "amount": 100
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "59881",
+    "giftName": "A Shard of Hope",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/34207c50c472435d7d582ef5c1ca8ff2.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "3dd5cdd0-6d16-41c8-be39-171c9e934313",
+    "updatedAt": "2026-11-12T02:37:59.428Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "tu_khi_dan",
+    "params": {
+      "amount": 100
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "10716",
+    "giftName": "Blow a kiss",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/cdb55940740d5c83879b2934f9a7d08e.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "ec023059-f5a5-4930-af2a-b09cbbb8dbba",
+    "updatedAt": "2026-11-12T02:38:12.528Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "chu_qua",
+    "params": {
+      "amount": 1000
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "59511",
+    "giftName": "Blue Lightning",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/6a517f35a26bfbcbeb72075ea41b66e0.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "0b6223d0-a267-4733-8aa3-e235b2a71a91",
+    "updatedAt": "2026-11-12T02:38:23.476Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "ban_dao",
+    "params": {
+      "amount": 1000
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "231956",
+    "giftName": "Clap Clap",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/f2349d1d943c0c3bbcc03044268ee535.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "9e02de58-b1a2-4c7b-a8bb-daabe47e8d90",
+    "updatedAt": "2026-11-12T02:38:35.306Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "linh_chi",
+    "params": {
+      "amount": 1000
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "12355",
+    "giftName": "Club Cheers",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/maliva/webcast-va/resource/6a934c90e5533a4145bed7eae66d71bd.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "ba6fd130-fc71-4b6c-8195-ee7f8c3d390b",
+    "updatedAt": "2026-11-12T02:38:58.596Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "ngoc_dich",
+    "params": {
+      "amount": 1000
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "153750",
+    "giftName": "Club Cheers",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/ef892165e333be97bd98978ec2593f43.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "8178daa9-e24c-4b07-8e2c-487e40fd133c",
+    "updatedAt": "2026-11-12T02:39:17.818Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "bi_tich",
+    "params": {
+      "amount": 1
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "18461",
+    "giftName": "Community Gift",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/dfde5e8d8321ff1251023466f3fce61b.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "9fc86521-e8aa-4b18-ae39-7addd0a98ec4",
+    "updatedAt": "2026-11-12T02:39:43.233Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "phi_kiem",
+    "params": {
+      "amount": 2000
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "17712",
+    "giftName": "Community Heart",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/dad7a63955f98891958e37071bb067f3.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "c37bb2ea-81af-4112-87b1-f1e9e3136a53",
+    "updatedAt": "2026-11-12T02:39:56.954Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "long_chau",
+    "params": {
+      "amount": 5000
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "1374221",
+    "giftName": "Eye for an Eye",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/f13894e35ea4efa123d1f8475bd5349f.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "a8a73f56-2fe8-4777-afe0-d8485a541d8c",
+    "updatedAt": "2026-11-12T02:40:10.359Z"
+  },
+  {
+    "gameId": "ngami-tutien",
+    "eventType": "gift",
+    "action": "linh_thu_dan",
+    "params": {
+      "amount": 100
+    },
+    "repeat": "multiply",
+    "effectImage": "",
+    "cooldownMs": 0,
+    "userCooldownMs": 0,
+    "enabled": true,
+    "giftId": "19441",
+    "giftName": "Freestyle",
+    "giftImage": "https://p16-webcast.tiktokcdn.com/img/alisg/webcast-sg/resource/1f5ca5cfb4b98c2761fb85987f47c641.png~tplv-obj.webp",
+    "priority": 0,
+    "maxPerEvent": 100,
+    "id": "95f8469c-81c2-430a-88ab-8b5f4e8f869c",
+    "updatedAt": "2026-11-12T02:40:22.606Z"
   }
 ]

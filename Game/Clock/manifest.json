@@ -15,24 +15,56 @@
       "id": "add_time",
       "name": "Add Time",
       "parameters": {
-        "hours": { "type": "number", "required": true, "minimum": 0.01, "step": 0.01 }
+        "hours": {
+          "type": "number",
+          "required": true,
+          "minimum": 0.01,
+          "step": 0.01
+        }
       }
     },
     {
       "id": "subtract_time",
       "name": "Subtract Time",
       "parameters": {
-        "hours": { "type": "number", "required": true, "minimum": 0.01, "step": 0.01 }
+        "hours": {
+          "type": "number",
+          "required": true,
+          "minimum": 0.01,
+          "step": 0.01
+        }
       }
     },
     {
       "id": "set_time",
       "name": "Set Time",
       "parameters": {
-        "hours": { "type": "number", "required": true, "minimum": 0, "step": 0.01 }
+        "hours": {
+          "type": "number",
+          "required": true,
+          "minimum": 0,
+          "step": 0.01,
+          "scale": false
+        }
       }
     },
-    { "id": "pause_timer", "name": "Pause Timer", "parameters": {} },
-    { "id": "resume_timer", "name": "Resume Timer", "parameters": {} }
-  ]
+    {
+      "id": "pause_timer",
+      "name": "Pause Timer",
+      "parameters": {}
+    },
+    {
+      "id": "resume_timer",
+      "name": "Resume Timer",
+      "parameters": {}
+    }
+  ],
+  "triggers": [
+    "gift",
+    "like",
+    "comment",
+    "follow",
+    "share"
+  ],
+  "liveEvents": []
 }

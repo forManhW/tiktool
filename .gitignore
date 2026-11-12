@@ -3,5 +3,13 @@ node_modules/
 server-test.out
 server-test.err
 
+release/
+vendor/
+
+# Dữ liệu riêng trên máy (người xem, phiên live, log): không đẩy lên repo
 data/sessions.json
+data/listener.json
+data/logs/
 data/tiktool.db
+data/tiktool.db-*
+Game/*/data_*/

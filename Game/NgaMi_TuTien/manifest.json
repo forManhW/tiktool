@@ -1,0 +1,270 @@
+{
+  "id": "ngami-tutien",
+  "weeklyBoard": {
+    "scoreLabel": "Tu vi"
+  },
+  "name": "Nga Mi Tu Tiên",
+  "version": "0.6.0",
+  "launch": {
+    "type": "web",
+    "url": "http://127.0.0.1:3090/game/NgaMi_TuTien/"
+  },
+  "connection": {
+    "transport": "websocket",
+    "port": 8765
+  },
+  "window": {
+    "width": 1080,
+    "height": 1920
+  },
+  "triggers": [
+    "gift",
+    "like",
+    "comment",
+    "follow",
+    "share"
+  ],
+  "liveEvents": [
+    "like",
+    "gift"
+  ],
+  "actions": [
+    {
+      "id": "binh_luan",
+      "name": "Bình luận",
+      "parameters": {}
+    },
+    {
+      "id": "tu_luyen",
+      "name": "Tu luyện",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "linh_thach",
+      "name": "Pháp bảo: Linh Thạch",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "tu_khi_dan",
+      "name": "Pháp bảo: Tụ Khí Đan",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "chu_qua",
+      "name": "Pháp bảo: Chu Quả",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "ban_dao",
+      "name": "Pháp bảo: Bàn Đào",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "linh_chi",
+      "name": "Pháp bảo: Thiên Niên Linh Chi",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "ngoc_dich",
+      "name": "Pháp bảo: Ngọc Dịch Quỳnh Tương",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "bi_tich",
+      "name": "Pháp bảo: Bí Tịch Công Pháp",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "phi_kiem",
+      "name": "Pháp bảo: Phi Kiếm Trận",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "long_chau",
+      "name": "Pháp bảo: Long Châu",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "linh_thu_dan",
+      "name": "Pháp bảo: Linh Thú Đản (trứng)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 10000000,
+          "step": 1,
+          "label": "Tu vi"
+        }
+      }
+    },
+    {
+      "id": "vao_phe",
+      "name": "Vào phe",
+      "parameters": {
+        "side": {
+          "type": "number",
+          "required": true,
+          "minimum": 1,
+          "maximum": 2,
+          "step": 1,
+          "scale": false,
+          "label": "Phe"
+        }
+      }
+    },
+    {
+      "id": "start_duel",
+      "name": "Mở tỉ thí",
+      "parameters": {}
+    },
+    {
+      "id": "end_duel",
+      "name": "Kết thúc tỉ thí",
+      "parameters": {}
+    }
+  ],
+  "defaultMappings": [
+    {
+      "eventType": "comment",
+      "matchMode": "exact",
+      "keywords": [
+        "1"
+      ],
+      "action": "vao_phe",
+      "params": {
+        "side": 1
+      },
+      "priority": 20
+    },
+    {
+      "eventType": "comment",
+      "matchMode": "exact",
+      "keywords": [
+        "2"
+      ],
+      "action": "vao_phe",
+      "params": {
+        "side": 2
+      },
+      "priority": 20
+    },
+    {
+      "eventType": "comment",
+      "matchMode": "any",
+      "keywords": [],
+      "action": "binh_luan",
+      "params": {},
+      "priority": 0
+    },
+    {
+      "eventType": "like",
+      "likeScope": "user",
+      "likeEvery": 100,
+      "action": "tu_luyen",
+      "params": {
+        "amount": 100
+      }
+    },
+    {
+      "eventType": "gift",
+      "giftId": "5655",
+      "giftName": "Rose",
+      "action": "tu_luyen",
+      "params": {
+        "amount": 50
+      },
+      "priority": 0
+    }
+  ]
+}
