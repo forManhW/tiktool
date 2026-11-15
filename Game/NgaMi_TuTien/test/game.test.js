@@ -888,6 +888,60 @@ test("cài đặt cũ: lời nền 30 giây chuyển sang 15 đúng một lần,
   assert.equal(new Game(DEFAULTS, { now: () => WED, storage: broken }).settings.infoVoiceEverySec, 15);
 });
 
+test("liên kết hành động: pháp bảo mang cùng mã act với đúng kết quả game đã tính, không tự thêm đòn", () => {
+  const { game, advance } = setup();
+  ["a", "b", "x"].forEach((id) => join(game, id));
+  // Sân thường: không có mục tiêu, món chỉ thi triển tại chỗ.
+  item(game, "a", "linh_thach", 100);
+  let fx = game.getState().items.at(-1);
+  assert.deepEqual(fx.effects, []);
+  assert.ok(fx.act > 0);
+
+  // Tỉ thí: phe kia chưa có ai -> đòn không có mục tiêu, không ai mất tu vi.
+  game.handleAction("start_duel", {}, { mode: "test" });
+  phe(game, "a", 1);
+  item(game, "a", "phi_kiem", 100);
+  fx = game.getState().items.at(-1);
+  assert.deepEqual(fx.effects, [{ kind: "duel", to: null, lost: 0, side: 1 }]);
+
+  // Có đối thủ: mục tiêu và số tu vi mất trong fx trùng với đòn thật, cùng mã act, chỉ 1 đòn cho 1 lần dùng.
+  phe(game, "b", 2); tu(game, "b", 1000);
+  const before = game.getState().duel.hits.length, bTuvi = game.sect.members.get("b").tuvi;
+  item(game, "a", "long_chau", 400, 3);
+  fx = game.getState().items.at(-1);
+  const hits = game.getState().duel.hits.slice(before);
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].act, fx.act);
+  assert.deepEqual(fx.effects, [{ kind: "duel", to: "b", lost: 200, side: 1 }]);
+  assert.equal(hits[0].lost, 200);
+  assert.equal(game.sect.members.get("b").tuvi, bTuvi - 200);
+
+  // Tu luyện thường (không phải pháp bảo): đòn có mã act riêng, không trùng món nào.
+  tu(game, "a", 50);
+  const plain = game.getState().duel.hits.at(-1);
+  assert.ok(plain.act > fx.act);
+  assert.equal(game.getState().items.some((f) => f.act === plain.act), false);
+
+  // Người đứng xem dùng món trong lúc tỉ thí: không tạo đòn.
+  item(game, "x", "linh_thach", 100);
+  assert.deepEqual(game.getState().items.at(-1).effects, []);
+  advance(0);
+});
+
+test("liên kết hành động: đánh rồng dùng sát thương thật (có linh thú), kết giới thiên kiếp ghi đúng người nhận", () => {
+  const { game } = setup();
+  join(game, "a"); join(game, "b");
+  game.sect.members.get("a").pets.hoa_ky_lan = 2;         // +10% sát thương
+  game.spawnBoss(game.now());
+  const hp = game.boss.hp;
+  item(game, "a", "chu_qua", 100);
+  const fx = game.getState().items.at(-1), hit = game.getState().boss.hits.at(-1);
+  assert.deepEqual(fx.effects, [{ kind: "boss", amount: 110 }]);
+  assert.equal(hit.act, fx.act);
+  assert.equal(game.boss.hp, hp - 110);
+  assert.equal(game.sect.members.get("a").tuvi, 100, "tu vi nhận không đổi theo sát thương");
+});
+
 test("trứng: nở ra linh thú theo tỉ lệ, trùng loại thì lên sao (5/10/15%), đủ 3 sao thì được vòng quay", () => {
   const { game, advance, shown } = setup();
   join(game, "a");

@@ -138,6 +138,11 @@
     this.bossHitSeq = 0;
     this.duelHits = [];           // đòn đánh giữa hai phe khi tỉ thí, cho renderer
     this.duelHitSeq = 0;
+    // Mã liên kết cho MỘT lần hành động (1 lần cultivate): mọi kết quả game đã tính trong lần đó (đòn tỉ thí, đánh rồng,
+    // giải cứu, đòn của người tẩu hỏa, kết giới) mang cùng `act`, để lớp hiển thị minh họa đúng kết quả thật, không đoán mục tiêu.
+    this.actSeq = 0;
+    this.act = null;              // hành động đang xử lý { id, userId, amount, dmg, effects: [] }
+    this.lastAct = null;
     this.itemFx = [];             // pháp bảo vừa dùng (renderer chạy hiệu ứng tại chỗ người tặng)
     this.itemFxSeq = 0;
     this.itemBatches = [];        // lô pháp bảo đang gom cho giọng đọc { key, name, itemName, count, gained, at }
@@ -657,7 +662,8 @@
     var target = foes.length ? foes[Math.floor(this.random() * foes.length)] : null;
     // Người trúng đòn mất 50% lượng tu vi của đòn (không xuống dưới 0, không trừ điểm phe).
     var lost = target != null ? this.sect.removeTuvi(target, Math.floor(dmg * (this.cfg.duel.hitLossRatio || 0))) : 0;
-    this.duelHits.push({ id: ++this.duelHitSeq, from: attackerId, to: target, side: me.side, amount: amount, lost: lost });
+    this.duelHits.push({ id: ++this.duelHitSeq, act: this.act ? this.act.id : 0, from: attackerId, to: target, side: me.side, amount: amount, lost: lost });
+    if (this.act) this.act.effects.push({ kind: "duel", to: target, lost: lost, side: me.side });
     if (this.duelHits.length > 12) this.duelHits.shift();
   };
 
@@ -678,7 +684,8 @@
     if (!targets.length) return;
     var target = targets[Math.floor(this.random() * targets.length)], lost = this.sect.removeTuvi(target, amount);
     if (!lost) return;
-    this.possessHits.push({ id: ++this.possessHitSeq, kind: "attack", targetId: target, amount: lost });
+    this.possessHits.push({ id: ++this.possessHitSeq, act: this.act ? this.act.id : 0, kind: "attack", targetId: target, amount: lost });
+    if (this.act) this.act.effects.push({ kind: "possess", to: target, lost: lost });
     if (this.possessHits.length > 16) this.possessHits.shift();
     var t = this.sect.members.get(target), a = this.sect.members.get(attackerId);
     this.announcer.say({ kind: "possess_attack", priority: 1, silent: true, key: "possess_attack",
@@ -697,7 +704,8 @@
         text: cap(daoHuuText(shown(e.member.nickname))) + " tẩu hỏa nhập ma! Sử dụng pháp bảo để giải cứu (" + fmt(e.hp) + ")",
         speech: this.pickLine("possess_start", { ten: daoHuu(e.member.nickname) }) || cap(daoHuu(e.member.nickname)) + " đã tẩu hỏa nhập ma và đang tấn công đồng môn! " + JOIN_CALL });
     } else if (e.type === "possess_rescue_hit") {
-      this.possessHits.push({ id: ++this.possessHitSeq, kind: "rescue", userId: e.userId, amount: e.amount });
+      this.possessHits.push({ id: ++this.possessHitSeq, act: this.act ? this.act.id : 0, kind: "rescue", userId: e.userId, amount: e.amount });
+      if (this.act) this.act.effects.push({ kind: "rescue", amount: e.amount });
       if (this.possessHits.length > 16) this.possessHits.shift();
     } else if (e.type === "possess_milestone") {
       this.announcer.say({ kind: "possess_milestone", priority: 2, key: "possess_milestone", text: "Còn " + e.percent + "% nữa là giải cứu được!",
@@ -738,6 +746,14 @@
     var id = String(user.id), now = this.now(), m = this.sect.members.get(id), bonus = this.petBonus(m);
     var amount = Math.floor(base * (1 + bonus.tuviPct / 100) * (this.surgeActive(now) ? this.cfg.surge.multiplier : 1));
     var dmg = Math.floor(amount * (1 + bonus.dmgPct / 100));
+    var act = this.act = { id: ++this.actSeq, userId: id, amount: amount, dmg: dmg, effects: [] };
+    try { this.applyCultivation(user, id, m, amount, dmg, source, now); }
+    finally { this.lastAct = act; this.act = null; }
+    return amount;
+  };
+
+  /** Phần tác dụng của một lần tu luyện; mọi kết quả ghi vào this.act.effects. Không đổi cách tính so với trước. */
+  Game.prototype.applyCultivation = function (user, id, m, amount, dmg, source, now) {
     this.sect.addTuvi(user, amount, (source && source.eventType) || "action");
     if (m) m.lastGainAt = now;     // hào quang sau lưng
     // Tỉ thí: chỉ tính khi đang đấu và người này đã vào phe; mỗi lần góp là 1 đòn kiếm sang phe kia.
@@ -760,19 +776,19 @@
     // Chính người độ kiếp tu luyện / dùng pháp bảo: tự hộ thân, selfShieldPct% tu vi nhận được tính vào kết giới.
     var k = this.kiep;
     if (k && k.phase === "strike") {
-      if (k.targetId !== id) { k.shield += amount; k.helpers[id] = (k.helpers[id] || 0) + amount; }
+      if (k.targetId !== id) { k.shield += amount; k.helpers[id] = (k.helpers[id] || 0) + amount; this.act.effects.push({ kind: "shield", to: k.targetId, amount: amount }); }
       else {
         var own = Math.floor(amount * this.cfg.tribulation.selfShieldPct / 100);
         if (own > 0) {
           k.shield += own; k.selfShield += own;
           k.selfHits.push({ id: ++this.kiepSelfSeq, amount: own });
+          this.act.effects.push({ kind: "self_shield", amount: own });
           if (k.selfHits.length > 8) k.selfHits.shift();
           this.announcer.say({ kind: "kiep_self", priority: 1, silent: true, key: "kiep_self", member: m,
             text: shown(k.name) + " tự hộ thân! +" + own.toLocaleString("vi-VN") + " kết giới" });
         }
       }
     }
-    return amount;
   };
 
   // ---------- Pháp bảo ----------
@@ -795,7 +811,9 @@
     if (base <= 0) throw new Error("amount phải > 0");
     var item = this.itemDef(itemId), count = Math.max(1, Math.floor(Number(params.count) || 1)), now = this.now();
     var gained = this.cultivate(user, base, source), id = String(user.id), m = this.sect.members.get(id);
-    var fx = { id: ++this.itemFxSeq, item: itemId, userId: id, count: count, amount: gained };
+    // Cùng mã `act` với các đòn / kết quả mà lần dùng này thực sự tạo ra; effects rỗng = món chỉ thi triển tại chỗ.
+    var act = this.lastAct;
+    var fx = { id: ++this.itemFxSeq, act: act.id, item: itemId, userId: id, count: count, amount: gained, effects: act.effects.slice() };
     this.itemFx.push(fx);
     if (this.itemFx.length > 16) this.itemFx.shift();
     if (itemId === "linh_thu_dan") {
@@ -1036,7 +1054,8 @@
       this.announcer.say({ kind: "boss_start", priority: 3, valid: stillTrue(this, function (g) { return g.boss.phase === "fight"; }), text: "Quái rồng " + b.name + " xuất hiện! Mọi tu vi đều đánh vào rồng (" + fmt(e.hp) + " máu)",
         speech: this.pickLine("boss_start", { boss: b.name, mau: fmt(e.hp) }) || "Quái rồng " + b.name + " đã xuất hiện! Mọi tu vi đồng môn nhận được đều đánh vào rồng" });
     } else if (e.type === "boss_hit") {
-      this.bossHits.push({ id: ++this.bossHitSeq, userId: e.userId, amount: e.amount });
+      this.bossHits.push({ id: ++this.bossHitSeq, act: this.act ? this.act.id : 0, userId: e.userId, amount: e.amount });
+      if (this.act) this.act.effects.push({ kind: "boss", amount: e.amount });
       if (this.bossHits.length > 12) this.bossHits.shift();
     } else if (e.type === "boss_milestone") {
       this.announcer.say({ kind: "boss_milestone", priority: 2, key: "boss_milestone", text: "Quái rồng chỉ còn " + e.percent + "% máu!",

@@ -809,3 +809,21 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .nm-tag-v3 .nm-tag[data-side="2"] .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 0 4px #f0457f); }
 .nm-tag-v3 .nm-strike .nm-tag[data-side] .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 0 8px #fff) drop-shadow(0 0 4px var(--sidec)); }
 .nm-tag-v3 .nm-pets { bottom: 4px; }
+
+/* ================= Hiệu ứng mở rộng (ảnh src/assets/game/vfx) ================= */
+/* Chỉ dùng transform + opacity (không blur / filter lớn) để nhẹ khi sân đông. */
+.nm-vfx { position: absolute; height: auto; pointer-events: none; will-change: transform, opacity; }
+.nm-vfx-fly { opacity: 0; }
+.nm-vfx-burst { width: var(--s); transform: translate(-50%, -50%) scale(.3) rotate(var(--r, 0deg)); animation: nm-vfx-burst var(--t, 450ms) ease-out forwards; }
+@keyframes nm-vfx-burst {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(var(--r, 0deg)); }
+  22% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15) rotate(var(--r, 0deg)); }
+}
+.nm-vfx-shard { width: var(--s); transform: translate(-50%, -50%) scale(.4); animation: nm-vfx-shard var(--t, 700ms) cubic-bezier(.15,.7,.3,1) forwards; }
+@keyframes nm-vfx-shard {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.4); }
+  15% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--r)); }
+}

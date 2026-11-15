@@ -201,6 +201,10 @@
     },
 
     // Âm thanh hiệu ứng (file trong src/assets/game/, chép từ raw bằng tools/build-assets.js).
+    // Hiệu ứng mở rộng (ảnh src/assets/game/vfx). enabled: false = quay về hiệu ứng cũ hoàn toàn.
+    // Ngân sách tính RIÊNG cho lớp mới (lớp cũ vẫn do trimFx giới hạn): quá ngân sách thì dùng vệt sáng cũ, kết quả vẫn hiện đủ.
+    vfx: { enabled: true, maxElements: 64, maxSequences: 4 },
+
     sounds: {
       levelUp: "magic-fairy.mp3",   // phát mỗi lần nhân vật thăng cấp (tiểu cảnh và đại cảnh giới)
       volume: 0.8

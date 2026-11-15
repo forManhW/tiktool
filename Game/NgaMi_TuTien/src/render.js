@@ -487,7 +487,7 @@
         lastHitId = h.id;
         var from = discipleCenter(h.userId);
         strike(h.userId);
-        if (from) swordFly(from, DRAGON_CENTER, "gold", function () { showHit(h.amount); });
+        if (from) flyHit(h.act, from, DRAGON_CENTER, "gold", function () { showHit(h.amount); });
         else showHit(h.amount);
       });
       // Rồng đánh trả: đòn thường = 1 luồng lửa xuống 1 người; phun lửa = sóng lửa quét xuống cả tông môn.
@@ -556,7 +556,7 @@
             possBody.classList.remove("nm-shake-soft"); void possBody.offsetWidth; possBody.classList.add("nm-shake-soft");
             popNumber(POSS_CENTER.x + (Math.random() - 0.5) * 260, POSS_CENTER.y + (Math.random() - 0.4) * 240, "-" + h.amount.toLocaleString("vi-VN"), "nm-pop-gold");
           };
-          if (from) swordFly(from, POSS_CENTER, "gold", hitPoss); else hitPoss();
+          if (from) flyHit(h.act, from, POSS_CENTER, "gold", hitPoss); else hitPoss();
         } else {
           // Người tẩu hỏa đánh 1 đệ tử: luồng sáng tím đỏ bay xuống, người trúng đòn lóe đỏ và mất tu vi.
           var to = discipleCenter(h.targetId), amt = h.amount, tid = h.targetId;
@@ -643,6 +643,98 @@
         setTimeout(function () { hit.remove(); }, 520);
       }, 440);
       setTimeout(function () { wrap.remove(); }, 760);
+    }
+
+    // ---------- Hiệu ứng mở rộng (ảnh vfx/): bộ đếm ngân sách riêng + đòn mang hình của đúng món ----------
+    var VFX = Object.assign({ enabled: true, maxElements: 64, maxSequences: 4 }, config.vfx || {});
+    var vfxCount = 0, vfxSeq = 0, actItems = {};
+    function vfxImg(name, cls, life) {
+      if (vfxCount >= VFX.maxElements) return null;           // hết ngân sách: bỏ phần trang trí này
+      var e = el("img", "nm-vfx " + cls, fxLayer);
+      e.alt = ""; e.src = base + "vfx/" + name + ".webp";
+      vfxCount++;
+      setTimeout(function () { e.remove(); vfxCount--; }, life);
+      return e;
+    }
+    /** Ảnh có đầu bên phải bay từ `from` tới `to`, tự xoay theo hướng bay. */
+    function vfxFly(name, from, to, w, ms, delay) {
+      var dx = to.x - from.x, dy = to.y - from.y, ang = Math.atan2(dy, dx) * 180 / Math.PI;
+      var e = vfxImg(name, "nm-vfx-fly", delay + ms + 90);
+      if (!e) return;
+      var turn = " rotate(" + ang.toFixed(1) + "deg)" + (Math.abs(ang) > 90 ? " scaleY(-1)" : "");   // bay sang trái: lật để không bị lộn ngược
+      e.style.cssText = "left:" + from.x.toFixed(0) + "px;top:" + from.y.toFixed(0) + "px;width:" + w + "px;transform:translate(-50%,-50%)" + turn +
+        ";transition:transform " + ms + "ms cubic-bezier(.5,0,.85,.55),opacity 120ms";
+      setTimeout(function () {
+        e.style.opacity = "1";
+        e.style.transform = "translate(calc(-50% + " + dx.toFixed(0) + "px),calc(-50% + " + dy.toFixed(0) + "px))" + turn;
+      }, delay + 20);
+    }
+    /** Ảnh nở ra rồi tan tại một điểm (va chạm, vòng sóng). */
+    function vfxBurst(name, at, size, ms, delay, rot) {
+      setTimeout(function () {
+        var e = vfxImg(name, "nm-vfx-burst", ms + 60);
+        if (e) e.style.cssText = "left:" + at.x.toFixed(0) + "px;top:" + at.y.toFixed(0) + "px;--s:" + size + "px;--t:" + ms + "ms;--r:" + (rot || 0) + "deg";
+      }, delay || 0);
+    }
+    /** Các mảnh rời (linh thạch, vỏ trứng) văng ra quanh một điểm. */
+    function vfxScatter(prefix, count, at, size, radius, ms, delay) {
+      setTimeout(function () {
+        for (var i = 0; i < count; i++) {
+          var e = vfxImg(prefix + (i + 1), "nm-vfx-shard", ms + 60);
+          if (!e) return;
+          var a = (i / count) * Math.PI * 2 + Math.random() * 0.5, r = radius * (0.75 + Math.random() * 0.5);
+          e.style.cssText = "left:" + at.x.toFixed(0) + "px;top:" + at.y.toFixed(0) + "px;--s:" + size + "px;--t:" + ms + "ms;--dx:" + (Math.cos(a) * r).toFixed(0) +
+            "px;--dy:" + (Math.sin(a) * r).toFixed(0) + "px;--r:" + Math.round(Math.random() * 240 - 120) + "deg";
+        }
+      }, delay || 0);
+    }
+    // Món đã có đòn riêng. Món chưa có (đang chờ duyệt 4 món mẫu) vẫn dùng vệt sáng cũ.
+    var ITEM_SHOT = { linh_thach: true, phi_kiem: true, long_chau: true };
+    /**
+     * Đòn THẬT bay từ `from` tới `to`. Nếu đòn này thuộc cùng lần hành động với một pháp bảo có đòn riêng thì vẽ đòn của món đó
+     * (thay vệt sáng thường, không vẽ thêm đòn trùng); kết quả (rung, số) chỉ gọi 1 lần qua onArrive.
+     * Quá ngân sách hoặc tắt vfx: quay về vệt sáng cũ, kết quả vẫn hiện.
+     */
+    function flyHit(act, from, to, kind, onArrive) {
+      var it = act ? actItems[act] : null;
+      if (!VFX.enabled || !it || !ITEM_SHOT[it.item] || vfxSeq >= VFX.maxSequences || vfxCount > VFX.maxElements - 8) return swordFly(from, to, kind, onArrive);
+      var def = ITEMS[it.item] || {}, dur = TIER_MS[def.tier || 1] || TIER_MS[1], t0 = Math.round(dur * 0.5), land;
+      vfxSeq++;
+      if (it.item === "linh_thach") {
+        // Mảnh lam ngọc lao theo đòn, lóe vòng xanh tại điểm trúng.
+        [0, 1, 2].forEach(function (i) { vfxFly("vfx_manh_linh_thach_" + (i + 1), { x: from.x, y: from.y - 14 + i * 14 }, to, 30, 360, t0 + i * 70); });
+        land = t0 + 360 + 140;
+        vfxBurst("vfx_song_linh_khi", to, 120, 420, land);
+      } else if (it.item === "phi_kiem") {
+        // Kiếm trận hợp thế: 3 vệt kiếm quang nối nhau, kết quả chỉ hiện 1 lần ở vệt cuối.
+        [0, 1, 2].forEach(function (i) { vfxFly("vfx_kiem_quang", { x: from.x, y: from.y - 26 + i * 26 }, to, 170, 300, t0 + i * 120); });
+        land = t0 + 300 + 240;
+        vfxBurst("vfx_va_cham", to, 140, 420, land);
+      } else {
+        // Long Châu: bóng rồng vàng lao tới, va chạm lớn + vòng sóng. Không chớp trắng kín màn.
+        vfxFly("vfx_long_khi", from, to, 360, 720, t0);
+        land = t0 + 720;
+        vfxBurst("vfx_va_cham", to, 220, 520, land);
+        vfxBurst("vfx_song_linh_khi", to, 340, 620, land + 60);
+      }
+      setTimeout(function () { if (onArrive) onArrive(); }, land);
+      setTimeout(function () { vfxSeq--; }, land + 500);
+    }
+    /** Món không tạo đòn trong trạng thái hiện tại: màn thi triển riêng TẠI CHỖ người dùng, không dựng mục tiêu hay va chạm. */
+    function itemFlourish(raw, b, dur) {
+      if (!VFX.enabled || vfxSeq >= VFX.maxSequences) return;
+      var t0 = Math.round(dur * 0.5);
+      if (raw.item === "linh_thach") {
+        vfxScatter("vfx_manh_linh_thach_", 6, b.c, 30, b.size * 0.75, 700, t0);
+        vfxBurst("vfx_song_linh_khi", b.c, Math.round(b.size * 1.5), 520, t0);
+      } else if (raw.item === "phi_kiem") {
+        [0, 1].forEach(function (i) { vfxBurst("vfx_kiem_quang", b.c, Math.round(b.size * 1.5), 380, t0 + i * 160, i ? 150 : -30); });
+      } else if (raw.item === "long_chau") {
+        vfxFly("vfx_long_khi", { x: b.c.x - 150, y: b.c.y + 40 }, { x: b.c.x + 130, y: b.c.y - b.h * 1.1 }, 340, 900, t0);
+        vfxBurst("vfx_song_linh_khi", b.c, Math.round(b.size * 2), 700, t0 + 200);
+      } else return;
+      vfxSeq++;
+      setTimeout(function () { vfxSeq--; }, t0 + 1100);
     }
 
     // ---------- Pháp bảo: hiệu ứng tại chỗ người tặng ----------
@@ -747,6 +839,9 @@
       setTimeout(function () {
         popNumber(b.c.x, b.c.y - b.h * 0.65, "+" + raw.amount.toLocaleString("vi-VN"), "nm-pop-gold " + (tier >= 4 ? "nm-pop-big" : "nm-pop-item"));
       }, dur * 0.45);
+      // Lần dùng này có tạo đòn thật tới một mục tiêu không (theo kết quả game đã tính)? Không thì thi triển tại chỗ.
+      var shot = (raw.effects || []).some(function (e) { return (e.kind === "duel" && e.to != null) || e.kind === "boss" || e.kind === "rescue"; });
+      if (!shot) itemFlourish(raw, b, dur);
       setTimeout(function () { b.box.remove(); delete eggFx[raw.id]; }, life);
     }
     /**
@@ -793,6 +888,8 @@
         if (!c || !n || !t) return;
         var e = eggFx[h.fxId];
         if (e) e.egg.classList.add("nm-egg-open");
+        // Linh Thú Đản: vỏ trứng và sao nhỏ văng ra lúc nở (7 mảnh vỏ + 3 sao); kết quả linh thú vẫn do game báo.
+        if (VFX.enabled && vfxCount <= VFX.maxElements - 10) vfxScatter("vfx_trung_no_", 10, c, 34, Math.max(70, n.pos.h * 0.8), 800, 0);
         trimFx();
         var hgt = n.pos.h * (n.grow || 1), box = el("div", "nm-hatch", fxLayer);
         box.style.cssText = "left:" + c.x.toFixed(0) + "px;top:" + c.y.toFixed(0) + "px";
@@ -968,7 +1065,8 @@
         lastDuelHitId = h.id;
         var from = discipleCenter(h.from), to = h.to != null ? discipleCenter(h.to) : null;
         strike(h.from, h.side);
-        if (from && to) swordFly(from, to, "s" + h.side, function () {
+        // Không có đối thủ hợp lệ: chỉ có động tác ra chiêu, không va chạm, không số.
+        if (from && to) flyHit(h.act, from, to, "s" + h.side, function () {
           shakeDisciple(h.to);
           var p = discipleCenter(h.to);
           if (p && h.lost > 0) popNumber(p.x, p.y - 30, "-" + h.lost.toLocaleString("vi-VN"), "nm-pop-red");
@@ -1068,6 +1166,9 @@
       seatImgs.forEach(function (img, i) { img.classList.toggle("nm-empty", !seats[i]); });
       stage.classList.toggle("nm-duel-layout", duelLayout);
       stage.classList.toggle("nm-duel-result", d.phase === "result");
+      // Món nào thuộc lần hành động nào: để đòn thật của lần đó mang hình của đúng món.
+      actItems = {};
+      (state.items || []).forEach(function (fx) { if (fx.act) actItems[fx.act] = fx; });
       renderDuelHits(d);
       renderBoss(state.boss || null);
       renderPossession(state.possession || null);
@@ -1093,7 +1194,8 @@
     window.addEventListener("resize", fit);
     fit();
 
-    return { render: render, slots: slots, fit: fit };
+    // vfxStats: số phần tử / chuỗi hiệu ứng mở rộng đang tồn tại (để đo ngân sách khi thử).
+    return { render: render, slots: slots, fit: fit, vfxStats: function () { return { elements: vfxCount, sequences: vfxSeq, fxLayer: fxLayer.children.length }; } };
   }
 
   return { createRenderer: createRenderer, computeSlots: computeSlots, REALM_COLORS: REALM_COLORS };
