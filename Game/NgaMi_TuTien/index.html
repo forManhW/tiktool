@@ -66,6 +66,7 @@
 <script src="src/lines.js"></script>
 <script src="src/game.js"></script>
 <script src="src/tag-layout.js"></script>
+<script src="src/tag-layout-v3.js"></script>
 <script src="src/render.js"></script>
 <script src="src/sound.js"></script>
 <script>
@@ -112,6 +113,8 @@
   });
   // Đóng cửa sổ game: lưu ngay, không chờ chu kỳ 5 giây.
   window.addEventListener("beforeunload", function () { unloading = true; game.sect.dirty = true; game.save(); });
+  // So sánh nhanh hai kiểu khung tên khi thử: thêm ?tag=v2 (khung cũ) hoặc ?tag=v3 (tên trên đầu) vào địa chỉ.
+  if (query.get("tag") === "v2" || query.get("tag") === "v3") NgaMi.DEFAULTS.layout.tagStyle = query.get("tag");
   var view = NgaMi.createRenderer($("stage"), NgaMi.DEFAULTS, { assetBase: "src/assets/game/" });
 
   var live = window.TikTool ? TikTool.connect({

@@ -19,9 +19,10 @@
   function el(tag, cls, parent) { var e = document.createElement(tag); if (cls) e.className = cls; if (parent) parent.appendChild(e); return e; }
   function mmss(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); }
   function shortName(name, max) {
-    var t = String(name || "Đạo hữu").trim();
+    // Tên game gửi sang đã cắt sẵn (có "…" ở cuối): bỏ dấu đó trước khi cắt lại, tránh ra hai dấu ba chấm.
+    var raw = String(name || "Đạo hữu").trim(), cut = /…$/.test(raw), t = raw.replace(/…$/, "").trim() || "Đạo hữu";
     var a = typeof Intl !== "undefined" && Intl.Segmenter ? Array.from(new Intl.Segmenter("vi", { granularity: "grapheme" }).segment(t), function (x) { return x.segment; }) : Array.from(t);
-    if (a.length <= max) return a.join("");
+    if (a.length + (cut ? 1 : 0) <= max) return a.join("") + (cut ? "…" : "");
     // Cắt ở GIỮA, giữ cả đầu và đuôi tên: "NguoiChoiThu1" / "NguoiChoiThu2" -> "Nguo…Thu1" / "Nguo…Thu2", không bị giống nhau.
     var tail = Math.max(2, Math.floor((max - 1) / 2)), head = max - 1 - tail;
     return a.slice(0, head).join("") + "…" + a.slice(a.length - tail).join("");
@@ -116,6 +117,12 @@
       return img;
     });
     var layer = el("div", "nm-layer", crowd);
+    // Phương án A (layout.tagStyle = "v3"): tên + chức vị + bóng thoại nằm ở LỚP RIÊNG phía trên mọi nhân vật, cùng nhóm crowd
+    // nên cùng lùi khi đánh quái. Lớp riêng thì không bị thân người khác che và không bị kéo giãn khi thân phóng to / ra đòn.
+    var NAME_ABOVE = L.tagStyle === "v3";
+    var nameLayer = NAME_ABOVE ? el("div", "nm-names", crowd) : null;
+    stage.classList.toggle("nm-tag-v3", NAME_ABOVE);
+    var TAG_V3 = (typeof NgaMi !== "undefined" && NgaMi.TAG_LAYOUT_V3) || {};
     // Lớp hiệu ứng (luồng sáng, số sát thương) nằm trên cùng khung cảnh, toạ độ theo khung 1080x1920.
     var fxLayer = el("div", "nm-fx", camera);
     var bossPanel = el("div", "nm-boss-panel", stage); bossPanel.style.top = BOSS.panelTop + "px";
@@ -149,15 +156,18 @@
       var petsEl = el("div", "nm-pets", body);    // linh thú ngồi cạnh chân
       // Trên đầu: chức vị (ghế đài) + bóng thoại. Dưới chân: khung tên bằng ảnh theo cảnh giới (ban3/tag).
       var head = el("div", "nm-head", body);
-      var bubble = el("div", "nm-bubble", head);
-      var titleEl = el("div", "nm-tag-title", head);
+      var top = nameLayer ? el("div", "nm-top", nameLayer) : null;   // bản A: bóng thoại, chức vị, tên xếp từ trên xuống
+      var bubble = el("div", "nm-bubble", top || head);
+      var titleEl = el("div", "nm-tag-title", top || head);
+      var topName = top ? el("div", "nm-top-name", top) : null;
       var tag = el("div", "nm-tag", body);
       var plate = el("div", "nm-plate", tag);
       var realmEl = el("div", "nm-tag-realm", plate);   // chữ trên ruy băng: tên đại cảnh giới (chỉ hiện ở khung lớn)
       var nameEl = el("div", "nm-tag-name", plate);
+      if (topName) nameEl = topName;                    // bản A: tên ghi trên đầu, bảng dưới chân chỉ còn cảnh giới
       var gemsEl = el("div", "nm-gems", plate);         // ngọc ở cạnh dưới: số viên sáng = tiểu cảnh
       n = nodes[seat.id] = { root: rootEl, body: body, grow: 1, img: img, haloImg: haloImg, haloSrc: "", itemHalo: itemHalo, petsEl: petsEl, petSig: "", tag: tag, bubble: bubble, titleEl: titleEl, nameEl: nameEl, realmEl: realmEl, realmIdx: -1,
-        plate: plate, gemsEl: gemsEl, tagW: 0, plateSrc: "", gemSig: "", maxChars: 8,
+        plate: plate, gemsEl: gemsEl, tagW: 0, plateSrc: "", gemSig: "", maxChars: 8, top: top,
         sprite: null, key: null, pos: null, level: seat.level, name: null, bubbleId: 0 };
       // setTimeout thay vì requestAnimationFrame: cửa sổ bị che / chạy nền thì rAF dừng, nhân vật mới sẽ tàng hình.
       setTimeout(function () { rootEl.classList.remove("nm-enter"); }, 40);
@@ -244,11 +254,37 @@
     var TAG_DEFAULT = { r: 2.7, panel: [6, 47, 94, 79], gx: [36.2, 45.4, 54.5, 63.7], gy: 83, gd: 5.1 };
     var TAG_RATIO = TAG_DEFAULT.r, TAG_MAX_RATIO = 2.97;
     var realmStart = []; (function () { var k = 0; realms.forEach(function (r, i) { realmStart[i] = k; k += r.stages.length; }); })();
-    function tagWidth(s) {
+    function slotWidth(s) {
       if (s.tagW) return s.tagW;
       if (s.podium === 0) return 240;
       if (s.podium != null) return 200;
       return Math.min(150, (L.rowRight - L.rowLeft) / ((L.rows[s.row] || L.rows[0]).count) + 4);
+    }
+    // Bản A: bảng cảnh giới không còn chứa tên nên hẹp hơn chỗ ngồi, chừa chỗ cho tên của hàng dưới.
+    var V3_TAG = { row: 0.84, duel: 0.8, podium: 0.8 };
+    function tagWidth(s) {
+      var w = slotWidth(s);
+      return NAME_ABOVE ? w * (s.podium != null ? V3_TAG.podium : s.duel ? V3_TAG.duel : V3_TAG.row) : w;
+    }
+    /**
+     * Bản A: đặt cụm tên trên đầu. Neo ở đỉnh đầu THỰC (tính cả cỡ tỉ thí), cỡ chữ theo bề ngang chỗ ngồi chứ không theo
+     * cỡ thân, nên thân phóng to / thu nhỏ / ra đòn thì chữ vẫn giữ cỡ đọc được.
+     */
+    var HEAD_AT = 0.87;   // đỉnh tóc nằm khoảng 90% chiều cao ảnh nhân vật; tên đè nhẹ lên chỏm tóc để không chạm bảng hàng trên
+    function placeTop(n, seat) {
+      if (!n.top || !n.pos) return;
+      var s = n.pos, g = n.grow || 1, w = slotWidth(s);
+      var f = s.podium != null ? (s.podium === 0 ? 28 : 24) : Math.max(15, Math.min(24, w * 0.148));
+      var sig = s.x.toFixed(1) + "," + (s.y - s.h * g * HEAD_AT).toFixed(1) + "," + f.toFixed(1);
+      if (n.topSig === sig) return;
+      n.topSig = sig;
+      n.top.style.transform = "translate(" + sig.split(",")[0] + "px," + sig.split(",")[1] + "px)";
+      n.top.style.fontSize = f.toFixed(1) + "px";
+      // Tên dài rút gọn theo chỗ thực có (rộng hơn bề ngang chỗ ngồi một chút, vì tên so le với hàng bên cạnh không chạm nhau).
+      // Chữ đậm rộng khoảng 0,6 cỡ chữ mỗi ký tự; CSS còn chặn bề ngang (dấu ba chấm) để không lấn tên người bên cạnh.
+      var mc = Math.max(6, Math.min(18, Math.floor(w / (f * 0.57))));
+      n.nameEl.style.maxWidth = (w * 0.99).toFixed(0) + "px";
+      if (mc !== n.maxChars) { n.maxChars = mc; n.name = null; }
     }
     /**
      * Khung theo đại cảnh giới (Đại viên mãn dùng khung _dvm riêng), ngọc sáng theo tiểu cảnh:
@@ -259,10 +295,16 @@
       var ri = Math.max(0, Math.min(realms.length - 1, seat.realm || 0)), r = realms[ri];
       var st = Math.max(0, Math.min(r.stages.length - 1, (seat.level || 0) - realmStart[ri]));
       var dvm = r.stages.length === 4 && st === 3, nine = r.stages.length === 9;
-      var key = "tag_" + r.sprite + (dvm ? "_dvm" : ""), src = base + "ban3/tag/" + key + ".webp";
-      var lay = TAG_LAYOUT[key] || TAG_DEFAULT;
+      var key = "tag_" + r.sprite + (dvm ? "_dvm" : ""), src = base + (NAME_ABOVE ? "tag_v3/" : "ban3/tag/") + key + ".webp";
+      var lay = NAME_ABOVE ? TAG_V3[key] || { r: 3.3, gx: [], gy: 88, gd: 4.5 } : TAG_LAYOUT[key] || TAG_DEFAULT;
       // Kích thước khung theo đúng tỉ lệ ảnh; ô tên đặt đúng ô kem của ảnh; cỡ chữ theo chiều cao ô kem.
       var size = n.tagW + "x" + key;
+      if (NAME_ABOVE && n.plateSize !== size) {
+        // Bản A: bảng chỉ có tên cảnh giới, giữ đúng tỉ lệ ảnh, mép trên đè nhẹ lên đệm ngồi.
+        n.plateSize = size;
+        n.tag.style.height = (n.tagW / lay.r).toFixed(0) + "px";
+        n.tag.style.top = "calc(100% - 5px)";
+      }
       if (n.plateSize !== size) {
         n.plateSize = size;
         // Giới hạn tỉ lệ quá dẹt; vị trí ô tên và ngọc tính theo % kích thước khung.
@@ -288,6 +330,7 @@
       n.root.classList.toggle("nm-dvm", dvm || ri === realms.length - 1);   // Đại viên mãn, Chân Tiên: vệt sáng chạy ngang khung
       n.root.classList.toggle("nm-houky", r.stages.length === 4 && st === 2);
       var lit = nine ? st + 1 : r.stages.length === 1 ? 4 : st + 1, slots = nine ? 9 : 4;
+      if (NAME_ABOVE) slots = lay.gx.length;            // Chân Tiên kiểu mới không có hốc ngọc
       var sig = slots + ":" + lit + ":" + key;
       if (n.gemSig !== sig) {
         var grew = n.gemSig && n.gemSig.split(":")[0] == slots && Number(n.gemSig.split(":")[1]) < lit;
@@ -319,12 +362,14 @@
         n.tag.style.width = tw.toFixed(0) + "px";
         n.tagW = tw; n.plateSize = "";
         n.duelSpot = !!s.duel;
+        if (n.top) n.top.classList.toggle("nm-top-podium", s.podium != null);
         n.root.classList.toggle("nm-podium", s.podium != null);
         n.titleEl.textContent = s.seat || "";
         n.name = null;
       }
       var sprite = spriteFor[seat.realm] || spriteFor[0];
       if (n.sprite !== sprite) { n.sprite = sprite; n.img.src = base + sprite + ".png"; }
+      placeTop(n, seat);
       // Tên dài: cắt giữa, giữ đuôi (Thu1 / Thu2). Tỉ thí 2 cột rộng chỗ nên giữ được dài hơn.
       var label = shortName(seat.name, n.maxChars);
       if (n.name !== label) { n.name = label; n.nameEl.textContent = label; }
@@ -362,11 +407,13 @@
         }).join("");
       }
       n.tag.dataset.side = seat.side || 0;
+      if (n.top) n.top.dataset.side = seat.side || 0;
       n.root.style.setProperty("--sidec", seat.side === 1 ? "#4fd1bd" : seat.side === 2 ? "#f06b9a" : "#ffe9a8");
       // Tỉ thí: góp càng nhiều càng to (tại chỗ, neo ở chân), người to đè lên người nhỏ.
       var g = growFor(seat.duelPoints || 0, seat.side === 1 || seat.side === 2);
-      if (g !== n.grow) { n.grow = g; n.body.style.setProperty("--grow", g.toFixed(3)); if (!n.root.classList.contains("nm-strike")) n.root.style.zIndex = String(zFor(n, n.pos)); }
+      if (g !== n.grow) { n.grow = g; placeTop(n, seat); n.body.style.setProperty("--grow", g.toFixed(3)); if (!n.root.classList.contains("nm-strike")) n.root.style.zIndex = String(zFor(n, n.pos)); }
       n.root.classList.toggle("nm-fading", !!seat.fading);
+      if (n.top) n.top.classList.toggle("nm-fading", !!seat.fading);
       if (seat.bubble && seat.bubble.id !== n.bubbleId) { n.bubbleId = seat.bubble.id; n.bubble.textContent = seat.bubble.text; n.bubble.classList.add("nm-show"); }
       else if (!seat.bubble && n.bubbleId) { n.bubbleId = 0; n.bubble.classList.remove("nm-show"); }
       if (seat.level > n.level) {
@@ -1012,7 +1059,8 @@
         Object.keys(nodes).forEach(function (id) {
           if (seen[id]) return;
           var n = nodes[id]; delete nodes[id];
-          n.root.classList.add("nm-leave"); setTimeout(function () { n.root.remove(); }, 600);
+          n.root.classList.add("nm-leave"); if (n.top) n.top.classList.add("nm-leave");
+          setTimeout(function () { n.root.remove(); if (n.top) n.top.remove(); }, 600);
         });
       } else {
         seats.forEach(function (seat) { var n = nodes[seat.id]; if (n && n.pos) place(n, seat, n.pos, n.key); });

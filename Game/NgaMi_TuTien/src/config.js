@@ -46,6 +46,9 @@
       { count: 10, y: 1406, h: 82 }
     ],
     rowLeft: 40, rowRight: 1040,   // đối xứng quanh x = 540
+    // Kiểu khung tên. "v3" (bản thử 15/11, phương án A): tên người chơi là chữ sáng trên đầu, dưới chân là bảng chỉ có
+    // tên cảnh giới (src/assets/game/tag_v3). "v2": quay về khung tên dưới chân đang dùng (src/assets/game/ban3/tag).
+    tagStyle: "v3",
     titleTop: 100, titleWidth: 440,
     statusTop: 252,
     bannerTop: 318

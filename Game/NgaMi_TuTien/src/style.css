@@ -784,3 +784,28 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .nm-bolt-side .nm-bolt-core { stroke-width: 5; }
 .nm-bolt .nm-bolt-branch.nm-bolt-core { stroke-width: 3; }
 .nm-bolt .nm-bolt-branch.nm-bolt-glow { stroke-width: 12; }
+
+/* ================= Bản A (layout.tagStyle = "v3"): tên trên đầu, bảng cảnh giới dưới chân ================= */
+/* Lớp tên riêng, nằm trên mọi nhân vật (kể cả người đang ra đòn); banner và bảng tỉ thí nằm ngoài camera nên vẫn ở trên. */
+.nm-names { position: absolute; inset: 0; pointer-events: none; z-index: 9500; }
+.nm-top { position: absolute; left: 0; top: 0; width: max-content; translate: -50% -100%; text-align: center; white-space: nowrap;
+  font-weight: 800; line-height: 1.12; transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity .4s; will-change: transform; }
+.nm-duel-layout .nm-top { transition: transform .9s cubic-bezier(.2,.8,.2,1), opacity .4s; }
+.nm-top.nm-leave { opacity: 0; }
+.nm-top.nm-fading { opacity: .5; transition: transform .55s cubic-bezier(.2,.8,.2,1), opacity 3s linear; }
+/* Chữ sáng, không hộp nền: chỉ viền tối mảnh + bóng mờ để đọc được trên nền sân sáng lẫn trên tóc nhân vật. */
+.nm-top-name { margin: 0 auto; padding: 0 2px; overflow: hidden; text-overflow: ellipsis; color: #fff; -webkit-text-stroke: .7px rgba(28, 16, 52, .55); paint-order: stroke fill;
+  text-shadow: 0 0 2px #1c1034, 0 0 2px #1c1034, 0 1px 2px #1c1034, 0 0 6px rgba(28, 16, 52, .7); }
+.nm-top[data-side="1"] .nm-top-name { color: #e2fff8; text-shadow: 0 0 2px #06302b, 0 0 2px #06302b, 0 1px 2px #06302b, 0 0 7px #1fc7ae; }
+.nm-top[data-side="2"] .nm-top-name { color: #ffe9f1; text-shadow: 0 0 2px #3d0a20, 0 0 2px #3d0a20, 0 1px 2px #3d0a20, 0 0 7px #f0457f; }
+.nm-top .nm-tag-title { font-size: .74em; margin-bottom: 0; }
+.nm-top .nm-bubble { margin-bottom: 6px; }
+.nm-tag-v3 .nm-head { display: none; }
+.nm-tag-v3 .nm-plate .nm-tag-realm { display: none !important; }
+/* Bảng cảnh giới là chữ thư pháp màu sáng: thêm viền tối mảnh bằng mã để đọc được trên sân sáng ở bề ngang khoảng 90 px. */
+.nm-tag-v3 .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 1px 1px rgba(24, 14, 44, .85)); }
+.nm-tag-v3 .nm-houky .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 1px 1px rgba(24, 14, 44, .85)) brightness(1.07) saturate(1.2); }
+.nm-tag-v3 .nm-tag[data-side="1"] .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 0 4px #1fc7ae); }
+.nm-tag-v3 .nm-tag[data-side="2"] .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 0 4px #f0457f); }
+.nm-tag-v3 .nm-strike .nm-tag[data-side] .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 0 8px #fff) drop-shadow(0 0 4px var(--sidec)); }
+.nm-tag-v3 .nm-pets { bottom: 4px; }
