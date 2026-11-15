@@ -11,7 +11,21 @@ function weekKey(ms) {
   return `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, "0")}-${String(m.getDate()).padStart(2, "0")}`;
 }
 
-function createPlayerStore(db, { now = () => Date.now() } = {}) {
+/**
+ * Kỳ lưu điểm dài `weeks` tuần (game khai báo weeklyBoard.periodWeeks trong manifest, mặc định 1).
+ * Kỳ tính từ thứ Hai mốc 2026-11-09, mã kỳ = thứ Hai đầu kỳ. Khớp với periodKey của game (vd. Nga Mi giữ 2 tuần).
+ */
+const PERIOD_ANCHOR = Date.UTC(2026, 10, 9);
+function periodKey(ms, weeks = 1) {
+  weeks = Math.max(1, Math.floor(weeks || 1));
+  const w = weekKey(ms);
+  if (weeks === 1) return w;
+  const [y, m, d] = w.split("-").map(Number), mon = Date.UTC(y, m - 1, d);
+  const idx = Math.floor(Math.round((mon - PERIOD_ANCHOR) / (7 * 86400000)) / weeks);
+  return new Date(PERIOD_ANCHOR + idx * weeks * 7 * 86400000).toISOString().slice(0, 10);
+}
+
+function createPlayerStore(db, { now = () => Date.now(), periodWeeksFor = () => 1 } = {}) {
   db.exec(`CREATE TABLE IF NOT EXISTS game_player_week (
     game_id TEXT NOT NULL, scope TEXT NOT NULL, week TEXT NOT NULL, user_id TEXT NOT NULL,
     nickname TEXT NOT NULL, score INTEGER NOT NULL, joined_at INTEGER NOT NULL, updated_at TEXT NOT NULL,
@@ -27,9 +41,11 @@ function createPlayerStore(db, { now = () => Date.now() } = {}) {
   const listWeeks = db.prepare("SELECT week, COUNT(*) AS players, MAX(score) AS topScore FROM game_player_week WHERE game_id = ? AND scope = ? GROUP BY week ORDER BY week DESC");
 
   const scopeOf = (s) => (s === "demo" ? "demo" : "live");
-  function weekOf(w) {
-    if (!w || w === "current") return weekKey(now());
-    if (w === "previous") return weekKey(now() - 7 * 86400000);
+  // "current" / "previous" = kỳ này / kỳ trước theo độ dài kỳ của game.
+  function weekOf(w, gameId) {
+    const n = Math.max(1, Math.floor(Number(periodWeeksFor(gameId)) || 1));
+    if (!w || w === "current") return periodKey(now(), n);
+    if (w === "previous") return periodKey(now() - n * 7 * 86400000, n);
     if (!WEEK_RE.test(w)) throw Object.assign(new Error("Tuần không hợp lệ (dạng YYYY-MM-DD)"), { status: 400 });
     return w;
   }
@@ -39,13 +55,13 @@ function createPlayerStore(db, { now = () => Date.now() } = {}) {
 
   /** Người chơi của 1 tuần, xếp theo điểm giảm dần. members: [id, nickname, score, joinedAt, extra] như game lưu. */
   function getWeek(gameId, scope, week) {
-    const w = weekOf(week);
+    const w = weekOf(week, gameId);
     return { gameId, scope: scopeOf(scope), week: w, members: selectWeek.all(gameId, scopeOf(scope), w).map((r) => [r.user_id, r.nickname, Number(r.score), Number(r.joined_at), parseExtra(r.extra)]) };
   }
 
   /** Ghi (thêm / cập nhật) người chơi. replace = true: xóa hết tuần đó trước (dùng khi streamer xóa dữ liệu tuần). */
   function saveWeek(gameId, scope, week, members, { replace = false } = {}) {
-    const w = weekOf(week), sc = scopeOf(scope), at = new Date(now()).toISOString();
+    const w = weekOf(week, gameId), sc = scopeOf(scope), at = new Date(now()).toISOString();
     if (!Array.isArray(members)) throw Object.assign(new Error("members phải là mảng"), { status: 400 });
     let saved = 0;
     db.exec("BEGIN");
@@ -77,4 +93,4 @@ function createPlayerStore(db, { now = () => Date.now() } = {}) {
   return { getWeek, saveWeek, weeks, topCsv, weekOf };
 }
 
-module.exports = { createPlayerStore, weekKey };
+module.exports = { createPlayerStore, weekKey, periodKey };

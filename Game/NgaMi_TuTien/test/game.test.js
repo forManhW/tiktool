@@ -28,6 +28,77 @@ const tu = (game, id, amount, name) => game.handleAction("tu_luyen", { amount },
 const phe = (game, id, side) => game.handleAction("vao_phe", { side }, src(id, id, "comment"));
 const comment = (game, id, text) => game.handleAction("binh_luan", {}, { eventType: "comment", user: { id, nickname: id }, comment: { text } });
 
+test("quà thô chỉ cảm ơn khi mapped false, gom 5 giây và không đổi tu vi", () => {
+  const { game, shown, advance } = setup();
+  for (let i = 0; i < 10; i++) game.handleLiveEvent({ type: "gift", mapped: false, user: { id: "u" + i, nickname: "Tên " + i }, gift: { name: "Rose" } });
+  game.handleLiveEvent({ type: "gift", mapped: true, user: { id: "mapped" }, gift: { name: "Rose" } });
+  game.handleLiveEvent({ type: "gift", user: { id: "old" }, gift: { name: "Rose" } });
+  advance(4999); assert.equal(shown.filter((i) => i.kind === "gift_thanks").length, 0);
+  advance(1);
+  const thanks = shown.filter((i) => i.kind === "gift_thanks");
+  assert.equal(thanks.length, 1); assert.match(thanks[0].speech, /cùng các đạo hữu khác/);
+  assert.doesNotMatch(thanks[0].speech, /tu vi/);
+  assert.equal(game.sect.members.get("u0").tuvi, 0);
+  advance(5000); assert.equal(shown.filter((i) => i.kind === "gift_thanks").length, 1);
+});
+
+test("tông môn đầy không cảm ơn quà thô, quà tu luyện đọc số tu vi thực", () => {
+  const { game, shown, advance } = setup();
+  for (let i = 0; i < game.cfg.capacity; i++) join(game, "u" + i);
+  game.handleLiveEvent({ type: "gift", mapped: false, user: { id: "outside" }, gift: { name: "Rose" } });
+  game.sect.members.get("u0").pets.ngoc_tho = 1;
+  game.handleAction("tu_luyen", { amount: 100 }, src("u0"));
+  assert.equal(game.sect.members.get("u0").tuvi, 105);
+  assert.match(shown.find((i) => i.kind === "gift_train").speech, /105 tu vi/);
+  advance(5000); assert.equal(shown.filter((i) => i.kind === "gift_thanks").length, 0);
+});
+
+test("lời cảm ơn linh thạch tính giá đơn vị nhân số lượng và không đoán khi thiếu giá", () => {
+  const { game, shown, advance } = setup();
+  game.handleLiveEvent({ type: "gift", mapped: false, user: { id: "a", nickname: "An" }, gift: { name: "Rose", count: 3, diamonds: 5 } });
+  game.handleLiveEvent({ type: "gift", mapped: false, user: { id: "a", nickname: "An" }, gift: { name: "Rose", count: 2, diamonds: 5 } });
+  advance(5000);
+  assert.match(shown.filter((i) => i.kind === "gift_thanks").at(-1).speech, /25 linh thạch/);
+  game.handleLiveEvent({ type: "gift", mapped: false, user: { id: "b", nickname: "Bình" }, gift: { count: 2, diamonds: 0 } });
+  advance(5000);
+  const last = shown.filter((i) => i.kind === "gift_thanks").at(-1).speech;
+  assert.doesNotMatch(last, /\d+ linh thạch/);
+  assert.match(last, /pháp bảo/);
+});
+
+test("lời nền hướng dẫn theo trạng thái và im khi mất hub hoặc đang kết quả", () => {
+  const { game, clock } = setup();
+  const lines = [];
+  game.announcer.say = (item) => lines.push(item);
+  game.idleTurn = 2; game.idleSince = clock() - 30000; game.tickIdle(clock());
+  assert.doesNotMatch(lines.at(-1).speech, /bình luận (một|hai|1|2)/i);
+  game.duel.phase = "duel";
+  game.idleTurn = 2; game.idleSince = clock() - 30000; game.tickIdle(clock());
+  assert.match(lines.at(-1).speech, /môn phái|Nga Mi|vào môn/);
+  assert.match(lines.at(-1).speech, /một|hai/);
+  for (let i = 0; i < game.cfg.capacity; i++) join(game, "full" + i);
+  game.idleTurn = 2; game.idleSince = clock() - 30000; game.tickIdle(clock());
+  assert.match(lines.at(-1).speech, /đủ chỗ|hết chỗ/i);
+  const n = lines.length;
+  game.setHubStatus("reconnecting"); game.tickIdle(clock() + 60000);
+  assert.equal(lines.length, n);
+  game.setHubStatus("connected"); game.duel.phase = "result"; game.idleSince = clock() - 30000; game.tickIdle(clock());
+  assert.equal(lines.length, n);
+});
+
+test("lời mời pháp bảo khi rảnh không lặp trước 3 phút", () => {
+  const { game, clock } = setup();
+  const spoken = [];
+  game.announcer.say = (item) => spoken.push(item.speech);
+  let now = clock();
+  function inviteAfter(ms) { now += ms; game.idleTurn = 5; game.idleSince = now - 30000; game.tickIdle(now); }
+  inviteAfter(0); assert.doesNotMatch(spoken.at(-1), /pháp bảo/i);
+  inviteAfter(30000); assert.match(spoken.at(-1), /pháp bảo/i);
+  inviteAfter(30000); assert.doesNotMatch(spoken.at(-1), /pháp bảo/i);
+  inviteAfter(30000); assert.doesNotMatch(spoken.at(-1), /pháp bảo/i);
+  inviteAfter(180000); assert.match(spoken.at(-1), /pháp bảo/i);
+});
+
 test("manifest khai báo đúng các action game xử lý", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8"));
   assert.deepEqual(manifest.actions.map((a) => a.id).sort(), [...ACTION_IDS].sort());
@@ -122,10 +193,10 @@ test("tên: HIỆN đủ icon, kí tự đặc biệt, chữ nước ngoài; gi�
   join(game, "c", "★彡 Anh 彡★");
   const a = shown.find((i) => i.kind === "level_up" && i.member.id === "a");
   assert.equal(a.text, "Chúc mừng đạo hữu ABC 🐶 đạt cảnh giới Luyện Khí tầng 7");
-  assert.equal(a.speech, "Chúc mừng đạo hữu ABC đạt cảnh giới Luyện Khí tầng 7");
+  assert.match(a.speech, /đạo hữu ABC/); assert.match(a.speech, /Luyện Khí tầng 7/); assert.doesNotMatch(a.speech, /🐶/u);
   const b = shown.find((i) => i.kind === "realm_up" && i.member.id === "b");
   assert.equal(b.text, "Chúc mừng đạo hữu 不是鸿恩 đột phá thành công, bước vào cảnh giới Hóa Thần Sơ kỳ");
-  assert.equal(b.speech, "Chúc mừng đạo hữu đột phá thành công, bước vào cảnh giới Hóa Thần Sơ kỳ");
+  assert.match(b.speech, /đạo hữu/); assert.match(b.speech, /Hóa Thần Sơ kỳ/); assert.doesNotMatch(b.speech, /不是鸿恩/u);
   assert.equal(game.getState().seats.find((s) => s.id === "b").name, "不是鸿恩");
   assert.equal(game.getState().seats.find((s) => s.id === "c").name, "★彡 Anh 彡★");
   game.flushJoins(game.now());
@@ -166,7 +237,8 @@ test("tỉ thí: người vào phe được đọc tên theo phe (gom lại 1 c�
   tu(game, "a", 500); tu(game, "c", 200);
   game.handleAction("end_duel", {}, { mode: "test" });
   const end = shown.find((i) => i.kind === "duel_end");
-  assert.equal(end.speech, "Phe Thanh Liên chiến thắng với tỉ số 500 trên 200. Mỗi đạo hữu phe thắng được cộng 300 tu vi. Công đầu thuộc về đạo hữu Người A, được nhân đôi tu vi đã góp, cộng thêm 500 tu vi và một lượt quay thưởng");
+  assert.match(end.speech, /Thanh Liên/); assert.match(end.speech, /500 trên 200/);
+  assert.match(end.speech, /Người A/); assert.match(end.speech, /500 tu vi/); assert.match(end.speech, /300 tu vi/);
   assert.equal(game.sect.members.get("a").tuvi, 500 + 500, "công đầu x2 số đã góp");
   assert.equal(game.sect.members.get("b").tuvi, 300, "người khác phe thắng +300");
   assert.equal(game.sect.members.get("c").tuvi, 200, "phe thua không bị trừ");
@@ -203,7 +275,7 @@ test("tỉ thí: vào phe (phải đang ngồi), thưởng phe thắng, phe thua
   game.handleAction("end_duel", {}, { mode: "test" });
   assert.equal(game.sect.members.get("a").tuvi, before + 100, "công đầu: thêm đúng số đã góp (x2), không cộng +300");
   assert.equal(game.sect.members.get("b").tuvi, 50);
-  assert.ok(shown.some((i) => i.kind === "duel_end" && /^Phe Thanh Liên thắng 100 – 50! Mỗi người \+300 tu vi, công đầu a x2 tu vi đã góp \(\+100\)$/.test(i.text)));
+  assert.ok(shown.some((i) => i.kind === "duel_end" && /^Phe Thanh Liên thắng 100 – 50! Công đầu a x2 tu vi đã góp \(\+100\), đồng đội \+300 tu vi( · bốc thăm quay thưởng: \S+)?$/.test(i.text)));
 });
 
 test("lịch: 7' tu + 3' tỉ thí (phút 7, 17, 27), phút 30 quái rồng; rồng chết mới tính lại chu kỳ", () => {
@@ -267,6 +339,27 @@ test("vòng quay: chọn ô theo tỉ lệ; công đầu phe thắng tỉ thí c
   assert.equal(game.getState().wheel.reason, "duel");
 });
 
+test("tỉ thí bốc thăm một người phe thắng: công đầu hai phần, người khác một phần", () => {
+  const participants = [
+    { id: "a", nickname: "An", side: 1, points: 200 },
+    { id: "b", nickname: "Bình", side: 1, points: 100 },
+    { id: "c", nickname: "Chi", side: 1, points: 0 },
+    { id: "d", nickname: "Dũng", side: 2, points: 50 }
+  ];
+  for (const [roll, expected] of [[0.01, "a"], [0.26, "b"], [0.51, "c"], [0.76, "a"]]) {
+    const { game, shown } = setup();
+    participants.forEach((p) => join(game, p.id, p.nickname));
+    game.random = () => roll;
+    game.onDuelEvent({ type: "duel_end", winner: 1, scores: { 1: 300, 2: 50 }, mvp: { 1: participants[0] }, participants });
+    assert.equal(game.wheel.memberId, expected);
+    assert.equal(game.wheelQueue.length, 0);
+    assert.match(shown.find((i) => i.kind === "duel_end").speech, new RegExp(participants.find((p) => p.id === expected).nickname));
+  }
+  const { game } = setup();
+  game.onDuelEvent({ type: "duel_end", winner: 0, scores: { 1: 0, 2: 0 }, mvp: {}, participants: [] });
+  assert.equal(game.wheel, null, "hòa không có vòng quay");
+});
+
 test("tắt đánh quái trong Cài đặt: không có rồng; đang đánh mà tắt thì hủy, tỉ thí chạy lại", () => {
   const { game, advance } = setup();
   game.applySettings({ boss: false });
@@ -284,32 +377,37 @@ test("im 3 giây không có thông báo: hiện luật tỉ thí kèm số giây
   advance(3000);
   const info = shown.filter((i) => i.kind === "info");
   assert.ok(info.length >= 1);
-  assert.match(info[0].text, /^Tỉ thí sẽ bắt đầu sau 6 phút 57 giây, phe thắng mỗi người \+300 tu vi$/);
-  assert.equal(info[0].speech, "Còn 6 phút 57 giây nữa là tới đại hội tỉ thí. Phe thắng mỗi người được cộng 300 tu vi");
-  assert.equal(info[0].silent, false, "câu nhắc đầu tiên có đọc");
+  assert.match(info[0].text, /^Tỉ thí sau 6 phút 57 giây · phe thắng mỗi người \+300 tu vi, công đầu x2 tu vi đã góp, bốc thăm 1 người được quay thưởng$/);
+  assert.equal(info[0].speech, "Còn 6 phút 57 giây nữa là tới đại hội tỉ thí. Phe thắng mỗi người được cộng 300 tu vi, riêng công đầu được nhân đôi tu vi đã góp, và một người phe thắng được bốc thăm quay thưởng");
+  assert.equal(info[0].silent, true, "chờ hết khoảng nhắc sau khi vào game");
 });
 
-test("câu nhắc luật: chữ hiện mỗi 3 giây, giọng chỉ đọc 1 lần mỗi 30 giây; đặt 0 thì chỉ hiện chữ", async () => {
+test("chữ luật vẫn hiện mỗi 3 giây; lời nền đọc khi rảnh và 0 thì tắt lời nền", async () => {
   const { game, shown, spoken, advance } = setup();
-  for (let i = 0; i < 20; i++) advance(3000);   // 60 giây rảnh
+  for (let i = 0; i < 20; i++) {
+    advance(3000);
+    await new Promise((r) => setImmediate(r)); // cho giọng đọc hoàn tất giữa các lần tick
+  }
   const info = shown.filter((i) => i.kind === "info");
   assert.ok(info.length >= 15);
-  assert.equal(info.filter((i) => !i.silent).length, 2, "60 giây: đọc 2 lần");
+  assert.equal(info.filter((i) => !i.silent).length, 0, "nhắc luật trên màn hình không tự đọc");
+  assert.equal(shown.filter((i) => i.kind === "idle").length, 2, "60 giây: hai câu nền khi giọng rảnh");
   await new Promise((r) => setImmediate(r));
-  assert.ok(spoken.some((t) => /đại hội tỉ thí|nhập môn Nga Mi/.test(t)));
+  assert.ok(spoken.length >= 2);
 
   game.applySettings({ infoVoiceEverySec: 0 });
   const before = shown.length;
   for (let i = 0; i < 20; i++) advance(3000);
-  assert.equal(shown.slice(before).filter((i) => i.kind === "info" && !i.silent).length, 0);
+  assert.equal(shown.slice(before).filter((i) => i.kind === "idle").length, 0);
 });
 
 test("trong trận: câu nhắc đọc thời gian còn lại và cách chọn phe", () => {
   const { game, shown, advance } = setup();
   game.handleAction("start_duel", {}, { mode: "test" });
   advance(4000); advance(3000);
-  const info = shown.filter((i) => i.kind === "info" && !i.silent);
+  const info = shown.filter((i) => i.kind === "info");
   assert.match(info[0].speech, /^Tỉ thí còn 2 phút \d+ giây\. Hiện tại Thanh Liên 0 điểm, Hồng Liên 0 điểm\. Bình luận số một vào phe Thanh Liên, số hai vào phe Hồng Liên\./);
+  assert.equal(info[0].silent, true, "không nhắc lại ngay sau thông báo bắt đầu");
 });
 
 test("tắt tỉ thí thì không có trận và không vào phe được; luật nhắc thả tim / tặng quà", () => {
@@ -320,7 +418,44 @@ test("tắt tỉ thí thì không có trận và không vào phe được; luậ
   assert.equal(game.duel.phase, "idle");
   assert.throws(() => phe(game, "a", 1), /tắt/);
   advance(3000);
-  assert.ok(shown.some((i) => i.kind === "info" && i.text === "Thả tim hoặc tặng quà để nhập môn Nga Mi"));
+  assert.ok(shown.some((i) => i.kind === "info" && i.text === "Hãy sử dụng pháp bảo để tu luyện nhanh hơn"));
+});
+
+test("lời nền đợi giọng sự kiện đọc xong rồi mới bắt đầu tính khoảng nghỉ", async () => {
+  let now = WED, finish;
+  const shown = [], spoken = [];
+  const speaker = { cancel() {}, speak: (text) => { spoken.push(text); return new Promise((resolve) => { finish = resolve; }); } };
+  const game = new Game(DEFAULTS, { now: () => now, show: (item) => shown.push(item), speaker, storage: memoryStorage() });
+  game.applySettings({ voice: true, duel: false, boss: false, infoVoiceEverySec: 15 });
+  game.enter();
+  now += 10000;
+  game.announcer.say({ kind: "event", text: "Sự kiện bắt đầu", priority: 3 });
+  now += 12000;
+  game.showInfo(now);
+  assert.equal(shown.at(-1).silent, true, "không xếp lời nhắc vào hàng khi đang đọc");
+  assert.equal(game.announcer.queue.length, 0);
+  finish(true);
+  await new Promise((resolve) => setImmediate(resolve));
+  now += 14999; game.tick(now);
+  assert.equal(spoken.length, 1);
+  now += 1; game.tick(now);
+  assert.equal(spoken.length, 2);
+  assert.equal(spoken[1], "Hãy sử dụng pháp bảo để tu luyện nhanh hơn");
+
+  finish(true);
+  await new Promise((resolve) => setImmediate(resolve));
+  game.announcer.say({ kind: "event", text: "Sự kiện khác", priority: 3 });
+  finish(true);
+  await new Promise((resolve) => setImmediate(resolve));
+  now += 3000; game.tick(now);
+  assert.equal(shown.filter((i) => i.kind === "idle").length, 1, "không nhắc lại ngay sau sự kiện");
+});
+
+test("lời mở vòng quay không đọc lặp lại phần thưởng đã được công bố", () => {
+  const { game, shown } = setup();
+  join(game, "a");
+  game.queueWheel({ id: "a", nickname: "a" }, "boss");
+  assert.equal(shown.find((item) => item.kind === "wheel_start").silent, true);
 });
 
 test("mỗi lần thăng cấp đều có sự kiện level_up/realm_up (để phát âm thanh), kể cả khi tắt đọc tiểu cảnh", () => {
@@ -343,7 +478,7 @@ test("tắt giọng nói: vẫn hiện chữ, không đọc", async () => {
   assert.equal(spoken.length, 0);
 });
 
-test("tu vi lưu theo tuần: buổi live khác trong cùng tuần vẫn giữ, sang tuần mới (0h thứ Hai) thì reset", () => {
+test("tu vi lưu 2 tuần: buổi live khác trong cùng kỳ vẫn giữ, sang kỳ mới (0h thứ Hai tuần thứ 3) thì reset", () => {
   const { weekKey } = require("../src/game");
   assert.equal(weekKey(WED), "2026-11-09");
   assert.equal(weekKey(new Date(2026, 10, 15, 23, 59).getTime()), "2026-11-09", "Chủ nhật 23:59 vẫn là tuần cũ");
@@ -356,12 +491,14 @@ test("tu vi lưu theo tuần: buổi live khác trong cùng tuần vẫn giữ, 
   const sameWeek = new Game(DEFAULTS, { storage, now: () => new Date(2026, 10, 14, 20, 0).getTime() });   // thứ Bảy, buổi live khác
   assert.equal(sameWeek.sect.members.get("a").tuvi, 5000);
   assert.equal(sameWeek.sect.members.get("a").nickname, "An");
-  const nextWeek = new Game(DEFAULTS, { storage, now: () => new Date(2026, 10, 16, 9, 0).getTime() });
-  assert.equal(nextWeek.sect.members.size, 0);
+  const week2 = new Game(DEFAULTS, { storage, now: () => new Date(2026, 10, 16, 9, 0).getTime() });   // tuần thứ 2 của kỳ
+  assert.equal(week2.sect.members.get("a").tuvi, 5000);
+  const nextPeriod = new Game(DEFAULTS, { storage, now: () => new Date(2026, 10, 23, 9, 0).getTime() });
+  assert.equal(nextPeriod.sect.members.size, 0);
 });
 
-test("đang live lúc qua 0h thứ Hai: tu vi về 0, người đang ngồi vẫn ngồi, có thông báo tuần mới", () => {
-  const { game, shown, advance } = setup({ start: new Date(2026, 10, 15, 23, 59, 50).getTime() });
+test("đang live lúc qua 0h thứ Hai đầu kỳ mới: tu vi về 0, người đang ngồi vẫn ngồi, có thông báo mùa mới", () => {
+  const { game, shown, advance } = setup({ start: new Date(2026, 10, 22, 23, 59, 50).getTime() });
   join(game, "a"); tu(game, "a", 5000);
   advance(5000); join(game, "a");
   advance(6000);   // qua 0h thứ Hai
@@ -477,7 +614,7 @@ test("lời chào: người chơi lần đầu 'Hoan nghênh … gia nhập', ng
   first.advance(DEFAULTS.voice.joinBatchMs);
   const greet1 = first.shown.find((i) => i.kind === "join");
   assert.equal(greet1.text, "Hoan nghênh An gia nhập Nga Mi");
-  assert.equal(greet1.speech, "Hoan nghênh đạo hữu An gia nhập Nga Mi");
+  assert.match(greet1.speech, /đạo hữu An/); assert.match(greet1.speech, /Nga Mi/);
   first.game.exit();
 
   // Buổi live khác trong cùng tuần: An đã có trong dữ liệu, Bình là người mới.
@@ -598,7 +735,7 @@ test("tỉ thí: góp tu vi = 1 đòn trúng ngẫu nhiên 1 người phe kia, n
 // ---------- Bản 2: pháp bảo, linh thú, thiên kiếp, linh khí, hào quang ----------
 const item = (game, id, itemId, amount, count = 1) => game.handleAction(itemId, { amount, count }, src(id));
 
-test("pháp bảo: cộng tu vi như tu luyện, có hiệu ứng và banner; món đắt có giọng đọc", () => {
+test("pháp bảo: cộng tu vi như tu luyện, có hiệu ứng và banner; mọi món đều có giọng đọc", () => {
   const { game, shown } = setup();
   join(game, "a", "An");
   item(game, "a", "ban_dao", 5000);
@@ -607,10 +744,12 @@ test("pháp bảo: cộng tu vi như tu luyện, có hiệu ứng và banner; m�
   const fx = game.getState().items;
   assert.deepEqual(fx.map((f) => [f.item, f.userId, f.count]), [["ban_dao", "a", 1], ["long_chau", "a", 2]]);
   const msgs = shown.filter((i) => i.kind === "item");
-  assert.equal(msgs[0].silent, true);
-  assert.match(msgs[0].text, /dùng Bàn Đào! \+5\.000 tu vi/);
+  assert.notEqual(msgs[0].silent, true);
+  assert.match(msgs[0].text, /vừa sử dụng pháp bảo Bàn Đào! \+5\.000 tu vi/);
+  assert.match(msgs[0].speech, /^Đạo hữu \S+ vừa sử dụng pháp bảo Bàn Đào, cộng 5\.000 tu vi$/);
   assert.notEqual(msgs[1].silent, true);
   assert.match(msgs[1].text, /Long Châu x2/);
+  assert.match(msgs[1].speech, /Long Châu 2 lần/);
 });
 
 test("trứng: nở ra linh thú theo tỉ lệ, trùng loại thì lên sao (5/10/15%), đủ 3 sao thì được vòng quay", () => {
@@ -639,7 +778,7 @@ test("tỉ lệ nở: Ngọc Thố 45%, Hỏa Kỳ Lân 40%, Kim Phượng 15%",
   assert.equal(pick(0.86), "kim_phuong");
 });
 
-test("linh thú chiến đấu: tăng sát thương lên rồng nhưng không tăng tu vi; linh thú reset theo tuần", () => {
+test("linh thú chiến đấu: tăng sát thương lên rồng nhưng không tăng tu vi; linh thú reset theo kỳ 2 tuần", () => {
   const { game, advance } = setup();
   join(game, "a");
   game.sect.members.get("a").pets = { hoa_ky_lan: 2, kim_phuong: 1 };   // +15% sát thương, +5% tu vi
@@ -647,7 +786,9 @@ test("linh thú chiến đấu: tăng sát thương lên rồng nhưng không t�
   tu(game, "a", 1000);
   assert.equal(game.sect.members.get("a").tuvi, 1050);
   assert.equal(game.boss.maxHp - game.boss.hp, Math.floor(1050 * 1.15));
-  advance(7 * 24 * 3600 * 1000);                     // sang tuần sau
+  advance(7 * 24 * 3600 * 1000);                     // sang tuần sau: cùng kỳ 2 tuần, linh thú còn
+  assert.deepEqual(game.sect.members.get("a").pets, { hoa_ky_lan: 2, kim_phuong: 1 });
+  advance(7 * 24 * 3600 * 1000);                     // sang kỳ mới
   assert.deepEqual(game.sect.members.get("a").pets, {});
 });
 
@@ -677,32 +818,39 @@ test("Linh Khí Triều Dâng: 15-25 phút ngẫu nhiên, 60 giây tu vi x2, r�
   assert.equal(game.sect.members.get("a").tuvi, 300);
 });
 
-test("Thiên kiếp: lên Nguyên Anh thì độ kiếp; đồng môn hộ pháp đủ thì thành công +5% tu vi, hộ pháp đầu +1.000", () => {
+test("Thiên kiếp: đủ tu vi Nguyên Anh thì kẹt ở Kết Đan Đại viên mãn tới khi độ kiếp; thành công thì đột phá, hộ pháp được thưởng", () => {
   const { game, advance, shown } = setup({ kiep: true });
   game.applySettings({ duel: false, boss: false });
   join(game, "a", "An"); join(game, "b", "Bình");
   tu(game, "a", 12000);
   assert.equal(game.kiep, null, "Kết Đan: chưa có kiếp");
-  tu(game, "a", 1000);                               // 13.000 = Nguyên Anh
+  tu(game, "a", 1000);                               // 13.000 = đủ Nguyên Anh
+  const lvA = () => game.getState().seats.find((s) => s.id === "a");
+  assert.equal(lvA().realm, 2, "chưa độ kiếp: vẫn là Kết Đan");
+  assert.match(lvA().label, /Kết Đan Đại viên mãn/);
   advance(250);
   const k = game.kiep;
-  assert.ok(k && k.targetId === "a" && k.strikes === 3);
+  assert.ok(k && k.targetId === "a" && k.strikes === 6 && k.realmIdx === 3);
   assert.equal(k.need, 650, "5% của 13.000");
   assert.ok(shown.some((i) => i.kind === "kiep_start"));
   tu(game, "b", 700);                                // hộ pháp
-  tu(game, "a", 100);                                // chính người độ kiếp góp: không tính vào kết giới
-  assert.equal(game.kiep.shield, 700);
+  tu(game, "a", 100);                                // tự hộ thân: 50% vào kết giới
+  assert.equal(game.kiep.shield, 750);
+  assert.equal(game.kiep.selfShield, 50);
+  assert.equal(game.getState().kiep.selfHits.length, 1);
   advance(DEFAULTS.tribulation.durationMs);
   assert.equal(game.kiep.phase, "result");
   assert.equal(game.kiep.success, true);
-  assert.equal(game.kiep.log.length, 3);
+  assert.equal(game.kiep.log.length, 6);
   assert.equal(game.sect.members.get("a").tuvi, 13100 + Math.floor(13100 * 0.05));
-  assert.equal(game.sect.members.get("b").tuvi, 700 + 1000);
+  assert.equal(game.sect.members.get("b").tuvi, 700 + 350 + 1000, "hộ pháp +50% đã góp, hộ pháp đầu thêm +1.000");
   advance(DEFAULTS.tribulation.resultMs);
   assert.equal(game.kiep, null);
+  assert.equal(lvA().realm, 3, "đã đột phá Nguyên Anh");
+  assert.ok(shown.some((i) => i.kind === "realm_up" && /Nguyên Anh/.test(i.text)));
 });
 
-test("Thiên kiếp: kết giới không đủ thì vẫn lên cảnh giới, không thưởng, không phạt; chờ khi đang đánh quái", () => {
+test("Thiên kiếp: thất bại thì kẹt ở Đại viên mãn, không mất tu vi, độ kiếp lại sau 3 phút hoặc khi tu vi tăng 10%; chờ khi đang đánh quái", () => {
   const { game, advance } = setup({ kiep: true });
   game.applySettings({ duel: false });
   join(game, "a");
@@ -717,7 +865,30 @@ test("Thiên kiếp: kết giới không đủ thì vẫn lên cảnh giới, kh
   const tuvi = game.sect.members.get("a").tuvi;
   advance(DEFAULTS.tribulation.durationMs);
   assert.equal(game.kiep.success, false);
-  assert.equal(game.sect.members.get("a").tuvi, tuvi);
+  assert.equal(game.sect.members.get("a").tuvi, tuvi, "không mất tu vi");
+  advance(DEFAULTS.tribulation.resultMs);
+  const seat = () => game.getState().seats.find((s) => s.id === "a");
+  assert.equal(seat().realm, 2, "vẫn Kết Đan Đại viên mãn");
+  advance(60000);
+  assert.equal(game.kiep, null, "chưa tới lúc thử lại");
+  tu(game, "a", Math.ceil(tuvi * 0.1));               // tu vi tăng 10%: được độ kiếp lại ngay
+  advance(250);
+  assert.ok(game.kiep && game.kiep.targetId === "a", "độ kiếp lại");
+});
+
+test("Thiên kiếp: lưu và tải lại giữ đúng cảnh giới đã độ kiếp; dữ liệu cũ không bị tụt cảnh giới", () => {
+  const { game } = setup({ kiep: true });
+  join(game, "a"); join(game, "b");
+  tu(game, "a", 13000);                               // chưa độ kiếp
+  tu(game, "b", 13000); game.sect.passKiep("b", 3);   // đã độ kiếp
+  const data = game.sect.serialize();
+  const { game: g2 } = setup({ kiep: true });
+  g2.sect.load(data);
+  assert.equal(g2.sect.levelOfMember(g2.sect.members.get("a")).realmIdx, 2);
+  assert.equal(g2.sect.levelOfMember(g2.sect.members.get("b")).realmIdx, 3);
+  // Bản lưu trước luật mới (không có "_kiep"): giữ cảnh giới theo tu vi.
+  g2.sect.load({ v: 3, members: [["c", "C", 13000, 0, {}]] });
+  assert.equal(g2.sect.levelOfMember(g2.sect.members.get("c")).realmIdx, 3);
 });
 
 test("hào quang: có khi vừa được cộng tu vi, tắt sau 1 phút 30 giây", () => {
@@ -731,4 +902,34 @@ test("hào quang: có khi vừa được cộng tu vi, tắt sau 1 phút 30 giâ
   assert.equal(game.getState().seats[0].aura, true);
   advance(2 * 1000);
   assert.equal(game.getState().seats[0].aura, false);
+});
+
+test("tu vi + linh thú giữ 2 tuần: sang tuần thứ 2 vẫn còn, sang kỳ mới (0h thứ Hai tuần thứ 3) mới reset", () => {
+  let now = new Date(2026, 10, 15, 23, 59).getTime();
+  const game = new Game(DEFAULTS, { now: () => now, storage: memoryStorage(), show: () => {} });
+  game.applySettings({ duel: false, boss: false });
+  game.enter();
+  game.handleLiveEvent({ type: "like", user: { id: "a", nickname: "A" } });
+  game.handleAction("tu_luyen", { amount: 500 }, { user: { id: "a", nickname: "A" } });
+  game.sect.members.get("a").pets = { ngoc_tho: 2 };
+  now = new Date(2026, 10, 16, 0, 1).getTime(); game.tick(now);
+  assert.equal(game.week, "2026-11-09");
+  assert.equal(game.sect.members.get("a").tuvi, 500, "tuần thứ 2 vẫn giữ tu vi");
+  assert.equal(game.sect.members.get("a").pets.ngoc_tho, 2, "tuần thứ 2 vẫn giữ linh thú");
+  now = new Date(2026, 10, 23, 0, 1).getTime(); game.tick(now);
+  assert.equal(game.week, "2026-11-23");
+  assert.equal(game.sect.members.get("a").tuvi, 0);
+  assert.deepEqual(game.sect.members.get("a").pets, {});
+});
+
+test("tỉ thí không ai chọn phe: không báo hòa / không cộng tu vi", () => {
+  const { game, advance, shown } = setup();
+  game.applySettings({ boss: false });
+  join(game, "a");
+  advance(game.duel.nextStartAt - game.now() + 1000);
+  advance(game.duel.endsAt - game.now() + 1000);
+  const end = shown.filter((i) => i.kind === "duel_end");
+  assert.equal(end.length, 1);
+  assert.match(end[0].text, /chưa có đạo hữu nào chọn phe/);
+  assert.equal(game.sect.members.get("a").tuvi, 0);
 });

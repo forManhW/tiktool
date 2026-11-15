@@ -225,11 +225,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 
 /* ================= Bản 2 (12/11): hào quang, kiếm bay, pháp bảo, linh thú, thiên kiếp, linh khí ================= */
 /* Hào quang sau lưng: gradient màu cảnh giới, chỉ đổi độ sáng / kích thước (nhẹ máy). */
-.nm-aura { position: absolute; left: -22%; right: -22%; top: -8%; bottom: 4%; border-radius: 50%; opacity: 0; pointer-events: none;
-  background: radial-gradient(closest-side, var(--aura) 0%, var(--aura) 30%, transparent 100%); transition: opacity 1.5s; }
-.nm-aura-on .nm-aura { opacity: .75; animation: nm-aura-pulse 2.6s ease-in-out infinite; }
-.nm-aura-max .nm-aura { left: -45%; right: -45%; top: -25%; }
-@keyframes nm-aura-pulse { 0%,100% { transform: scale(.92); opacity: .5; } 50% { transform: scale(1.06); opacity: .9; } }
+/* (hào quang cũ .nm-aura đã thay bằng .nm-halo, xem cuối file) */
 
 /* Linh thú cạnh chân: kích thước theo chiều cao nhân vật (--h). */
 .nm-pets { position: absolute; left: 70%; bottom: 0; display: flex; align-items: flex-end; pointer-events: none; z-index: 1; }
@@ -237,12 +233,12 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .nm-pet img { width: 100%; display: block; filter: drop-shadow(0 2px 2px rgba(0,0,0,.35)); }
 .nm-pet b { position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%); font-size: max(9px, calc(var(--h) * .085)); color: #ffd84a; letter-spacing: -1px; text-shadow: 0 0 2px #5a3a00, 0 1px 1px #000; white-space: nowrap; }
 
-/* Kiếm bay + vệt sáng đuôi (--c = màu RGB). Mũi kiếm ở gốc toạ độ của khung bay. */
+/* Vệt sáng di chuyển theo hướng tấn công (--c = màu RGB). */
 .nm-sword { position: absolute; width: 0; height: 0; transform-origin: 0 0; pointer-events: none; }
 .nm-sword-move { position: absolute; left: 0; top: 0; transition: transform .42s cubic-bezier(.45,0,.85,.6); }
 .nm-sword-img { position: absolute; left: -232px; top: -20px; width: 240px; height: 40px; object-fit: contain;
   filter: drop-shadow(0 0 3px rgba(var(--c), 1)) drop-shadow(0 0 10px rgba(var(--c), 1)) drop-shadow(0 0 20px rgba(var(--c), .8)); }
-.nm-sword-trail { position: absolute; left: -440px; top: -7px; width: 290px; height: 14px; border-radius: 7px; transform-origin: 100% 50%;
+.nm-sword-trail { position: absolute; left: -180px; top: -7px; width: 180px; height: 14px; border-radius: 7px; transform-origin: 100% 50%;
   background: linear-gradient(90deg, rgba(var(--c), 0), rgba(var(--c), .55) 60%, rgba(255,255,255,.95)); box-shadow: 0 0 14px rgba(var(--c), .7);
   animation: nm-trail .42s ease-out forwards; }
 @keyframes nm-trail { from { transform: scaleX(0); opacity: .4; } to { transform: scaleX(1); opacity: 1; } }
@@ -422,3 +418,361 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .nm-fx-scroll .nm-scroll-glyph { left: calc(var(--h) * .62); top: -26px; width: 52px; opacity: 1; animation: nm-glyph-spin-back var(--t) linear forwards; }
 @keyframes nm-glyph-spin { 0% { transform: rotate(0) scale(.3); opacity: 0; } 15% { transform: rotate(60deg) scale(1); opacity: 1; } 85% { transform: rotate(320deg) scale(1); opacity: 1; } 100% { transform: rotate(380deg) scale(.4); opacity: 0; } }
 @keyframes nm-glyph-spin-back { from { rotate: calc(-1 * var(--a)); } to { rotate: calc(-1 * var(--a) - 380deg); } }
+
+/* Banner chữ đủ lớn để đọc trên điện thoại, với nền mờ hòa vào cảnh. */
+.nm-banner-box { height: 120px; }
+.nm-banner, .nm-banner.nm-p0, .nm-banner.nm-p1 { font-size: 36px; line-height: 1.25; font-weight: 600; padding: 10px 34px; max-width: 980px; border-radius: 0;
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); background: linear-gradient(90deg, rgba(14,10,30,0), rgba(14,10,30,.5) 18%, rgba(14,10,30,.5) 82%, rgba(14,10,30,0)); border: 0; box-shadow: none; }
+.nm-banner { color: #ffe9a8; }
+.nm-banner.nm-p0 { font-size: 34px; color: #fff; }
+.nm-banner-box { left: 40px; width: 1000px; }
+/* Đang tỉ thí / công bố kết quả: banner nằm dưới bảng tỉ thí, không chồng lên nhau. */
+/* (banner khi tỉ thí: xem cuối file) */
+
+.nm-next { font-size: 34px; padding: 8px 32px; background: rgba(14, 10, 30, .88); color: #fff; }
+.nm-duel, .nm-result { background: rgba(14, 10, 30, .9); }
+.nm-duel-head em { font-size: 28px; color: #fff; }
+.nm-duel-head em b { font-size: 30px; }
+.nm-duel-sides { font-size: 32px; text-shadow: 0 2px 2px #000; }
+.nm-duel-hint { font-size: 30px; color: #ffe9a8; font-weight: 700; }
+.nm-result-title { font-size: 42px; }
+
+/* Thanh máu rồng / giải cứu: nền tối đặc thay vì chữ trôi trên nền sáng. */
+.nm-boss-panel { left: 60px; width: 960px; padding: 12px 24px 14px; box-sizing: border-box; border-radius: 22px;
+  background: rgba(14, 10, 30, .9); border: 2px solid rgba(241,207,122,.6); box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+.nm-boss-head { font-size: 34px; color: #fff; font-weight: 800; }
+.nm-boss-head b { font-size: 40px; }
+.nm-hp { height: 32px; }
+.nm-boss-hint { text-align: center; font-size: 30px; font-weight: 800; color: #ffe9a8; margin: 2px 0 4px; }
+.nm-boss-top { font-size: 28px; gap: 28px; flex-wrap: wrap; color: #fff; }
+
+/* Thiên kiếp: bảng kết giới to hơn, nền đặc. */
+.nm-kiep-bar { left: 140px; width: 800px; box-sizing: border-box; padding: 10px 20px 12px; background: rgba(14, 10, 30, .92); border: 2px solid rgba(160,220,255,.7); }
+.nm-kiep-title { font-size: 34px; color: #fff; }
+.nm-kiep-track { height: 20px; }
+.nm-kiep-sub { font-size: 30px; font-weight: 700; color: #fff; }
+.nm-kiep-sub + .nm-kiep-sub { color: #ffe9a8; }
+.nm-kiep-label { font-size: 26px; }
+.nm-surge-chip { width: 260px; font-size: 26px; }
+
+/* Tên đệ tử: nền đặc hơn, viền phe dày, nền nhuộm màu phe để nhìn ra phe ngay. */
+.nm-tag-name { background: rgba(10, 7, 22, .88); }
+.nm-tag[data-side="1"] .nm-tag-name { border-width: 3px; background: rgba(6, 60, 54, .92); color: #fff; }
+.nm-tag[data-side="2"] .nm-tag-name { border-width: 3px; background: rgba(78, 14, 40, .92); color: #fff; }
+/* Người vừa ra đòn khi tỉ thí: lóe sáng màu phe. */
+.nm-duel-layout .nm-strike .nm-sprite { filter: drop-shadow(0 0 14px #fff) drop-shadow(0 0 26px var(--sidec, #ffe9a8)); }
+.nm-duel-layout .nm-strike .nm-tag[data-side="1"] .nm-tag-name, .nm-duel-layout .nm-strike .nm-tag[data-side="2"] .nm-tag-name { box-shadow: 0 0 16px #fff; }
+
+/* Vòng quay lúc công bố kết quả tỉ thí: hạ xuống giữa sân, bảng kết quả phía trên vẫn đọc được. */
+.nm-wheel-box.nm-wheel-low { top: 560px; }
+.nm-wheel-title { font-size: 36px; padding: 6px 18px; border-radius: 16px; background: rgba(14, 10, 30, .88); display: inline-block; }
+
+/* Đòn đánh: vệt sáng phép thuật (đuôi sáng + quả cầu linh lực), không dùng hình kiếm. */
+.nm-sword-trail { left: -220px; top: -9px; width: 220px; height: 18px; border-radius: 9px;
+  background: linear-gradient(90deg, rgba(var(--c), 0), rgba(var(--c), .5) 55%, rgba(255,255,255,.95));
+  box-shadow: 0 0 18px 4px rgba(var(--c), .7); filter: blur(.6px); }
+.nm-sword-head { position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff 22%, rgba(var(--c), 1) 48%, rgba(var(--c), 0) 72%);
+  box-shadow: 0 0 26px 10px rgba(var(--c), .75); animation: nm-head-pulse .2s ease-in-out infinite alternate; }
+@keyframes nm-head-pulse { from { transform: scale(.9); } to { transform: scale(1.12); } }
+.nm-sword-done .nm-sword-head { opacity: 0; transition: opacity .25s; }
+.nm-magic-hit { position: absolute; width: 0; height: 0; pointer-events: none; }
+.nm-magic-hit::before { content: ""; position: absolute; left: -60px; top: -60px; width: 120px; height: 120px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(var(--c), .8) 35%, rgba(var(--c), 0) 70%);
+  animation: nm-magic-hit .5s ease-out forwards; }
+@keyframes nm-magic-hit { from { opacity: 1; transform: scale(.3); } to { opacity: 0; transform: scale(1.5); } }
+/* Tỉ thí: người góp nhiều phóng to nhưng bảng tên giữ cỡ cũ, để tên các người đứng cạnh không đè lên nhau. */
+.nm-duel-layout .nm-tag { transform: translateX(-50%) scale(calc(1 / var(--grow, 1))); transform-origin: 50% 100%; }
+/* Tỉ thí: ẩn logo, bảng tỉ thí lên sát trên, banner ngay dưới bảng; sân đấu phía dưới không bị chữ đè. */
+.nm-duel-layout .nm-title { opacity: 0; }
+.nm-duel-layout .nm-status.nm-duel, .nm-duel-layout .nm-status.nm-result { top: 108px !important; }
+.nm-duel-layout .nm-banner-box { top: 300px !important; }
+.nm-wheel-box { width: 760px; margin-left: -380px; }
+.nm-wheel-title { white-space: nowrap; }
+/* Banner lúc đánh quái / tẩu hỏa cao hơn (chữ to, 2 dòng): đẩy lên một chút để không đè thanh máu. */
+.nm-boss-mode .nm-banner-box, .nm-possess-mode .nm-banner-box { top: 562px !important; }
+.nm-kiep-bar { top: 742px; padding: 8px 20px 10px; }
+.nm-kiep-label { color: #fff; text-shadow: 0 0 8px #7a3cff, 0 2px 3px #000, 0 0 2px #000; }
+
+/* ================= Bản 3 (13/11): hào quang rực rỡ, bảng cảnh giới, thanh máu rồng trong suốt ================= */
+/* Hào quang sau lưng: tâm ở ngực nhân vật, cỡ theo chiều cao nhân vật (--h), phóng to theo --hs (hạng sát thương khi đánh rồng).
+   Mọi lớp chỉ xoay / đổi độ mờ bằng transform + opacity nên nhẹ máy cả khi đủ 53 người. Màu theo cảnh giới (--aura). */
+.nm-halo { position: absolute; left: 50%; top: 40%; width: calc(var(--h) * 1.35); height: calc(var(--h) * 1.35); pointer-events: none; z-index: -1;
+  transform: translate(-50%, -50%) scale(var(--hs, 1)); opacity: 0; transition: opacity 1.2s, transform .7s cubic-bezier(.2,.8,.2,1); }
+.nm-body > .nm-halo { z-index: 0; }
+.nm-body > .nm-sprite { z-index: 1; }
+.nm-aura-on .nm-halo { opacity: 1; }
+.nm-halo i { position: absolute; border-radius: 50%; }
+/* Quầng sáng: lõi trắng, viền màu cảnh giới, nhịp thở. */
+.h-glow { inset: 0; background: radial-gradient(closest-side, rgba(255,255,255,.95) 0%, color-mix(in srgb, var(--aura) 85%, white) 22%,
+  color-mix(in srgb, var(--aura) 55%, transparent) 50%, color-mix(in srgb, var(--aura) 18%, transparent) 72%, transparent 100%);
+  animation: h-breath 2.6s ease-in-out infinite; }
+@keyframes h-breath { 0%,100% { transform: scale(.9); opacity: .75; } 50% { transform: scale(1.06); opacity: 1; } }
+/* Tia sáng toả tròn (kiểu nắng thần), xoay chậm. */
+.h-rays { inset: -18%; background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--aura) 80%, white) 0deg 3deg, transparent 3deg 12deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 18%, #000 30%, rgba(0,0,0,.6) 55%, transparent 78%); mask: radial-gradient(closest-side, transparent 18%, #000 30%, rgba(0,0,0,.6) 55%, transparent 78%);
+  opacity: .85; animation: h-spin 16s linear infinite; }
+.h-rays2 { inset: -30%; display: none; background: repeating-conic-gradient(from 6deg, rgba(255,255,255,.9) 0deg 1.5deg, transparent 1.5deg 20deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 25%, #000 40%, transparent 80%); mask: radial-gradient(closest-side, transparent 25%, #000 40%, transparent 80%);
+  animation: h-spin 9s linear infinite reverse; }
+@keyframes h-spin { to { transform: rotate(360deg); } }
+/* Vòng sáng: 1 vòng liền phát sáng + 1 vòng gồm các đoạn sáng (pháp trận) xoay ngược. */
+.h-ring { inset: 14%; border: max(2px, calc(var(--h) * .018)) solid rgba(255,255,255,.9);
+  box-shadow: 0 0 calc(var(--h) * .07) color-mix(in srgb, var(--aura) 90%, white), inset 0 0 calc(var(--h) * .07) color-mix(in srgb, var(--aura) 90%, white);
+  animation: h-ring 2.6s ease-in-out infinite; }
+@keyframes h-ring { 0%,100% { transform: scale(.96); opacity: .7; } 50% { transform: scale(1.03); opacity: 1; } }
+.h-ring2 { inset: 4%; background: repeating-conic-gradient(color-mix(in srgb, var(--aura) 70%, white) 0deg 14deg, transparent 14deg 30deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 90%, #000 92%, #000 97%, transparent 99%); mask: radial-gradient(closest-side, transparent 90%, #000 92%, #000 97%, transparent 99%);
+  filter: drop-shadow(0 0 4px var(--aura)); animation: h-spin 12s linear infinite reverse; }
+/* Hạt sáng bay lên trong vầng hào quang. */
+.h-spark { inset: 6%; overflow: hidden;
+  background-image: radial-gradient(circle, #fff 0 1.5px, transparent 2.5px), radial-gradient(circle, color-mix(in srgb, var(--aura) 60%, white) 0 2px, transparent 3px);
+  background-size: 23% 31%, 37% 27%; animation: h-rise 3.2s linear infinite; opacity: .9;
+  -webkit-mask: radial-gradient(closest-side, #000 55%, transparent 100%); mask: radial-gradient(closest-side, #000 55%, transparent 100%); }
+@keyframes h-rise { from { background-position: 0 0, 30% 0; } to { background-position: 0 -100%, 30% -100%; } }
+/* Mức 2 (Chân Tiên, top 2–3 đánh rồng): thêm tia sáng trắng xoay ngược, sáng hơn. */
+.nm-halo-lv2 .h-rays2 { display: block; }
+.nm-halo-lv2 .h-ring { border-color: #fff; }
+/* Mức 3 (người gây sát thương nhiều nhất): rực nhất, nhịp nhanh, vầng sáng ngoài lớn. */
+.nm-halo-lv3 .h-glow { animation-duration: 1.4s; box-shadow: 0 0 calc(var(--h) * .35) calc(var(--h) * .08) color-mix(in srgb, var(--aura) 60%, transparent); }
+.nm-halo-lv3 .h-rays { opacity: 1; animation-duration: 7s; }
+.nm-halo-lv3 .h-spark { animation-duration: 1.8s; }
+/* Đánh rồng: tông vàng lửa cho cả tông môn để thấy rõ ai đang góp sức. */
+.nm-boss-mode .nm-halo { --aura: #ffcf4a; }
+.nm-possess-mode .nm-halo { --aura: #e9a6ff; }
+
+/* Bảng cảnh giới dưới tên (ảnh tham khảo: bảng nhỏ viền vàng). */
+.nm-tag-realm { display: table; margin: 2px auto 0; padding: .06em .55em .1em; border-radius: 6px; font-size: .74em; font-weight: 800; letter-spacing: .03em; line-height: 1.15;
+  color: var(--realm, #fff); background: linear-gradient(180deg, rgba(40,26,6,.92), rgba(16,10,2,.92)); border: 1.5px solid #d9b25a;
+  box-shadow: 0 0 6px rgba(255,214,120,.55), inset 0 0 4px rgba(255,214,120,.35); text-shadow: 0 1px 2px #000; }
+.nm-podium .nm-tag-realm { border-width: 2px; }
+
+/* Thanh máu rồng / giải cứu: bỏ nền tối che màn hình, chỉ còn chữ có viền + thanh máu; không còn bảng top. */
+.nm-boss-panel { background: none; border: 0; box-shadow: none; padding: 0 30px; }
+.nm-boss-head { text-shadow: 0 0 4px #000, 0 2px 3px #000, 0 0 10px rgba(0,0,0,.8); }
+.nm-boss-hint { text-shadow: 0 0 4px #000, 0 2px 3px #000; }
+.nm-hp { box-shadow: 0 0 14px rgba(255,190,80,.7), 0 3px 8px rgba(0,0,0,.5); }
+.nm-boss-top { display: none; }
+
+/* Pháp bảo bản 3: vầng sáng + tia sáng màu của món phía sau, đan dược rung lắc, linh chi đung đưa như sóng. */
+.nm-item-glow { position: absolute; left: calc(var(--s) * -1.1); top: calc(var(--s) * -1.1); width: calc(var(--s) * 2.2); height: calc(var(--s) * 2.2); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255,255,255,.95), color-mix(in srgb, var(--c) 80%, white) 25%, color-mix(in srgb, var(--c) 45%, transparent) 55%, transparent);
+  opacity: 0; animation: nm-item-glow var(--t, 1.6s) ease-in-out forwards; }
+@keyframes nm-item-glow { 0% { opacity: 0; transform: scale(.3); } 20% { opacity: 1; transform: scale(1); } 45% { transform: scale(.88); } 65% { opacity: 1; transform: scale(1.12); } 100% { opacity: 0; transform: scale(1.4); } }
+.nm-item-rays { position: absolute; left: calc(var(--s) * -1.5); top: calc(var(--s) * -1.5); width: calc(var(--s) * 3); height: calc(var(--s) * 3); border-radius: 50%;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--c) 75%, white) 0deg 4deg, transparent 4deg 15deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 15%, #000 28%, transparent 75%); mask: radial-gradient(closest-side, transparent 15%, #000 28%, transparent 75%);
+  opacity: 0; animation: nm-item-rays var(--t, 1.6s) linear forwards; }
+@keyframes nm-item-rays { 0% { opacity: 0; transform: rotate(0) scale(.4); } 18% { opacity: .95; transform: rotate(30deg) scale(1); } 80% { opacity: .9; transform: rotate(160deg) scale(1.1); } 100% { opacity: 0; transform: rotate(200deg) scale(1.3); } }
+.nm-tier3 .nm-item-rays, .nm-tier4 .nm-item-rays { left: calc(var(--s) * -2.1); top: calc(var(--s) * -2.1); width: calc(var(--s) * 4.2); height: calc(var(--s) * 4.2); }
+.nm-item-img { z-index: 2; }
+/* Đan dược (Tụ Khí Đan): hiện trước ngực, rung lắc mạnh dần, loé sáng rồi tan vào người. */
+.nm-fx-shake .nm-item-img { animation: nm-fx-shake var(--t, 1.6s) ease-in-out forwards; }
+@keyframes nm-fx-shake {
+  0% { transform: scale(0); opacity: 0; } 12% { transform: scale(1.15); opacity: 1; } 18% { transform: scale(1) rotate(0); }
+  24% { transform: rotate(-14deg) translateX(-6px); } 30% { transform: rotate(14deg) translateX(6px); } 36% { transform: rotate(-16deg) translateX(-7px); }
+  42% { transform: rotate(16deg) translateX(7px); } 48% { transform: rotate(-18deg) translateX(-8px) scale(1.05); } 54% { transform: rotate(18deg) translateX(8px) scale(1.08); }
+  60% { transform: rotate(-10deg) scale(1.12); filter: drop-shadow(0 0 30px var(--c)) brightness(1.6); } 66% { transform: rotate(0) scale(1.18); }
+  100% { transform: translateY(calc(var(--h) * .15)) scale(.2); opacity: 0; filter: drop-shadow(0 0 40px var(--c)) brightness(2); } }
+/* Linh chi: mọc lên từ chân rồi đung đưa trái phải như sóng biển. */
+.nm-fx-sway .nm-item-img { transform-origin: 50% 100%; animation: nm-fx-sway var(--t, 2.2s) ease-in-out forwards; }
+@keyframes nm-fx-sway {
+  0% { transform: translateY(calc(var(--h) * .3)) scale(0) rotate(0); } 15% { transform: translateY(calc(var(--h) * .15)) scale(1.05) rotate(0); opacity: 1; }
+  27% { transform: translateY(calc(var(--h) * .15)) rotate(-13deg) skewX(4deg); } 39% { transform: translateY(calc(var(--h) * .15)) rotate(11deg) skewX(-4deg); }
+  51% { transform: translateY(calc(var(--h) * .15)) rotate(-9deg) skewX(3deg); } 63% { transform: translateY(calc(var(--h) * .15)) rotate(8deg) skewX(-3deg); filter: drop-shadow(0 0 26px var(--c)) brightness(1.3); }
+  75% { transform: translateY(calc(var(--h) * .15)) rotate(-4deg) scale(1.08); opacity: 1; } 100% { transform: translateY(calc(var(--h) * .05)) scale(1.3); opacity: 0; } }
+/* Món rơi (Linh Thạch, Chu Quả, Bàn Đào): nảy 2 lần, toả sáng mạnh hơn. */
+@keyframes nm-fx-fall { 0% { transform: translateY(-420px) rotate(-20deg); opacity: 0; } 15% { opacity: 1; } 40% { transform: translateY(0) rotate(0); }
+  48% { transform: translateY(-34px) scale(1.06); } 56% { transform: translateY(0) scale(1); } 61% { transform: translateY(-12px); } 66% { transform: translateY(0) scale(1.1); filter: drop-shadow(0 0 34px var(--c)) brightness(1.7); }
+  100% { transform: scale(.4); opacity: 0; } }
+/* Tỉ thí: to dần từ từ khi góp thêm (không giật). */
+.nm-duel-layout .nm-body { transition: transform .9s cubic-bezier(.2,.8,.2,1); }
+/* Hào quang đậm hơn (bản 3b): lõi trắng, quầng màu đặc, tia và vòng sáng rõ trên nền sáng. */
+.h-glow { background: radial-gradient(closest-side, #fff 0%, #fff 12%, color-mix(in srgb, var(--aura) 60%, white) 26%,
+  color-mix(in srgb, var(--aura) 80%, transparent) 44%, color-mix(in srgb, var(--aura) 35%, transparent) 66%, transparent 100%); }
+.h-rays { background: repeating-conic-gradient(from 0deg, var(--aura) 0deg 3.5deg, color-mix(in srgb, var(--aura) 40%, white) 3.5deg 5deg, transparent 5deg 12deg); opacity: 1;
+  filter: drop-shadow(0 0 3px var(--aura)); }
+.h-ring { border-color: #fff; border-width: max(2.5px, calc(var(--h) * .022));
+  box-shadow: 0 0 calc(var(--h) * .06) var(--aura), 0 0 calc(var(--h) * .14) var(--aura), inset 0 0 calc(var(--h) * .08) var(--aura); }
+.h-ring2 { background: repeating-conic-gradient(var(--aura) 0deg 12deg, #fff 12deg 15deg, transparent 15deg 30deg); filter: drop-shadow(0 0 5px var(--aura)); }
+/* Đánh rồng / tẩu hỏa (bản 3): thanh máu nằm ngay dưới chân rồng (y 598), banner lên trên cùng (đè đầu rồng một chút) để không chồng thanh máu và bảng tên ghế đài. */
+.nm-boss-mode .nm-banner-box, .nm-possess-mode .nm-banner-box { top: 100px !important; }
+
+/* ================= Bản 3 (ảnh): hào quang cảnh giới + pháp trận pháp bảo bằng ảnh (src/assets/game/ban3) ================= */
+/* Hào quang: ảnh pháp trận riêng từng đại cảnh giới, tâm ở ngực (40% từ đỉnh), sau nhân vật.
+   Đang tu luyện: ảnh xoay rất chậm (1 vòng / 40 giây) + nhịp thở 0,97 ↔ 1,03 mỗi 3 giây + quầng sáng mờ sáng / tối theo nhịp.
+   Chỉ dùng transform + opacity (không filter) để 53 người cùng xoay vẫn nhẹ máy. */
+.nm-halo { width: calc(var(--h) * 1.4); height: calc(var(--h) * 1.4); }
+.h-glow { inset: 16%; background: radial-gradient(closest-side, color-mix(in srgb, var(--aura) 45%, white) 0%,
+  color-mix(in srgb, var(--aura) 30%, transparent) 45%, transparent 100%); box-shadow: none; animation: h-breath 3s ease-in-out infinite; }
+.h-wrap { position: absolute; inset: 0; animation: h-breathe 3s ease-in-out infinite; }
+@keyframes h-breathe { 0%,100% { transform: scale(.97); } 50% { transform: scale(1.03); } }
+.h-img, .h-img2 { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; will-change: transform; animation: h-spin 40s linear infinite; }
+.h-img2 { display: none; }
+.h-spark { inset: 14%; }
+/* Đánh rồng hạng 1: thêm bản sao xoay ngược to hơn, đốm sáng dày; hạng 2–3 xoay nhanh hơn. */
+.nm-halo-lv2 .h-img { animation-duration: 22s; }
+.nm-halo-lv3 .h-img { animation-duration: 14s; }
+/* (14/11) Bỏ bản sao xoay ngược của hạng 1: anh chốt mỗi người chỉ 1 vòng hào quang. */
+@keyframes h-spin-rev { from { transform: scale(1.2) rotate(0); } to { transform: scale(1.2) rotate(-360deg); } }
+.nm-halo-lv3 .h-glow { animation-duration: 1.4s; box-shadow: none; }
+/* Vừa được cộng tu vi: quầng sáng lóe 0,6 giây. */
+.nm-level-up .h-glow { animation: h-glow-flash .7s ease-out, h-breath 3s ease-in-out .7s infinite; }
+@keyframes h-glow-flash { 0% { opacity: .7; transform: scale(.9); } 35% { opacity: 1; transform: scale(1.25); } 100% { opacity: .8; transform: scale(1); } }
+/* Lên đại cảnh giới: pháp trận mới nở từ nhỏ, xoay nhanh 1 vòng rồi về nhịp chậm. */
+.nm-halo-new .h-img { animation: h-spin-in 1.6s cubic-bezier(.2,.8,.2,1), h-spin 40s linear 1.6s infinite; }
+@keyframes h-spin-in { 0% { transform: scale(.3) rotate(-360deg); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1) rotate(0); opacity: 1; } }
+
+/* Pháp trận pháp bảo: thay hào quang cảnh giới trong lúc món chạy (hào quang cảnh giới mờ đi rồi hiện lại). */
+.nm-item-on .nm-halo { opacity: 0 !important; visibility: hidden; transition: none; }
+.nm-ihalo { position: absolute; left: 50%; top: 40%; width: calc(var(--h) * 1.7 * var(--is, 1)); height: calc(var(--h) * 1.7 * var(--is, 1));
+  object-fit: contain; pointer-events: none; z-index: 0; opacity: 0; transform: translate(-50%, -50%) scale(0); will-change: transform; }
+.nm-body > .nm-ihalo { z-index: 0; }
+/* Mặc định: nở ra, xoay --r độ, tan ở cuối. */
+.nm-ih-on { --r: 200deg; animation: ih-life var(--t, 1.6s) cubic-bezier(.25,.7,.35,1) forwards; }
+@keyframes ih-life {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(0); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1.06) rotate(calc(var(--r) * .1)); }
+  24% { transform: translate(-50%, -50%) scale(1) rotate(calc(var(--r) * .2)); }
+  84% { opacity: 1; transform: translate(-50%, -50%) scale(1.02) rotate(calc(var(--r) * .85)); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.18) rotate(var(--r)); } }
+/* Linh Thạch: xoay nhanh. Bí Tịch: tròn 1 vòng theo vòng chữ. Phi Kiếm: xoay nhanh dần 2 vòng. Long Châu: 1 vòng, to. Bàn Đào: xoay nhẹ. */
+.nm-ih-linh_thach { --r: 540deg; animation-timing-function: linear; }
+.nm-ih-ban_dao { --r: 90deg; }
+.nm-ih-chu_qua { --r: 120deg; animation-name: ih-bounce; }
+.nm-ih-bi_tich { --r: 360deg; animation-timing-function: linear; }
+.nm-ih-phi_kiem { --r: 720deg; animation-timing-function: cubic-bezier(.55,0,.85,.6); }
+.nm-ih-long_chau { --r: 360deg; }
+/* Chu Quả: nảy 2 nhịp như quả rơi. */
+@keyframes ih-bounce {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  16% { opacity: 1; transform: translate(-50%, -50%) scale(1.1) rotate(20deg); }
+  26% { transform: translate(-50%, -50%) scale(.92) rotate(30deg); }
+  36% { transform: translate(-50%, -50%) scale(1.05) rotate(40deg); }
+  46% { transform: translate(-50%, -50%) scale(1) rotate(50deg); }
+  84% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(100deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.18) rotate(120deg); } }
+/* Tụ Khí Đan: đập theo nhịp rung của viên đan, mạnh dần. */
+.nm-ih-tu_khi_dan { animation-name: ih-beat; }
+@keyframes ih-beat {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  26% { transform: translate(-50%, -50%) scale(1.05) rotate(8deg); } 34% { transform: translate(-50%, -50%) scale(.97) rotate(12deg); }
+  44% { transform: translate(-50%, -50%) scale(1.08) rotate(20deg); } 52% { transform: translate(-50%, -50%) scale(.96) rotate(26deg); }
+  62% { transform: translate(-50%, -50%) scale(1.12) rotate(34deg); } 70% { transform: translate(-50%, -50%) scale(.95) rotate(40deg); }
+  84% { opacity: 1; transform: translate(-50%, -50%) scale(1.04) rotate(50deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(.6) rotate(60deg); } }
+/* Linh Chi: lắc lư qua lại như sóng biển theo cây nấm. */
+.nm-ih-linh_chi { animation-name: ih-sway; }
+@keyframes ih-sway {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); }
+  30% { transform: translate(-50%, -50%) scale(1.02) rotate(-9deg); } 48% { transform: translate(-50%, -50%) scale(.98) rotate(9deg); }
+  66% { transform: translate(-50%, -50%) scale(1.02) rotate(-7deg); } 84% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(4deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15) rotate(0); } }
+/* Ngọc Dịch: gợn như mặt nước theo dòng rót (phình / co mềm), xoay chậm. */
+.nm-ih-ngoc_dich { animation-name: ih-ripple; }
+@keyframes ih-ripple {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  32% { transform: translate(-50%, -50%) scale(1.07) rotate(20deg); } 50% { transform: translate(-50%, -50%) scale(.97) rotate(40deg); }
+  68% { transform: translate(-50%, -50%) scale(1.07) rotate(60deg); } 84% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(75deg); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2) rotate(90deg); } }
+/* Combo (x5, x10): pháp trận to hơn (--is) và xoay thêm nửa vòng. */
+.nm-ih-combo { --r: 380deg; }
+/* Bí Tịch: vòng chữ Hán đặt đúng tâm pháp trận (trước đây cao hơn 15% chiều cao người nên bị lệch). */
+.nm-glyph-ring { top: 0; }
+/* Bí Tịch (bản 3): chữ Hán to, viền tối cho nổi trên nền sáng, bay vòng quanh người (không tan dần nữa),
+   rồi lần lượt lao vào ngực (nm-glyph-in: trượt từ vòng ngoài vào tâm, thu nhỏ, lóe sáng). */
+.nm-fx-scroll .nm-glyph-ring { animation: nm-glyph-orbit var(--t) linear forwards; }
+@keyframes nm-glyph-orbit { 0% { transform: rotate(0) scale(.3); opacity: 0; } 12% { transform: rotate(50deg) scale(1); opacity: 1; } 100% { transform: rotate(330deg) scale(1); opacity: 1; } }
+.nm-fx-scroll .nm-scroll-glyph { font-size: 48px; color: #fff3b8; z-index: 3;
+  text-shadow: 0 0 10px #ffb000, 0 0 18px #ff9d00, 0 2px 2px #6a3200, 0 0 2px #6a3200; transition: left .45s cubic-bezier(.5,0,.9,.5), opacity .45s cubic-bezier(.7,0,1,.5), scale .45s ease-in; }
+.nm-fx-scroll .nm-scroll-glyph.nm-glyph-in { left: -26px; opacity: 0; scale: .35; }
+
+/* ================= Bản 3 (ảnh): khung tên dưới chân (src/assets/game/ban3/tag) ================= */
+/* Khung đặt ngay dưới chân, đè lên đệm ngồi 8px, nằm trên nhân vật. Bề ngang / cao / cỡ chữ do render.js đặt theo chỗ ngồi.
+   Ruy băng: tên đại cảnh giới (chỉ khung lớn: ghế đài, tỉ thí ít người). Ô giữa: tên. Ngọc cạnh dưới: tiểu cảnh. */
+.nm-tag { top: calc(100% - 8px); bottom: auto; transform: translateX(-50%); z-index: 2; }
+.nm-duel-layout .nm-tag { transform: translateX(-50%) scale(calc(1 / var(--grow, 1))); transform-origin: 50% 0; }
+.nm-plate { position: absolute; inset: 0; background: center / 100% 100% no-repeat; animation: nm-tag-in .6s cubic-bezier(.3,1.5,.5,1); }
+.nm-plate > * { z-index: 1; }
+@keyframes nm-tag-in { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); } }
+/* Tên: chữ nâu đậm trên ô giữa màu kem, rõ trên mọi nền. Ghi đè kiểu viên thuốc tối cũ (kể cả màu phe khi tỉ thí). */
+.nm-plate .nm-tag-name, .nm-tag[data-side="1"] .nm-plate .nm-tag-name, .nm-tag[data-side="2"] .nm-plate .nm-tag-name, .nm-podium .nm-plate .nm-tag-name {
+  position: absolute; left: 8%; right: 8%; top: 29%; height: 46%; display: flex; align-items: center; justify-content: center;
+  padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; color: #3a2108; font-weight: 800; line-height: 1;
+  text-shadow: 0 1px 0 rgba(255,255,255,.8); white-space: nowrap; overflow: hidden; }
+.nm-tag-big .nm-plate .nm-tag-name { top: 27%; height: 34%; }
+.nm-tag-sub { display: none; }
+.nm-tag-big .nm-tag-sub { display: block; position: absolute; left: 10%; right: 10%; top: 60%; font-size: .5em; font-weight: 800; line-height: 1; color: #8a5a12; text-align: center; }
+/* Ruy băng: tên đại cảnh giới, chữ nâu trên nền ruy băng kem. Khung nhỏ (hàng thường) chữ quá bé nên để trống. */
+.nm-plate .nm-tag-realm { display: none; }
+.nm-tag-big .nm-plate .nm-tag-realm { display: flex; position: absolute; left: 32%; right: 32%; top: 5%; height: 17%; margin: 0; padding: 0; align-items: center; justify-content: center;
+  border: 0; border-radius: 0; background: none; box-shadow: none; font-size: .5em; font-weight: 900; letter-spacing: .02em; color: #5a3306; text-shadow: 0 1px 0 rgba(255,255,255,.7); white-space: nowrap; }
+/* Thanh tiến độ mảnh trong ô giữa, trên hàng ngọc. */
+.nm-plate .nm-bar { position: absolute; left: 24%; right: 24%; top: 79%; width: auto; height: max(2px, 3%); margin: 0; border-radius: 2px; background: rgba(90,60,20,.22); box-shadow: none; }
+.nm-plate .nm-bar i { background: var(--aura, #e0a020); }
+/* Ngọc: viên sáng màu cảnh giới nằm đúng vào lỗ ngọc của ảnh khung. */
+.nm-gems { position: absolute; inset: 0; pointer-events: none; }
+.nm-gems i { position: absolute; top: 89%; width: 5.4%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; }
+.nm-gems9 i { top: 91%; width: 3.9%; }
+.nm-gems i.on { background: radial-gradient(circle, #fff 0 16%, var(--gem) 48%, color-mix(in srgb, var(--gem) 45%, transparent) 66%, transparent 72%); box-shadow: 0 0 5px var(--gem); }
+.nm-gems i.nm-gem-new { animation: nm-gem-new 1s ease-out; }
+@keyframes nm-gem-new { 0% { transform: translate(-50%, -50%) scale(3); opacity: 0; } 40% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); } }
+/* Hậu kỳ: khung sáng hơn. Đại viên mãn, Chân Tiên: vệt sáng chạy ngang khung mỗi 4 giây (cắt theo đúng hình khung). */
+.nm-houky .nm-plate { filter: brightness(1.07) saturate(1.2); }
+.nm-dvm .nm-plate::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.8) 50%, transparent 62%) no-repeat; background-size: 260% 100%;
+  -webkit-mask: var(--tagimg) center / 100% 100% no-repeat; mask: var(--tagimg) center / 100% 100% no-repeat; animation: nm-plate-sweep 4s linear infinite; }
+@keyframes nm-plate-sweep { 0% { background-position: 160% 0; } 45%, 100% { background-position: -60% 0; } }
+/* Lên tiểu cảnh / được cộng tu vi: khung nảy nhẹ. Đổi khung (lên đại cảnh giới, lên Đại viên mãn): lật sang khung mới. */
+.nm-level-up .nm-plate { animation: nm-tag-bump .5s ease-out; }
+@keyframes nm-tag-bump { 0%,100% { transform: scale(1); } 40% { transform: scale(1.12); } }
+.nm-plate.nm-plate-flip { animation: nm-plate-flip .8s cubic-bezier(.2,.8,.2,1); }
+@keyframes nm-plate-flip { 0% { transform: perspective(500px) rotateY(180deg) scale(.9); } 100% { transform: perspective(500px) rotateY(0) scale(1); } }
+/* Tỉ thí: viền khung phát sáng màu phe; người vừa ra đòn sáng mạnh hơn. */
+.nm-tag[data-side="1"] .nm-plate { filter: drop-shadow(0 0 4px #1fc7ae) drop-shadow(0 0 2px #1fc7ae); }
+.nm-tag[data-side="2"] .nm-plate { filter: drop-shadow(0 0 4px #f0457f) drop-shadow(0 0 2px #f0457f); }
+.nm-duel-layout .nm-strike .nm-tag[data-side="1"] .nm-tag-name, .nm-duel-layout .nm-strike .nm-tag[data-side="2"] .nm-tag-name { box-shadow: none; }
+.nm-strike .nm-tag[data-side] .nm-plate { filter: drop-shadow(0 0 9px #fff) drop-shadow(0 0 4px var(--sidec)); }
+/* Chức vị (ghế đài) + bóng thoại: trên đầu nhân vật. */
+.nm-head { position: absolute; left: 50%; bottom: 97%; transform: translateX(-50%); text-align: center; white-space: nowrap; pointer-events: none; z-index: 3; font-size: 19px; }
+.nm-podium .nm-head { font-size: 28px; }
+.nm-head .nm-tag-title { margin-bottom: 0; }
+/* Linh thú cạnh chân: nhích lên để không bị khung tên che. */
+.nm-pets { bottom: 8px; }
+/* Khung tên (14/11): bỏ dòng tiểu cảnh và thanh tiến độ (tiểu cảnh đã có ngọc), tên căn chính giữa ô kem. */
+.nm-tag-big .nm-tag-sub, .nm-plate .nm-bar { display: none; }
+.nm-plate .nm-tag-name, .nm-tag[data-side="1"] .nm-plate .nm-tag-name, .nm-tag[data-side="2"] .nm-plate .nm-tag-name, .nm-podium .nm-plate .nm-tag-name,
+.nm-tag-big .nm-plate .nm-tag-name { top: 27%; height: 52%; left: 7%; right: 7%; }
+
+/* Nền rộng 2 bên (bg_main_wide.jpg 1254x1672 -> cao 1920, rộng 1440): nằm dưới nền gốc, lộ ra khi camera thu vào người ở sát mép.
+   Ngoài nền rộng vẫn còn lớp nền mờ .nm-bg-ext cho trường hợp zoom rất sát góc. */
+.nm-bg.nm-bg-wide { position: absolute; left: -179px; top: 0; right: auto; bottom: auto; width: 1440px; height: 1920px; max-width: none; object-fit: fill; }
+
+/* Lôi kiếp (14/11): tự hộ thân + pháp trận pháp bảo quanh người đang độ kiếp. */
+.nm-kiep-fig > .nm-kiep-img { position: relative; z-index: 1; }
+.nm-kiep-fig > .nm-kiep-ihalo { z-index: 0; top: 45%; }
+.nm-kiep-self .nm-kiep-img { animation: nm-kiep-self .7s ease-out; }
+@keyframes nm-kiep-self { 0% { filter: drop-shadow(0 0 16px rgba(210,180,255,.95)); }
+  30% { filter: drop-shadow(0 0 30px #ffd84a) drop-shadow(0 0 60px #fff1b0) brightness(1.25); }
+  100% { filter: drop-shadow(0 0 16px rgba(210,180,255,.95)); } }
+.nm-kiep-fig.nm-kiep-self::after { content: ""; position: absolute; left: 50%; top: 45%; width: 120%; aspect-ratio: 1; border-radius: 50%; z-index: 2; pointer-events: none;
+  border: 6px solid rgba(255,220,110,.95); box-shadow: 0 0 30px #ffd84a, inset 0 0 30px rgba(255,216,74,.7);
+  transform: translate(-50%, -50%) scale(.5); opacity: 0; animation: nm-kiep-shield .8s ease-out; }
+@keyframes nm-kiep-shield { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.5); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); } }
+.nm-pop-self { font-size: 44px; }
+/* Khung tên ảnh mới (14/11): tên cảnh giới in sẵn trong ảnh nên bỏ chữ ruy băng do code ghi. Ô tên / ngọc đặt theo src/tag-layout.js. */
+.nm-plate .nm-tag-realm, .nm-tag-big .nm-plate .nm-tag-realm { display: none !important; }
+.nm-plate .nm-tag-name { line-height: 1; padding-top: .04em; }
+/* Hàng thường (14/11): khung tên nằm dưới chân, ngay trên đầu hàng sau. Hào quang hàng sau (vẽ đè hàng trước) to quá sẽ che tên hàng trước,
+   nên hào quang hàng thường nhỏ hơn (1,22 lần chiều cao) và hạ tâm xuống giữa thân: mép trên chỉ nhô khỏi đầu khoảng 5% chiều cao người. */
+.nm-disciple:not(.nm-podium) .nm-halo { width: calc(var(--h) * 1.22); height: calc(var(--h) * 1.22); top: 56%; }
+/* Lôi kiếp: chớp nhẹ của các tia phụ trước đòn chính (mỗi đạo khoảng 3 giây). */
+.nm-kiep-flash.nm-kiep-flash-soft { background: rgba(225,210,255,.28); animation-duration: .25s; }
+/* Sấm sét lôi kiếp rõ hơn (14/11): tia phụ sáng hơn, có nhánh rẽ mảnh. */
+.nm-bolt-side { opacity: .9; }
+.nm-bolt-side .nm-bolt-core { stroke-width: 5; }
+.nm-bolt .nm-bolt-branch.nm-bolt-core { stroke-width: 3; }
+.nm-bolt .nm-bolt-branch.nm-bolt-glow { stroke-width: 12; }

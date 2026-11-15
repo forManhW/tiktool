@@ -17,10 +17,23 @@ const FILES = [
   { url: VOICE + "MODEL_CARD", name: "MODEL_CARD" }
 ];
 
+// piper.exe, onnxruntime.dll cần thư viện Visual C++ 2015–2022. Máy chưa cài "VC++ Redistributable" thì Piper không chạy
+// (giọng đọc im lặng). Kèm 3 DLL này cạnh piper.exe (Microsoft cho phép phát hành kèm ứng dụng), lấy từ máy build x64.
+const VC_DLLS = ["msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll"];
+function bundleVcRuntime() {
+  const sys = path.join(process.env.SystemRoot || "C:\\Windows", "System32");
+  for (const dll of VC_DLLS) {
+    const from = path.join(sys, dll), to = path.join(OUT, "piper", dll);
+    if (!fs.existsSync(from)) throw new Error(`Máy build thiếu ${from}: cài "Microsoft Visual C++ Redistributable x64" rồi chạy lại`);
+    if (!fs.existsSync(to) || fs.statSync(to).size !== fs.statSync(from).size) fs.copyFileSync(from, to);
+  }
+  console.log("Đã kèm thư viện Visual C++ cho Piper:", VC_DLLS.join(", "));
+}
+
 (async () => {
   // Đã đủ file thì bỏ qua: tránh xóa thư mục đang bị piper.exe (hub đang chạy) giữ, dễ làm hỏng bộ giọng.
   const ready = ["piper/piper.exe", "piper/espeak-ng-data/phontab", "voices/vi_VN-vais1000-medium.onnx", "voices/vi_VN-vais1000-medium.onnx.json"].every((f) => fs.existsSync(path.join(OUT, f)));
-  if (ready && !process.argv.includes("--force")) return console.log("Giọng đọc đã có sẵn:", OUT);
+  if (ready && !process.argv.includes("--force")) { bundleVcRuntime(); return console.log("Giọng đọc đã có sẵn:", OUT); }
   fs.mkdirSync(TMP, { recursive: true });
   for (const f of FILES) {
     const file = path.join(TMP, f.name);
@@ -39,5 +52,6 @@ const FILES = [
   execFileSync("powershell", ["-NoProfile", "-Command", `Expand-Archive -Path '${path.join(TMP, FILES[0].name)}' -DestinationPath '${OUT}' -Force`], { stdio: "inherit" });
   for (const f of FILES.slice(1)) fs.copyFileSync(path.join(TMP, f.name), path.join(OUT, "voices", f.name));
   if (!fs.existsSync(path.join(OUT, "piper", "piper.exe"))) throw new Error("Giải nén xong nhưng không thấy piper/piper.exe");
+  bundleVcRuntime();
   console.log("Xong:", OUT);
 })().catch((e) => { console.error(e.message); process.exit(1); });

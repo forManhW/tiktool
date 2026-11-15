@@ -31,22 +31,24 @@
   // Vùng TikTok che: trên ~1/20 (y < 96), dưới ~1/4 (y > 1440). Hai bên không bị che, bố cục căn giữa x = 540.
   // `h` = chiều cao nhân vật, `y` = vị trí đáy đệm.
   var LAYOUT = {
+    // Bản 3 (13/11): khung tên chuyển xuống dưới chân (cao khoảng 40 px ở hàng thường) nên nhân vật hàng thường nhỏ đi
+    // khoảng 18% và các hàng giãn ra: chân hàng trên + khung tên vừa chạm đỉnh đầu hàng dưới, không che nhau.
     podium: [
-      { seat: "Chưởng môn", x: 540, y: 780, h: 250 },
-      { seat: "Tả hộ pháp", x: 190, y: 835, h: 190 },
-      { seat: "Hữu hộ pháp", x: 890, y: 835, h: 190 }
+      { seat: "Chưởng môn", x: 540, y: 725, h: 236 },
+      { seat: "Tả hộ pháp", x: 190, y: 780, h: 176 },
+      { seat: "Hữu hộ pháp", x: 890, y: 780, h: 176 }
     ],
     rows: [
-      { count: 10, y: 962, h: 112 },
-      { count: 10, y: 1078, h: 106 },
-      { count: 10, y: 1194, h: 100 },
-      { count: 10, y: 1310, h: 96 },
-      { count: 10, y: 1426, h: 92 }
+      { count: 10, y: 950, h: 98 },     // khung tên ảnh mới (14/11) dẹt hơn: nhân vật hàng thường to lại thêm 6 px
+      { count: 10, y: 1070, h: 94 },
+      { count: 10, y: 1186, h: 90 },
+      { count: 10, y: 1298, h: 86 },
+      { count: 10, y: 1406, h: 82 }
     ],
     rowLeft: 40, rowRight: 1040,   // đối xứng quanh x = 540
     titleTop: 100, titleWidth: 440,
     statusTop: 252,
-    bannerTop: 372
+    bannerTop: 318
   };
   var SEATS = LAYOUT.podium.length + LAYOUT.rows.reduce(function (n, r) { return n + r.count; }, 0);
 
@@ -82,12 +84,13 @@
       winBonus: 300,                // tu vi cho MỖI người phe thắng. Phe thua không bị trừ (Q5)
       mvpMultiplier: 2,             // công đầu phe thắng: được thêm đúng số tu vi đã góp trong trận (x2), thay cho +300 (anh chốt 11/11)
       drawBonus: 100,
-      mvpWheel: true,               // công đầu phe thắng được 1 lượt vòng quay
+      mvpWheel: true,               // bốc thăm 1 lượt quay trong phe thắng, công đầu có hai phần
       // Mỗi lần góp tu vi khi tỉ thí = 1 đòn sang 1 người ngẫu nhiên phe kia; người trúng mất hitLossRatio x tu vi của đòn (anh chốt 11/11).
       // Điểm phe không bị trừ (điểm = tu vi đã góp).
       hitLossRatio: 0.5,
-      // Người góp nhiều được phóng to tại chỗ theo tổng tu vi đã góp trong trận: [tu vi, tỉ lệ], nội suy tuyến tính giữa các mốc.
-      grow: [[0, 1], [1000, 1.2], [5000, 1.5], [10000, 1.8], [20000, 2.2], [50000, 2.6]]
+      // Người vào phe: nhỏ lại (0,82) khi chưa gây sát thương, góp càng nhiều càng to dần: [tu vi đã góp, tỉ lệ], nội suy giữa các mốc.
+      // Tối đa 1,6 để người to không đè kín người bên cạnh (anh chốt 13/11, trước là 1 -> 2,6).
+      grow: [[0, 0.82], [300, 0.9], [1000, 1], [3000, 1.15], [8000, 1.3], [20000, 1.45], [50000, 1.6]]
     },
 
     // Quái rồng (anh chốt 10/11): cứ 30 phút (tính từ đầu chu kỳ) rồng xuất hiện, đánh tới khi rồng chết mới tính lại chu kỳ.
@@ -122,14 +125,14 @@
     aura: { ms: 90 * 1000 },
 
     // Pháp bảo (anh chốt 12/11): tặng quà = mua pháp bảo = cộng tu vi + hiệu ứng riêng. Số tu vi đặt trong mapping TikTool.
-    // fx = kiểu hiệu ứng trong render.js; img = ảnh trong src/assets/game/; speak = có đọc giọng không.
+    // fx = kiểu hiệu ứng trong render.js (shake = đan dược rung lắc, sway = linh chi đung đưa như sóng, fall, pour, scroll, swords, orb, egg); img = ảnh trong src/assets/game/; speak = món đắt, đọc với ưu tiên cao hơn (mọi món đều được đọc).
     // tier = độ hoành tráng (món càng đắt hiệu ứng càng to, càng lâu): 1 = 1,6 giây, 2 = 2,2 giây, 3 = 3 giây, 4 = 5 giây.
     items: [
       { id: "linh_thach", tier: 1, name: "Linh Thạch", img: "item_linh_thach", fx: "fall", color: "#5fd0ff", speak: false },
-      { id: "tu_khi_dan", tier: 1, name: "Tụ Khí Đan", img: "item_tu_khi_dan", fx: "rise", color: "#ffb347", speak: false },
+      { id: "tu_khi_dan", tier: 1, name: "Tụ Khí Đan", img: "item_tu_khi_dan", fx: "shake", color: "#ffb347", speak: false },
       { id: "chu_qua", tier: 1, name: "Chu Quả", img: "item_chu_qua", fx: "fall", color: "#ff5a4a", speak: false },
       { id: "ban_dao", tier: 2, name: "Bàn Đào", img: "item_ban_dao", fx: "fall", color: "#ff9ac2", speak: false },
-      { id: "linh_chi", tier: 2, name: "Thiên Niên Linh Chi", img: "item_linh_chi", fx: "grow", color: "#8fe36b", speak: false },
+      { id: "linh_chi", tier: 2, name: "Thiên Niên Linh Chi", img: "item_linh_chi", fx: "sway", color: "#8fe36b", speak: false },
       { id: "ngoc_dich", tier: 3, name: "Ngọc Dịch Quỳnh Tương", img: "item_ngoc_dich", fx: "pour", color: "#7fd8ff", speak: true },
       { id: "bi_tich", tier: 3, name: "Bí Tịch Công Pháp", img: "item_bi_tich", fx: "scroll", color: "#ffd75e", speak: true },
       { id: "phi_kiem", tier: 3, name: "Phi Kiếm Trận", img: "fx_sword", fx: "swords", color: "#e8f4ff", speak: true },
@@ -138,7 +141,7 @@
     ],
 
     // Linh thú (anh chốt 12/11): trứng nở ngẫu nhiên theo weight. Mỗi loại tối đa 1 con, nở trùng thì +1 sao (5% / 10% / 15%).
-    // Đã 3 sao mà nở trùng: được 1 lượt vòng quay. Linh thú reset theo tuần cùng tu vi.
+    // Đã 3 sao mà nở trùng: được 1 lượt vòng quay. Linh thú reset cùng tu vi (mỗi 2 tuần).
     pets: {
       types: [
         { id: "ngoc_tho", name: "Ngọc Thố", img: "pet_ngoc_tho", tuviPct: 5, dmgPct: 0, weight: 45 },
@@ -154,12 +157,16 @@
     tribulation: {
       enabled: true,
       fromRealm: 3,                // chỉ số trong realms: 3 = Nguyên Anh
-      durationMs: 15000,
-      strikes: { 3: 3, 4: 5, 5: 5, 6: 7, 7: 7, 8: 9, 9: 9 },
+      durationMs: 30000,           // 30 giây cho người xem kịp hộ pháp (anh chốt 14/11, trước 15 giây)
+      strikes: { 3: 6, 4: 7, 5: 7, 6: 8, 7: 8, 8: 9, 9: 9 },   // số đạo sét trong 30 giây; mỗi đạo diễn khoảng 3 giây (nhiều tia nối nhau)
       shieldPct: 5,                // kết giới cần = 5% ngưỡng cảnh giới mới...
       shieldMax: 30000,            // ...tối đa 30.000 tu vi
       successBonusPct: 5,          // vượt kiếp: +5% tu vi đang có
-      topHelperBonus: 1000,        // người hộ pháp nhiều nhất
+      helperBonusPct: 50,          // thành công: mỗi người hộ pháp +50% số tu vi đã góp
+      topHelperBonus: 1000,        // ...người hộ pháp nhiều nhất thêm +1.000
+      selfShieldPct: 50,           // người độ kiếp tự tu luyện / dùng pháp bảo: 50% tu vi nhận được vào kết giới (tự hộ thân)
+      retryMs: 3 * 60 * 1000,      // thất bại: kẹt ở Đại viên mãn, độ kiếp lại sau 3 phút...
+      retryTuviPct: 10,            // ...hoặc khi tu vi tăng thêm 10% (cái nào tới trước)
       maxQueue: 2,
       resultMs: 4000
     },
@@ -173,7 +180,7 @@
       multiplier: 2
     },
 
-    // Vòng quay thưởng: công đầu đánh quái + công đầu phe thắng tỉ thí. weight = tỉ lệ (ô to = dễ trúng).
+    // Vòng quay thưởng: công đầu đánh quái + 1 người bốc thăm trong phe thắng tỉ thí (công đầu 2 phần) + linh thú nở trùng khi đủ sao. weight = tỉ lệ (ô to = dễ trúng).
     wheel: {
       spinMs: 5000,
       prizes: [
@@ -206,6 +213,8 @@
       sideJoinBatchMs: 3000         // gom người vừa vào phe tỉ thí (3 giây) rồi đọc 1 câu
     },
 
-    save: { key: "ngami.tutien.week", everyMs: 5000 }   // tu vi lưu theo tuần (reset 0h thứ Hai, giờ máy)
+    // Tu vi + linh thú giữ periodWeeks tuần (anh chốt 13/11: 2 tuần), reset 0h thứ Hai đầu kỳ mới (giờ máy).
+    // Đổi số này thì sửa cả "periodWeeks" trong manifest.json (hub dùng để xuất top kỳ này / kỳ trước).
+    save: { key: "ngami.tutien.week", everyMs: 5000, periodWeeks: 2 }
   };
 }));

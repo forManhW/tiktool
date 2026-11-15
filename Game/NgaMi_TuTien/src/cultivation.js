@@ -77,10 +77,48 @@
     this.seated = new Set();    // id đang ngồi trên màn hình
     this.topIds = [];
     this.dirty = false;
+    // Lôi kiếp chặn đột phá: từ đại cảnh giới gateFrom trở lên phải độ kiếp thành công mới lên được (null = không chặn).
+    // Chưa độ kiếp thì dừng ở Đại viên mãn của cảnh giới trước, tu vi vẫn tích lũy bình thường.
+    this.gateFrom = null;
+    this.realmFirst = [];          // realmIdx -> vị trí tiểu cảnh đầu tiên trong ladder
+    var self = this;
+    this.ladder.forEach(function (l, i) { if (self.realmFirst[l.realmIdx] == null) self.realmFirst[l.realmIdx] = i; });
   }
 
   Sect.prototype.emit = function (event) { if (typeof this.hooks.onEvent === "function") this.hooks.onEvent(event); };
   Sect.prototype.levelOf = function (tuvi) { return levelOf(this.ladder, tuvi); };
+
+  /** Đại cảnh giới đầu tiên người này CHƯA độ kiếp (-1 nếu không bị chặn). m.passed = cảnh giới cao nhất đã độ kiếp qua. */
+  Sect.prototype.lockedRealm = function (m) {
+    if (this.gateFrom == null || !m) return -1;
+    var r = Math.max(this.gateFrom, (m.passed == null ? -1 : m.passed) + 1);
+    return r < this.realmFirst.length ? r : -1;
+  };
+  /** Cảnh giới hiển thị: theo tu vi nhưng không vượt Đại viên mãn của cảnh giới trước cảnh giới chưa độ kiếp. */
+  Sect.prototype.levelOfMember = function (m) {
+    var lv = levelOf(this.ladder, m ? m.tuvi : 0), locked = this.lockedRealm(m);
+    if (locked < 0 || lv.realmIdx < locked) return lv;
+    var cap = this.ladder[this.realmFirst[locked] - 1];
+    return { index: this.realmFirst[locked] - 1, realmIdx: cap.realmIdx, stageIdx: cap.stageIdx, realm: cap.realm, stage: cap.stage, label: cap.label,
+      next: null, progress: 1, blocked: locked };
+  };
+  /** Đủ tu vi lên cảnh giới mới nhưng chưa độ kiếp: trả cảnh giới cần độ kiếp, không thì -1. */
+  Sect.prototype.needsKiep = function (m) {
+    var lv = this.levelOfMember(m);
+    return lv.blocked != null ? lv.blocked : -1;
+  };
+  /** Độ kiếp thành công cảnh giới realmIdx: mở khóa và báo lên cảnh giới (reason "kiep"). */
+  Sect.prototype.passKiep = function (id, realmIdx) {
+    var m = this.members.get(String(id));
+    if (!m) return null;
+    var before = this.levelOfMember(m);
+    m.passed = Math.max(m.passed == null ? -1 : m.passed, realmIdx);
+    var after = this.levelOfMember(m);
+    m.level = after.index;
+    this.dirty = true;
+    if (after.index > before.index && this.seated.has(m.id)) this.emit({ type: "level_up", member: m, from: before, to: after, bigRealm: after.realmIdx > before.realmIdx, reason: "kiep" });
+    return after;
+  };
   Sect.prototype.isSeated = function (id) { return this.seated.has(String(id)); };
 
   /** Tạo/cập nhật hồ sơ (chưa cho ngồi). */
@@ -88,7 +126,7 @@
     var id = String((user && user.id) || "").trim();
     if (!id) return null;
     var m = this.members.get(id);
-    if (!m) { m = { id: id, nickname: "", tuvi: 0, level: 0, joinedAt: this.now(), lastActive: 0, everSeated: false, pets: {}, lastGainAt: 0 }; this.members.set(id, m); this.dirty = true; }
+    if (!m) { m = { id: id, nickname: "", tuvi: 0, level: 0, joinedAt: this.now(), lastActive: 0, everSeated: false, pets: {}, lastGainAt: 0, passed: -1 }; this.members.set(id, m); this.dirty = true; }
     if (user.nickname != null) m.nickname = cleanName(user.nickname);
     return m;
   };
@@ -125,9 +163,9 @@
     amount = Math.floor(Number(amount) || 0);
     if (amount <= 0) return { member: m, ups: [] };
     if (!force) m.lastActive = this.now();
-    var before = this.levelOf(m.tuvi);
+    var before = this.levelOfMember(m);
     m.tuvi += amount;
-    var after = this.levelOf(m.tuvi);
+    var after = this.levelOfMember(m);
     m.level = after.index;
     this.dirty = true;
     var ups = [];
@@ -148,7 +186,7 @@
     var lost = Math.min(m.tuvi, Math.max(0, Math.floor(Number(amount) || 0)));
     if (!lost) return 0;
     m.tuvi -= lost;
-    m.level = this.levelOf(m.tuvi).index;
+    m.level = this.levelOfMember(m).index;
     this.dirty = true;
     this.refreshTop(false);
     return lost;
@@ -181,7 +219,7 @@
   Sect.prototype.seating = function () {
     var self = this, now = this.now();
     return this.ranking().map(function (m, i) {
-      return { rank: i + 1, seatName: TOP_SEATS[i] || null, member: m, level: self.levelOf(m.tuvi), sectRank: self.sectRankOf(i + 1),
+      return { rank: i + 1, seatName: TOP_SEATS[i] || null, member: m, level: self.levelOfMember(m), sectRank: self.sectRankOf(i + 1),
         fading: now - m.lastActive >= self.idleMs };
     });
   };
@@ -202,7 +240,7 @@
 
   /** Sang tuần mới: tu vi mọi người về 0, giữ tên và ai đang ngồi vẫn ngồi. */
   Sect.prototype.resetTuvi = function () {
-    this.members.forEach(function (m) { m.tuvi = 0; m.level = 0; m.pets = {}; });   // linh thú reset theo tuần cùng tu vi (anh chốt 12/11)
+    this.members.forEach(function (m) { m.tuvi = 0; m.level = 0; m.pets = {}; m.passed = -1; });   // linh thú reset cùng tu vi, mỗi kỳ 2 tuần (anh chốt 13/11)
     this.topIds = [];
     this.dirty = true;
     this.refreshTop(false);
@@ -213,8 +251,8 @@
   /** Lưu tu vi trong tuần (không lưu chỗ ngồi: tải lại trang thì mọi người thả tim / tặng quà để vào lại). */
   Sect.prototype.serialize = function () {
     var out = [];
-    // Cột 5: linh thú { loại: số sao } (bản 2). Bản cũ chỉ có 4 cột vẫn đọc được.
-    this.members.forEach(function (m) { out.push([m.id, m.nickname, m.tuvi, m.joinedAt, cleanPets(m.pets)]); });
+    // Cột 5 (extra): linh thú { loại: số sao } (bản 2) + "_kiep": cảnh giới cao nhất đã độ kiếp (bản 3). Bản cũ chỉ có 4 cột vẫn đọc được.
+    this.members.forEach(function (m) { out.push([m.id, m.nickname, m.tuvi, m.joinedAt, extraOf(m)]); });
     return { v: 3, members: out };
   };
 
@@ -223,7 +261,9 @@
     this.reset();
     var self = this;
     data.members.forEach(function (r) {
-      self.members.set(r[0], { id: r[0], nickname: r[1], tuvi: r[2] || 0, level: self.levelOf(r[2] || 0).index, joinedAt: r[3] || 0, lastActive: 0, everSeated: true, pets: cleanPets(r[4]), lastGainAt: 0 });
+      var m = { id: r[0], nickname: r[1], tuvi: r[2] || 0, joinedAt: r[3] || 0, lastActive: 0, everSeated: true, pets: cleanPets(r[4]), lastGainAt: 0, passed: passedOf(self, r) };
+      m.level = self.levelOfMember(m).index;
+      self.members.set(r[0], m);
     });
     this.dirty = false;
     return true;
@@ -239,11 +279,16 @@
     data.members.forEach(function (r) {
       var tuvi = r[2] || 0, m = self.members.get(r[0]);
       if (!m) {
-        self.members.set(r[0], { id: r[0], nickname: r[1], tuvi: tuvi, level: self.levelOf(tuvi).index, joinedAt: r[3] || 0, lastActive: 0, everSeated: true, pets: cleanPets(r[4]), lastGainAt: 0 });
+        var nm = { id: r[0], nickname: r[1], tuvi: tuvi, joinedAt: r[3] || 0, lastActive: 0, everSeated: true, pets: cleanPets(r[4]), lastGainAt: 0, passed: passedOf(self, r) };
+        nm.level = self.levelOfMember(nm).index;
+        self.members.set(r[0], nm);
         changed = true;
       } else {
         m.everSeated = true;
-        if (tuvi > m.tuvi) { m.tuvi = tuvi; m.level = self.levelOf(tuvi).index; changed = true; }
+        var pass = passedOf(self, r);
+        if (pass > (m.passed == null ? -1 : m.passed)) { m.passed = pass; changed = true; }
+        if (tuvi > m.tuvi) { m.tuvi = tuvi; changed = true; }
+        m.level = self.levelOfMember(m).index;
         var p = cleanPets(r[4]);
         Object.keys(p).forEach(function (k) { if (!m.pets) m.pets = {}; if ((m.pets[k] || 0) < p[k]) { m.pets[k] = p[k]; changed = true; } });
       }
@@ -252,10 +297,26 @@
     return changed;
   };
 
-  /** Linh thú hợp lệ: { loại: số sao 1..9 }. */
+  /** Cột extra khi lưu: linh thú + "_kiep" (cảnh giới cao nhất đã độ kiếp, -1 = chưa qua lần nào). Luôn ghi để tải lại không bị "miễn kiếp". */
+  function extraOf(m) {
+    var out = cleanPets(m.pets);
+    out._kiep = m.passed == null ? -1 : m.passed;
+    return out;
+  }
+  /**
+   * Cảnh giới đã độ kiếp đọc từ dữ liệu lưu. Dữ liệu cũ (trước luật độ kiếp chặn đột phá) không có "_kiep":
+   * coi như đã qua mọi cảnh giới đang có theo tu vi, để không ai bị tụt cảnh giới khi cập nhật bản mới.
+   */
+  function passedOf(sect, r) {
+    var e = r[4], k = e && typeof e === "object" ? Number(e._kiep) : NaN;
+    if (isFinite(k) && k >= -1) return Math.floor(k);
+    return sect.levelOf(r[2] || 0).realmIdx;
+  }
+
+  /** Linh thú hợp lệ: { loại: số sao 1..9 }. Khóa bắt đầu bằng "_" là dữ liệu khác (vd. "_kiep"), không phải linh thú. */
   function cleanPets(p) {
     var out = {};
-    if (p && typeof p === "object") Object.keys(p).forEach(function (k) { var n = Math.floor(Number(p[k]) || 0); if (/^[a-z_]{1,24}$/.test(k) && n > 0) out[k] = Math.min(9, n); });
+    if (p && typeof p === "object") Object.keys(p).forEach(function (k) { var n = Math.floor(Number(p[k]) || 0); if (/^[a-z][a-z_]{0,23}$/.test(k) && n > 0) out[k] = Math.min(9, n); });
     return out;
   }
 

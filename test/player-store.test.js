@@ -61,3 +61,20 @@ test("cột extra (linh thú) lưu và đọc lại; DB cũ thiếu cột thì t
   assert.deepEqual(m.find((r) => r[0] === "a")[4], { kim_phuong: 2 });
   assert.deepEqual(m.find((r) => r[0] === "old")[4], {});
 });
+
+test("kỳ 2 tuần: mã kỳ là thứ Hai đầu kỳ (mốc 09/11/2026); current / previous theo độ dài kỳ của game", () => {
+  const { periodKey } = require("../core/player-store");
+  const at = (y, m, d, h = 12) => new Date(y, m - 1, d, h).getTime();
+  assert.equal(periodKey(at(2026, 11, 12), 2), "2026-11-09");
+  assert.equal(periodKey(at(2026, 11, 22, 23), 2), "2026-11-09", "Chủ nhật tuần thứ 2 vẫn kỳ cũ");
+  assert.equal(periodKey(at(2026, 11, 23, 0), 2), "2026-11-23", "0h thứ Hai tuần thứ 3 là kỳ mới");
+  assert.equal(periodKey(at(2026, 11, 5), 2), "2026-10-26", "trước mốc vẫn chia kỳ đúng");
+  assert.equal(periodKey(at(2027, 3, 30), 2), "2027-03-29", "qua năm mới, qua đổi giờ");
+  assert.equal(periodKey(at(2026, 11, 18), 1), "2026-11-16", "1 tuần = như weekKey");
+  const { DatabaseSync } = require("node:sqlite");
+  let now = at(2026, 11, 18);
+  const store = createPlayerStore(new DatabaseSync(":memory:"), { now: () => now, periodWeeksFor: (id) => (id === "ngami" ? 2 : 1) });
+  assert.equal(store.weekOf("current", "ngami"), "2026-11-09");
+  assert.equal(store.weekOf("previous", "ngami"), "2026-10-26");
+  assert.equal(store.weekOf("current", "other"), "2026-11-16");
+});

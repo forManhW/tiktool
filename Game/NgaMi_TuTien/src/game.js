@@ -9,9 +9,9 @@
  * Game không tự thêm nhân vật nào: chỉ người xem thật (hoặc sự kiện giả lập trong TikTool) mới có mặt.
  */
 (function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory(require("./cultivation"), require("./duel"), require("./announcer"), require("./boss"), require("./possession"));
-  else root.NgaMi = Object.assign(root.NgaMi || {}, factory(root.NgaMi, root.NgaMi, root.NgaMi, root.NgaMi, root.NgaMi));
-}(typeof self !== "undefined" ? self : this, function (C, D, A, B, PS) {
+  if (typeof module === "object" && module.exports) module.exports = factory(require("./cultivation"), require("./duel"), require("./announcer"), require("./boss"), require("./possession"), require("./lines"));
+  else root.NgaMi = Object.assign(root.NgaMi || {}, factory(root.NgaMi, root.NgaMi, root.NgaMi, root.NgaMi, root.NgaMi, root.NgaMi));
+}(typeof self !== "undefined" ? self : this, function (C, D, A, B, PS, L) {
   "use strict";
 
   var SETTINGS_KEY = "ngami.tutien.settings.v1";
@@ -28,6 +28,22 @@
     return m.getFullYear() + "-" + String(m.getMonth() + 1).padStart(2, "0") + "-" + String(m.getDate()).padStart(2, "0");
   }
 
+  /**
+   * Mã kỳ lưu tu vi (anh chốt 13/11: giữ 2 tuần). Kỳ dài `weeks` tuần, tính từ thứ Hai mốc 2026-11-09, mã = thứ Hai đầu kỳ.
+   * weeks = 1 thì giống weekKey. Kỳ hiện tại (09/11 – 22/11) vẫn mã "2026-11-09" nên dữ liệu tuần đầu giữ nguyên.
+   * Phải khớp periodKey trong core/player-store.js của hub.
+   */
+  var PERIOD_ANCHOR = Date.UTC(2026, 10, 9);
+  function periodKey(ms, weeks) {
+    weeks = Math.max(1, Math.floor(weeks || 1));
+    var w = weekKey(ms);
+    if (weeks === 1) return w;
+    var p = w.split("-"), mon = Date.UTC(+p[0], +p[1] - 1, +p[2]);
+    var idx = Math.floor(Math.round((mon - PERIOD_ANCHOR) / (7 * 86400000)) / weeks);
+    var start = new Date(PERIOD_ANCHOR + idx * weeks * 7 * 86400000);
+    return start.getUTCFullYear() + "-" + String(start.getUTCMonth() + 1).padStart(2, "0") + "-" + String(start.getUTCDate()).padStart(2, "0");
+  }
+
   /** Cài đặt streamer chỉnh trên màn Cài đặt. Giá trị mặc định lấy từ config. */
   function defaultSettings(cfg) {
     return { voice: cfg.voice.enabled, duel: cfg.duel.enabled, volume: cfg.voice.volume, sfx: true, sfxVolume: cfg.sounds.volume, infoVoiceEverySec: cfg.voice.infoEverySec,
@@ -40,6 +56,8 @@
 
   /** "đạo hữu ABC" hoặc chỉ "đạo hữu" khi tên toàn ký tự lạ. */
   // Câu ĐỌC: tên lọc chỉ còn chữ đọc được (icon, kí tự lạ, chữ nước ngoài bỏ đi); không còn gì thì đọc "đạo hữu".
+  // Câu kêu gọi đọc khi có lôi kiếp / tẩu hỏa nhập ma (anh chốt 14/11).
+  var JOIN_CALL = "Tap tay hoặc sử dụng pháp bảo để gia nhập";
   function daoHuu(name) { var n = A.speakableName(name || ""); return n ? "đạo hữu " + n : "đạo hữu"; }
   // Câu HIỆN CHỮ: giữ nguyên tên (cả icon, kí tự đặc biệt).
   function daoHuuText(name) { return name ? "đạo hữu " + name : "đạo hữu"; }
@@ -66,11 +84,13 @@
     this.cfg.layout = config.layout;
     this.now = deps.now || function () { return Date.now(); };
     this.storage = deps.storage || null;
-    // Tu vi lưu THEO TUẦN (anh chốt 10/11): giữ qua mọi buổi live trong tuần, sang 0h thứ Hai thì reset.
+    // Tu vi + linh thú giữ 2 TUẦN (anh chốt 13/11, trước là 1 tuần): sang 0h thứ Hai đầu kỳ mới thì reset.
     // scope tách dữ liệu live thật ("live") với lúc mở thử không qua TikTool ("demo").
     this.scope = deps.scope === "demo" ? "demo" : "live";
-    this.week = weekKey(this.now());
+    this.week = this.periodOf(this.now());
     this.pendingJoins = [];
+    this.pendingGifts = [];
+    this.giftBatchAt = null;
     this.pendingSides = { 1: [], 2: [] };   // người vừa vào phe, gom lại đọc 1 câu
     this.lastSideFlush = 0;
     this.lastJoinFlush = 0;
@@ -81,6 +101,12 @@
     this.lastEventBannerAt = 0;
     this.lastInfoAt = 0;
     this.infoTurn = 0;
+    this.idleSince = null;
+    this.idleTurn = 0;
+    this.lastItemInviteAt = null;
+    this.idleInviteItem = false;
+    this.hubConnected = true; // Nếu SDK báo mất kết nối, tạm ngưng lời nền.
+    this.pickLine = L.createLinePicker(L.LINES, deps.lineRandom || Math.random);
 
     // Thông báo gần đây được đưa vào getState() để renderer/overlay hiện banner và hiệu ứng trên đúng nhân vật.
     this.banners = [];
@@ -89,9 +115,12 @@
       var b = { id: ++self.bannerSeq, kind: item.kind, text: item.text, priority: item.priority, memberId: item.member ? item.member.id : null };
       self.banners.push(b);
       if (self.banners.length > 8) self.banners.shift();
-      if (item.kind !== "info") self.lastEventBannerAt = self.now();
+      if (item.kind !== "info" && item.kind !== "idle") self.lastEventBannerAt = self.now();
+      if (!item.silent && self.announcer.voiceOn && deps.speaker) self.idleSince = null;
+      // Đợi hết khoảng nhắc luật sau một sự kiện có lời đọc, tránh đọc lại ngay cùng nội dung.
+      if (item.kind !== "info" && !item.silent && self.announcer.voiceOn) self.lastInfoSpokenAt = self.now();
       if (typeof deps.show === "function") deps.show(item, b);
-    } });
+    }, idle: function () { self.idleSince = self.now(); } });
     this.sect = new C.Sect(this.cfg, { now: this.now, onEvent: function (e) { self.onSectEvent(e); } });
     this.duel = new D.Duel(this.cfg, { onEvent: function (e) { self.onDuelEvent(e); } });
     this.boss = new B.Boss(this.cfg, { onEvent: function (e) { self.onBossEvent(e); } });
@@ -117,6 +146,7 @@
     this.kiep = null;             // thiên kiếp đang diễn ra
     this.kiepQueue = [];
     this.kiepSeq = 0;
+    this.kiepSelfSeq = 0;
     this.surge = null;            // Linh Khí Triều Dâng đang diễn ra { startAt, endsAt }
     this.nextSurgeAt = 0;
     this.wheel = null;            // vòng quay đang chạy
@@ -150,6 +180,8 @@
   // ---------- Cài đặt (màn hình trước khi vào game và khi bấm Thoát) ----------
   Game.prototype.applySettings = function (next) {
     var s = this.settings = Object.assign({}, this.settings, next || {});
+    var idleSeconds = Number(s.infoVoiceEverySec);
+    s.infoVoiceEverySec = !Number.isFinite(idleSeconds) ? this.cfg.voice.infoEverySec : idleSeconds <= 0 ? 0 : Math.max(15, Math.min(120, idleSeconds));
     this.cfg.duel.everyMs = Math.max(5, Number(s.duelEveryMin) || 15) * 60000;
     this.cfg.duel.durationMs = Math.min(this.cfg.duel.everyMs - 60000, Math.max(1, Number(s.duelDurationMin) || 5) * 60000);
     this.cfg.voice.volume = Math.min(1, Math.max(0, Number(s.volume)));
@@ -163,6 +195,8 @@
       if (this.possession.phase !== "idle") { this.possession.cancel(); this.restartCycle(this.now()); }
     }
     if (!s.kiep) { this.kiepQueue = []; this.kiep = null; }
+    // Bật lôi kiếp: từ Nguyên Anh trở lên phải độ kiếp thành công mới đột phá được. Tắt: lên cảnh giới theo tu vi như cũ.
+    this.sect.gateFrom = s.kiep ? this.cfg.tribulation.fromRealm : null;
     if (!s.linhKhi) this.surge = null;
     this.announcer.setVoice(!!s.voice);
     if (this.boss.phase !== "idle") {
@@ -176,8 +210,9 @@
   Game.prototype.enter = function () {
     this.running = true;
     this.announcer.setVoice(!!this.settings.voice);
+    this.idleSince = this.announcer.speaking || this.announcer.queue.length ? null : this.now();
     this.lastEventBannerAt = this.now();
-    this.lastInfoSpokenAt = 0;
+    this.lastInfoSpokenAt = this.now();
     this.cycleStart = this.now();
     if (this.settings.duel) { this.duel.enabled = true; this.duel.schedule(this.now()); }
     this.scheduleSurge(this.now());
@@ -190,6 +225,7 @@
     this.boss.cancel();               // đang đánh quái mà thoát: hủy, không thưởng; vào lại thì chu kỳ tính lại từ đầu
     this.possession.cancel();
     this.possessPending = null;
+    this.pendingGifts = []; this.giftBatchAt = null; this.idleSince = null;
     this.tickHatches(Infinity);       // trứng đã mua mà chưa kịp nở: nở luôn, không để mất linh thú
     this.kiep = null; this.kiepQueue = [];
     this.surge = null;
@@ -198,16 +234,47 @@
     this.save();
   };
 
+  Game.prototype.periodOf = function (ms) { return periodKey(ms, this.cfg.save.periodWeeks || 1); };
+
   Game.prototype.resetAllData = function () {
     this.sect.reset(); this.save();
     if (this.storage && typeof this.storage.clear === "function") this.storage.clear(this.saveKey(), this.week);
   };
 
   // ---------- Sự kiện thô từ TikTool: thả tim / tặng quà = tham gia + giữ chỗ (KHÔNG cộng tu vi) ----------
+  Game.prototype.setHubStatus = function (status) {
+    this.hubConnected = status === "connected" || status === "demo";
+    this.idleSince = this.hubConnected && !this.announcer.speaking && !this.announcer.queue.length ? this.now() : null;
+  };
+
   Game.prototype.handleLiveEvent = function (event) {
     if (!this.running || !event || !event.user || !event.user.id) return false;
     if (event.type !== "like" && event.type !== "gift") return false;
-    return this.enterSeat(event.user);
+    var seated = this.enterSeat(event.user);
+    if (seated && event.type === "gift" && event.mapped === false) {
+      if (this.giftBatchAt === null) this.giftBatchAt = this.now();
+      var count = Number(event.gift && event.gift.count), price = Number(event.gift && event.gift.diamonds);
+      var value = Number.isSafeInteger(count) && count > 0 && Number.isSafeInteger(price) && price > 0 && Number.isSafeInteger(count * price) ? count * price : null;
+      this.pendingGifts.push({ id: String(event.user.id), nickname: event.user.nickname || "", value: value });
+    }
+    return seated;
+  };
+
+  Game.prototype.flushGifts = function () {
+    var gifts = this.pendingGifts.splice(0); this.giftBatchAt = null;
+    if (!gifts.length) return;
+    var unique = [];
+    gifts.forEach(function (g) { if (!unique.some(function (x) { return x.id === g.id; })) unique.push(g); });
+    var names = unique.slice(0, 2).map(function (g) { return daoHuu(g.nickname); });
+    var who = names.join(", ") + (unique.length > 2 ? " cùng các đạo hữu khác" : "");
+    var total = 0, known = gifts.every(function (g) {
+      if (g.value === null || !Number.isSafeInteger(total + g.value)) return false;
+      total += g.value; return true;
+    });
+    var amount = known ? total.toLocaleString("vi-VN") : "";
+    var fallback = known ? "Cảm tạ " + who + " đã ủng hộ " + amount + " linh thạch cho Nga Mi!" : "Cảm tạ " + who + " đã sử dụng pháp bảo ủng hộ Nga Mi!";
+    var speech = this.pickLine(known ? "gift_thanks" : "gift_thanks_unknown", { ten: who, so_linh_thach: amount }) || fallback;
+    this.announcer.say({ kind: "gift_thanks", priority: 1, key: "gift_thanks", text: fallback, speech: speech });
   };
 
   /** Vào chỗ nếu chưa ngồi (hết chỗ thì báo "Tông môn đã đủ chỗ"), đang ngồi thì giữ chỗ. Trả true nếu đang có chỗ. */
@@ -231,7 +298,7 @@
     /** Comment tự do (mapping "mọi comment", priority thấp nhất): hiện bóng thoại trên đầu người đang ngồi. */
     binh_luan: function (params, source) {
       var user = userOf(source);
-      if (!this.sect.touch(user.id)) throw new Error("Người xem chưa tham gia (cần thả tim hoặc tặng quà)");
+      if (!this.sect.touch(user.id)) throw new Error("Người xem chưa tham gia (chưa có chỗ trong tông môn)");
       if (!this.say(user.id, source.comment && source.comment.text)) throw new Error("Comment rỗng sau khi lọc ký tự lạ");
       return true;
     },
@@ -242,14 +309,20 @@
     tu_luyen: function (params, source) {
       var user = userOf(source), amount = Math.floor(Number(params.amount) || 0);
       if (amount <= 0) throw new Error("amount phải > 0");
-      this.cultivate(user, amount, source);
+      var gained = this.cultivate(user, amount, source);
+      if (source && source.eventType === "gift") {
+        var member = this.sect.members.get(String(user.id));
+        var name = member ? member.nickname : user.nickname;
+        var thanks = "Cảm tạ " + daoHuu(name) + ", cộng " + gained.toLocaleString("vi-VN") + " tu vi";
+        this.announcer.say({ kind: "gift_train", priority: 1, key: "gift_train:" + user.id, text: thanks, speech: thanks });
+      }
       return true;
     },
     /** Vào phe tỉ thí. Streamer map comment "1" -> side 1, comment "2" -> side 2. Chỉ có hiệu lực khi đang tỉ thí. */
     vao_phe: function (params, source) {
       var user = userOf(source);
       if (!this.settings.duel) throw new Error("Tỉ thí đang tắt trong Cài đặt");
-      if (!this.sect.touch(user.id)) throw new Error("Người xem chưa tham gia (cần thả tim hoặc tặng quà)");
+      if (!this.sect.touch(user.id)) throw new Error("Người xem chưa tham gia (chưa có chỗ trong tông môn)");
       var m = this.sect.members.get(String(user.id));
       var r = this.duel.join({ id: m.id, nickname: m.nickname }, Number(params.side));
       if (r !== true) throw new Error(r);
@@ -284,14 +357,14 @@
 
   // ---------- Vòng lặp ----------
   Game.prototype.tick = function (now) {
-    // Sang tuần mới (0h thứ Hai) giữa buổi live: làm mới tu vi mọi người, ai đang ngồi vẫn ngồi.
-    var week = weekKey(now);
+    // Sang kỳ mới (0h thứ Hai đầu kỳ 2 tuần) giữa buổi live: làm mới tu vi + linh thú, ai đang ngồi vẫn ngồi.
+    var week = this.periodOf(now);
     if (week !== this.week) {
       this.week = week;
       this.sect.resetTuvi();
       this.save();
-      if (this.running) this.announcer.say({ kind: "week", priority: 3, text: "Tuần mới bắt đầu! Tu vi của mọi đạo hữu được làm mới",
-        speech: "Tuần mới bắt đầu. Tu vi của mọi đạo hữu đã được làm mới, cùng tu luyện lại từ đầu nào" });
+      if (this.running) this.announcer.say({ kind: "week", priority: 3, text: "Mùa tu luyện mới bắt đầu! Tu vi và linh thú của mọi đạo hữu được làm mới",
+        speech: "Mùa tu luyện mới bắt đầu. Tu vi và linh thú của mọi đạo hữu đã được làm mới, cùng tu luyện lại từ đầu nào" });
     }
     if (this.running) {
       this.sect.tick();
@@ -307,6 +380,7 @@
           && !this.kiep && now - this.cycleStart >= this.cfg.boss.everyMs) this.spawnBoss(now);
       this.tickHatches(now);
       this.tickKiep(now);
+      this.queueBlocked(now);
       this.tryStartKiep(now);
       this.tickSurge(now);
       this.tickWheel(now);
@@ -314,7 +388,9 @@
       this.bubbles.forEach(function (b, id) { if (b.until <= now || !self.sect.isSeated(id)) self.bubbles.delete(id); });
       if (this.pendingJoins.length && now - this.lastJoinFlush >= this.cfg.voice.joinBatchMs) this.flushJoins(now);
       if ((this.pendingSides[1].length || this.pendingSides[2].length) && now - this.lastSideFlush >= this.cfg.voice.sideJoinBatchMs) this.flushSides(now);
+      if (this.giftBatchAt !== null && now - this.giftBatchAt >= 5000) this.flushGifts();
       if (now - this.lastEventBannerAt >= INFO_QUIET_MS && now - this.lastInfoAt >= INFO_QUIET_MS) this.showInfo(now);
+      this.tickIdle(now);
     }
     if (!this.lastSave || now - this.lastSave >= this.cfg.save.everyMs) { this.lastSave = now; this.save(); }
   };
@@ -323,12 +399,12 @@
   /** Im 3 giây không có thông báo sự kiện: hiện luật chơi (chỉ chữ, không đọc). */
   /**
    * Im 3 giây không có thông báo sự kiện: hiện câu nhắc luật chơi (còn bao lâu tới tỉ thí, comment gì, cách nhập môn).
-   * Chữ hiện mỗi 3 giây; giọng chỉ đọc tối đa 1 lần mỗi `infoVoiceEverySec` giây (Cài đặt, 0 = không đọc) để không ồn.
+   * Chữ hiện mỗi 3 giây; lời nền được xếp riêng khi giọng đã rảnh.
    */
-  Game.prototype.showInfo = function (now) {
-    this.lastInfoAt = now;
+  Game.prototype.showInfo = function (now, forVoice) {
+    if (!forVoice) this.lastInfoAt = now;
     var d = this.duel, c = this.cfg.duel, bonus = c.winBonus.toLocaleString("vi-VN");
-    var join = { text: "Thả tim hoặc tặng quà để nhập môn Nga Mi", speech: "Thả tim hoặc tặng quà để nhập môn Nga Mi" };
+    var join = { text: "Hãy sử dụng pháp bảo để tu luyện nhanh hơn", speech: "Hãy sử dụng pháp bảo để tu luyện nhanh hơn" };
     var info = join, bs = this.boss, psn = this.possession;
     if (this.kiep) return;   // đang độ kiếp: để banner thiên kiếp, không chen luật chơi
     if (this.surgeActive(now)) {
@@ -336,34 +412,83 @@
         speech: "Linh khí triều dâng, còn " + duration(this.surge.endsAt - now) + ", mọi tu vi nhân đôi" };
     } else if (psn.phase === "active") {
       var pn = psn.member.nickname, phpText = psn.hp.toLocaleString("vi-VN");
-      info = { text: "Giải cứu " + shown(pn) + "! Thả tim, tặng quà để đánh thức · cứu thành công được nhân đôi tu vi đã góp",
-        speech: "Còn " + phpText + " tu vi nữa là giải cứu được " + daoHuu(pn) + ". Thả tim và tặng quà để đánh thức, cứu thành công được nhân đôi tu vi đã góp" };
+      info = { text: "Giải cứu " + shown(pn) + "! Sử dụng pháp bảo để giải cứu · cứu xong được nhân đôi tu vi đã góp",
+        speech: "Còn " + phpText + " tu vi nữa là giải cứu được " + daoHuu(pn) + ". Sử dụng pháp bảo để giúp đánh thức đồng môn" };
     } else if (psn.phase === "result") return;
     else if (bs.phase === "fight") {
       var hpText = bs.hp.toLocaleString("vi-VN") + "/" + bs.maxHp.toLocaleString("vi-VN"), mvpB = this.cfg.boss.mvpBonus.toLocaleString("vi-VN");
-      info = { text: "Đánh quái! Thả tim, tặng quà để tấn công · gây sát thương nhiều nhất +" + mvpB + " tu vi + 1 lượt quay thưởng",
-        speech: "Quái rồng còn " + hpText.replace("/", " trên ") + " máu. Thả tim và tặng quà để tấn công. Đạo hữu gây sát thương nhiều nhất được cộng " + mvpB + " tu vi và một lượt quay thưởng" };
+      info = { text: "Đánh quái! Sử dụng pháp bảo để tấn công · công đầu +" + mvpB + " tu vi + 1 lượt quay thưởng",
+        speech: "Quái rồng còn " + hpText.replace("/", " trên ") + " máu. Sử dụng pháp bảo để tấn công quái rồng" };
     } else if (bs.phase === "result") return;
     else if (this.settings.boss && this.infoTurn % 4 === 3) {
       this.infoTurn++;
       var bossLeft = duration(this.cycleStart + this.cfg.boss.everyMs - now);
-      info = { text: "Quái rồng xuất hiện sau " + bossLeft + ". Cả tông môn cùng đánh, công đầu được quay thưởng",
+      info = { text: "Quái rồng xuất hiện sau " + bossLeft + ". Cả tông môn cùng đánh, công đầu +" + this.cfg.boss.mvpBonus.toLocaleString("vi-VN") + " tu vi và 1 lượt quay thưởng",
         speech: "Còn " + bossLeft + " nữa quái rồng sẽ xuất hiện. Cả tông môn hãy chuẩn bị" };
     } else if (this.settings.duel && d.phase === "idle" && d.nextStartAt) {
       var left = duration(d.nextStartAt - now);
-      var duelInfo = { text: "Tỉ thí sẽ bắt đầu sau " + left + ", phe thắng mỗi người +" + bonus + " tu vi",
-        speech: "Còn " + left + " nữa là tới đại hội tỉ thí. Phe thắng mỗi người được cộng " + bonus + " tu vi" };
+      // Luật thưởng tỉ thí (anh chốt 11/11): phe thắng mỗi người +300, riêng công đầu x2 tu vi đã góp (thay cho +300),
+      // rồi bốc thăm 1 người phe thắng được 1 lượt vòng quay (công đầu 2 phần). Mọi câu nhắc phải nói đủ 3 ý này.
+      var duelInfo = { text: "Tỉ thí sau " + left + " · phe thắng mỗi người +" + bonus + " tu vi, công đầu x" + (c.mvpMultiplier || 2) + " tu vi đã góp" + (c.mvpWheel ? ", bốc thăm 1 người được quay thưởng" : ""),
+        speech: "Còn " + left + " nữa là tới đại hội tỉ thí. Phe thắng mỗi người được cộng " + bonus + " tu vi, riêng công đầu được nhân đôi tu vi đã góp" +
+          (c.mvpWheel ? ", và một người phe thắng được bốc thăm quay thưởng" : "") };
       info = this.infoTurn++ % 3 === 2 ? join : duelInfo;
     } else if (this.settings.duel && d.phase === "duel") {
       var remain = duration(d.endsAt - now), sc = d.scores;
       var tally = this.sideName(1) + " " + sc[1].toLocaleString("vi-VN") + " điểm, " + this.sideName(2) + " " + sc[2].toLocaleString("vi-VN") + " điểm";
-      info = { text: "Bình luận 1 vào " + this.sideName(1) + ", 2 vào " + this.sideName(2) + " · phe thắng mỗi người +" + bonus + " tu vi",
-        speech: "Tỉ thí còn " + remain + ". Hiện tại " + tally + ". Bình luận số một vào phe " + this.sideName(1) + ", số hai vào phe " + this.sideName(2) + ". Phe thắng mỗi người được cộng " + bonus + " tu vi" };
+      info = { text: "Bình luận 1 vào " + this.sideName(1) + ", 2 vào " + this.sideName(2) + " · phe thắng mỗi người +" + bonus + ", công đầu x" + (c.mvpMultiplier || 2) + (c.mvpWheel ? ", bốc thăm 1 người quay thưởng" : ""),
+        speech: "Tỉ thí còn " + remain + ". Hiện tại " + tally + ". Bình luận số một vào phe " + this.sideName(1) + ", số hai vào phe " + this.sideName(2) +
+          ". Phe thắng mỗi người được cộng " + bonus + " tu vi, công đầu được nhân đôi tu vi đã góp" + (c.mvpWheel ? ", và một người phe thắng được bốc thăm quay thưởng" : "") };
     } else if (d.phase === "result") return;
-    var every = Math.max(0, Number(this.settings.infoVoiceEverySec) || 0) * 1000;
-    var speak = every > 0 && now - (this.lastInfoSpokenAt || 0) >= every;
-    if (speak) this.lastInfoSpokenAt = now;
-    this.announcer.say({ kind: "info", priority: 0, silent: !speak, text: info.text, speech: info.speech });
+    if (forVoice) return info;
+    this.announcer.say({ kind: "info", priority: 0, silent: true, text: info.text, speech: info.speech });
+  };
+
+  Game.prototype.idleState = function (now) {
+    if (this.kiep) return "kiep";
+    if (this.surgeActive(now)) return "trieu_dang";
+    if (this.possession.phase === "active") return "tau_hoa";
+    if (this.boss.phase === "fight") return "boss";
+    if (this.duel.phase === "duel") return "duel";
+    return "tu_luyen";
+  };
+
+  Game.prototype.tickIdle = function (now) {
+    var ann = this.announcer, seconds = Number(this.settings.infoVoiceEverySec) || 0;
+    if (!this.running || !this.hubConnected || !ann.voiceOn || !ann.hooks.speaker || !seconds || this.duel.phase === "result") { this.idleSince = null; return; }
+    if (ann.speaking || ann.queue.length) { this.idleSince = null; return; }
+    if (this.idleSince === null) { this.idleSince = now; return; }
+    if (now - this.idleSince < seconds * 1000) return;
+    var groups = ["luat", "khong_khi", "nhap_mon", "khong_khi", "luat", "loi_moi"], state = this.idleState(now);
+    var full = this.sect.seated.size >= this.cfg.capacity, info, text = null, usedItemInvite = false;
+    for (var i = 0; i < groups.length && !text; i++) {
+      usedItemInvite = false;
+      var group = groups[this.idleTurn++ % groups.length];
+      if (group === "luat") {
+        var d = this.duel, c = this.cfg.duel;
+        var normalDuel = !this.kiep && !this.surgeActive(now) && this.possession.phase === "idle" && this.boss.phase === "idle";
+        if (normalDuel && this.settings.duel && c.mvpWheel && (d.phase === "duel" || (d.phase === "idle" && d.nextStartAt))) {
+          text = this.pickLine(d.phase === "duel" ? "idle_luat_duel" : "idle_luat_wait", {
+            thoi_gian: duration(d.phase === "duel" ? d.endsAt - now : d.nextStartAt - now),
+            thuong: c.winBonus.toLocaleString("vi-VN"), mvp: c.mvpMultiplier || 2,
+            diem_1: d.scores[1].toLocaleString("vi-VN"), diem_2: d.scores[2].toLocaleString("vi-VN")
+          }, state);
+        }
+        if (!text) { info = this.showInfo(now, true); text = info && info.speech; }
+      }
+      else if (group === "khong_khi") text = this.pickLine("idle_khong_khi", {}, state);
+      else if (group === "nhap_mon") text = this.pickLine(full ? "idle_full" : this.duel.phase === "duel" ? "idle_nhap_mon_duel" : "idle_nhap_mon", {}, state);
+      else {
+        if (full) continue;
+        var canInvite = this.lastItemInviteAt === null || now - this.lastItemInviteAt >= 180000;
+        usedItemInvite = this.idleInviteItem && canInvite;
+        text = this.pickLine(usedItemInvite ? "idle_loi_moi_item" : "idle_loi_moi_free", {}, state);
+        if (text) this.idleInviteItem = !usedItemInvite;
+      }
+    }
+    if (!text) { this.idleSince = now; return; }
+    if (usedItemInvite) this.lastItemInviteAt = now;
+    this.announcer.say({ kind: "idle", priority: 0, key: "idle", text: text, speech: text });
   };
 
   // ---------- Câu thông báo ----------
@@ -377,7 +502,7 @@
       if (now - last < this.cfg.fullNoticeCooldownMs) return;
       this.fullNoticeAt.set(e.member.id, now);
       var line = "Tông môn đã đủ chỗ, hẹn " + daoHuu(name) + " lần tuyển sinh tiếp theo";
-      this.announcer.say({ kind: "full", priority: 1, key: "full", text: "Tông môn đã đủ chỗ, hẹn " + daoHuuText(name ? A.displayName(name) : "") + " lần tuyển sinh tiếp theo", speech: line });
+      this.announcer.say({ kind: "full", priority: 1, key: "full", text: "Tông môn đã đủ chỗ, hẹn " + daoHuuText(name ? A.displayName(name) : "") + " lần tuyển sinh tiếp theo", speech: this.pickLine("full", { ten: daoHuu(name) }) || line });
       return;
     }
     if (e.type === "level_up") {
@@ -385,15 +510,15 @@
       var item = { kind: e.bigRealm ? "realm_up" : "level_up", member: e.member, key: "lv:" + e.member.id, priority: e.bigRealm ? 3 : 2,
         text: "Chúc mừng " + daoHuuText(name ? A.displayName(name) : "") + verb + e.to.label,
         speech: "Chúc mừng " + daoHuu(name) + verb + e.to.label };
+      item.speech = this.pickLine(e.bigRealm ? "realm_up" : "stage_up", { ten: daoHuu(name), canh_gioi: e.to.label }) || item.speech;
       if (!e.bigRealm && !this.cfg.voice.announceStageUps) item.silent = true;
       this.announcer.say(item);
-      if (e.bigRealm && e.reason !== "kiep" && e.to.realmIdx >= this.cfg.tribulation.fromRealm) this.queueKiep(e.member, e.to);
       return;
     }
     if (e.type === "seat_change") {
       this.announcer.say({ kind: "seat", member: e.member, priority: 3, key: "seat:" + e.seat,
         text: cap(daoHuuText(name ? A.displayName(name) : "")) + " trở thành " + e.seat + " Nga Mi",
-        speech: cap(daoHuu(name)) + " trở thành " + e.seat + " phái Nga Mi" });
+        speech: this.pickLine("seat", { ten: daoHuu(name), ghe: e.seat }) || cap(daoHuu(name)) + " trở thành " + e.seat + " phái Nga Mi" });
     }
   };
 
@@ -424,7 +549,10 @@
       speeches.push("Chào mừng " + (back.named ? "đạo hữu " : "") + back.who + " quay trở lại");
     }
     if (!texts.length) return;
-    this.announcer.say({ kind: "join", priority: 1, key: "join", text: texts.join(" · "), speech: speeches.join(". ") });
+    var groupLine = fresh && !back ? "join" : back && !fresh ? "join_return" : null;
+    var groupWho = fresh && !back ? fresh : back && !fresh ? back : null;
+    var groupName = groupWho ? (groupWho.named ? "đạo hữu " : "") + groupWho.who : "";
+    this.announcer.say({ kind: "join", priority: 1, key: "join", text: texts.join(" · "), speech: (groupLine && this.pickLine(groupLine, { ten: groupName })) || speeches.join(". ") });
   };
 
 
@@ -455,10 +583,10 @@
     var s1 = this.sideName(1), s2 = this.sideName(2), self = this;
     if (e.type === "duel_soon") {
       this.announcer.say({ kind: "duel_soon", priority: 3, text: "1 phút nữa bắt đầu tỉ thí!",
-        speech: "Còn một phút nữa, đại hội tỉ thí Nga Mi bắt đầu. Chuẩn bị chọn phe " + s1 + " hoặc " + s2 });
+        speech: this.pickLine("duel_soon", {}) || "Còn một phút nữa, đại hội tỉ thí Nga Mi bắt đầu. Chuẩn bị chọn phe " + s1 + " hoặc " + s2 });
     } else if (e.type === "duel_start") {
       this.announcer.say({ kind: "duel_start", priority: 3, text: "Tỉ thí bắt đầu! Bình luận 1 vào " + s1 + ", 2 vào " + s2,
-        speech: "Tỉ thí bắt đầu! Bình luận số một để vào phe " + s1 + ", số hai để vào phe " + s2 + ". Thả tim và tặng quà để giành chiến thắng" });
+        speech: this.pickLine("duel_start", {}) || "Tỉ thí bắt đầu! Bình luận số một để vào phe " + s1 + ", số hai để vào phe " + s2 + ". Hãy sử dụng pháp bảo để tu luyện nhanh hơn" });
     } else if (e.type === "duel_join") {
       var jm = this.sect.members.get(String(e.userId));
       this.pendingSides[e.side].push(jm ? jm.nickname : "");
@@ -473,21 +601,43 @@
         if (mvp && mvp.id === p.id) bonus = mvpGain;
         if (bonus > 0) self.sect.addTuvi({ id: p.id }, bonus, "duel", true);
       });
-      this.lastDuelResult = { winner: win, scores: e.scores, mvp: mvp ? (mvp.nickname || "Đạo hữu") : null };
-      if (mvp && c.mvpWheel) this.queueWheel({ id: mvp.id, nickname: mvp.nickname }, "duel");
+      this.lastDuelResult = { winner: win, scores: e.scores, mvp: mvp ? (mvp.nickname || "Đạo hữu") : null, empty: !e.participants.length };
+      var eligible = win ? e.participants.filter(function (p) { return p.side === win; }) : [];
+      // Công đầu có 2 phần, mỗi đồng đội có 1 phần; hòa thì không bốc thăm.
+      var draw = eligible.length && c.mvpWheel ? Math.floor(this.random() * (eligible.length + (mvp ? 1 : 0))) : -1;
+      var wheelWinner = draw < 0 ? null : (draw === eligible.length ? mvp : eligible[draw]);
       var fmt = function (n) { return n.toLocaleString("vi-VN"); }, score = fmt(e.scores[1]) + " – " + fmt(e.scores[2]);
+      if (!e.participants.length) {
+        // Không ai chọn phe: không có thưởng, không báo "hòa, mỗi người +100" (trước đây báo sai như vậy).
+        this.announcer.say({ kind: "duel_end", priority: 2, text: "Tỉ thí kết thúc, chưa có đạo hữu nào chọn phe",
+          speech: this.pickLine("duel_end_empty", {}) || "Trận tỉ thí kết thúc mà chưa có đạo hữu nào chọn phe. Lần sau bình luận một hoặc hai để tham gia nhé" });
+        return;
+      }
+      var outcomeLine = this.pickLine(win ? (mvp ? "duel_end_win" : "duel_end_win_no_mvp") : "duel_end_draw", { phe: win ? this.sideName(win) : "", ten: mvp ? daoHuu(mvp.nickname) : "", thuong: fmt(win ? mvpGain : c.drawBonus) });
+      if (outcomeLine) {
+        outcomeLine += " Tỉ số " + score.replace("–", "trên") + ".";
+        if (win) {
+          if (mvp && outcomeLine.indexOf(fmt(mvpGain) + " tu vi") < 0) outcomeLine += " Công đầu thêm " + fmt(mvpGain) + " tu vi.";
+          outcomeLine += mvp ? " Đồng đội mỗi người cộng " + fmt(c.winBonus) + " tu vi." : " Phe thắng mỗi người cộng " + fmt(c.winBonus) + " tu vi.";
+        }
+        if (wheelWinner) outcomeLine += " Lượt quay thuộc về " + daoHuu(wheelWinner.nickname) + ".";
+      }
       this.announcer.say({ kind: "duel_end", priority: 3,
-        text: win ? "Phe " + this.sideName(win) + " thắng " + score + "! Mỗi người +" + fmt(c.winBonus) + " tu vi" + (mvp ? ", công đầu " + shown(mvp.nickname) + " x" + (c.mvpMultiplier || 2) + " tu vi đã góp (+" + fmt(mvpGain) + ")" : "")
+        // Công đầu nhận x2 tu vi đã góp THAY CHO +300, nên banner không viết "mỗi người +300".
+        text: win ? "Phe " + this.sideName(win) + " thắng " + score + "! " + (mvp ? "Công đầu " + shown(mvp.nickname) + " x" + (c.mvpMultiplier || 2) + " tu vi đã góp (+" + fmt(mvpGain) + "), đồng đội +" : "Mỗi người +") + fmt(c.winBonus) + " tu vi"
+                  + (wheelWinner ? " · bốc thăm quay thưởng: " + shown(wheelWinner.nickname) : "")
                   : "Hai phe hòa " + score + "! Mỗi người +" + fmt(c.drawBonus) + " tu vi",
-        speech: win ? "Phe " + this.sideName(win) + " chiến thắng với tỉ số " + score.replace("–", "trên") + ". Mỗi đạo hữu phe thắng được cộng " + fmt(c.winBonus) + " tu vi"
-                      + (mvp ? ". Công đầu thuộc về " + daoHuu(mvp.nickname) + ", được nhân đôi tu vi đã góp, cộng thêm " + fmt(mvpGain) + " tu vi và một lượt quay thưởng" : "")
-                    : "Trận tỉ thí kết thúc, hai phe bất phân thắng bại. Mỗi đạo hữu tham gia được cộng " + fmt(c.drawBonus) + " tu vi" });
+        speech: outcomeLine || (win ? "Phe " + this.sideName(win) + " chiến thắng với tỉ số " + score.replace("–", "trên") + (mvp ? ". Công đầu thuộc về " + daoHuu(mvp.nickname) + ", được nhân đôi tu vi đã góp, cộng thêm " + fmt(mvpGain) + " tu vi. Các đồng đội còn lại mỗi người" : ". Mỗi đạo hữu phe thắng")
+                      + " được cộng " + fmt(c.winBonus) + " tu vi"
+                      + (wheelWinner ? ". Lượt quay may mắn thuộc về " + daoHuu(wheelWinner.nickname) : "")
+                    : "Trận tỉ thí kết thúc, hai phe bất phân thắng bại. Mỗi đạo hữu tham gia được cộng " + fmt(c.drawBonus) + " tu vi") });
+      if (wheelWinner) this.queueWheel({ id: wheelWinner.id, nickname: wheelWinner.nickname }, "duel");
     }
   };
 
   // ---------- Tẩu hỏa nhập ma ----------
   /** Bắt đầu tẩu hỏa nếu đang chờ và không có tỉ thí / đánh quái. Trả true nếu đã bắt đầu. */
-  /** Người phe A góp tu vi khi tỉ thí = tung 1 đòn trúng ngẫu nhiên 1 người đang ngồi của phe B. Không trừ tu vi ai. */
+  /** Người phe A góp tu vi khi tỉ thí = tung 1 đòn trúng ngẫu nhiên 1 người đang ngồi của phe B; người trúng mất hitLossRatio x tu vi của đòn. */
   Game.prototype.duelAttack = function (attackerId, amount, dmg) {
     if (dmg == null) dmg = amount;
     var me = this.duel.players.get(attackerId);
@@ -534,14 +684,14 @@
     var fmt = function (n) { return n.toLocaleString("vi-VN"); }, self = this;
     if (e.type === "possess_start") {
       this.announcer.say({ kind: "possess_start", priority: 3, member: e.member,
-        text: cap(daoHuuText(shown(e.member.nickname))) + " tẩu hỏa nhập ma! Thả tim, tặng quà để giải cứu (" + fmt(e.hp) + ")",
-        speech: cap(daoHuu(e.member.nickname)) + " tu luyện quá nhanh, đã tẩu hỏa nhập ma và đang tấn công đồng môn! Cả tông môn thả tim, tặng quà để giải cứu. Cứu thành công được nhân đôi tu vi đã góp" });
+        text: cap(daoHuuText(shown(e.member.nickname))) + " tẩu hỏa nhập ma! Sử dụng pháp bảo để giải cứu (" + fmt(e.hp) + ")",
+        speech: this.pickLine("possess_start", { ten: daoHuu(e.member.nickname) }) || cap(daoHuu(e.member.nickname)) + " đã tẩu hỏa nhập ma và đang tấn công đồng môn! " + JOIN_CALL });
     } else if (e.type === "possess_rescue_hit") {
       this.possessHits.push({ id: ++this.possessHitSeq, kind: "rescue", userId: e.userId, amount: e.amount });
       if (this.possessHits.length > 16) this.possessHits.shift();
     } else if (e.type === "possess_milestone") {
-      this.announcer.say({ kind: "possess_milestone", priority: 2, key: "possess_milestone", text: "Sắp giải cứu được! Còn " + e.percent + "%",
-        speech: "Chỉ còn " + e.percent + " phần trăm nữa là giải cứu được, cố lên!" });
+      this.announcer.say({ kind: "possess_milestone", priority: 2, key: "possess_milestone", text: "Còn " + e.percent + "% nữa là giải cứu được!",
+        speech: this.pickLine("possess_milestone", { phan_tram: e.percent }) || "Chỉ còn " + e.percent + " phần trăm nữa là giải cứu được, cố lên!" });
     } else if (e.type === "possess_freed") {
       var mult = this.cfg.possession.rewardMultiplier;
       e.rescuers.forEach(function (r) { self.sect.addTuvi({ id: r.id }, Math.floor(r.amount * (mult - 1)), "rescue", true); });
@@ -549,7 +699,7 @@
       this.lastPossessResult = { name: shown(e.member.nickname), rescuers: n, top: top ? shown(top.nickname) : null };
       this.announcer.say({ kind: "possess_freed", priority: 3, member: e.member,
         text: cap(daoHuuText(shown(e.member.nickname))) + " đã được giải cứu! " + n + " người góp sức được x" + mult + " tu vi đã góp",
-        speech: cap(daoHuu(e.member.nickname)) + " đã được giải cứu! " + n + " vị đạo hữu góp sức được nhân " + (mult === 2 ? "đôi" : mult) + " tu vi đã góp"
+        speech: this.pickLine("possess_freed", { ten: daoHuu(e.member.nickname), so_nguoi: n }) || cap(daoHuu(e.member.nickname)) + " đã được giải cứu! " + n + " vị đạo hữu góp sức được nhân " + (mult === 2 ? "đôi" : mult) + " tu vi đã góp"
           + (top ? ". Góp sức nhiều nhất là " + daoHuu(top.nickname) : "") });
     } else if (e.type === "possess_over") {
       // Hết tẩu hỏa: chu kỳ tính lại từ đầu (7 phút sau có tỉ thí).
@@ -591,14 +741,27 @@
       this.possessPending = { id: id, nickname: m ? m.nickname : "" };
       if (!this.tryStartPossession(now)) {
         this.announcer.say({ kind: "possess_warn", priority: 2, text: cap(daoHuuText(shown(this.possessPending.nickname))) + " khí tức hỗn loạn, sắp tẩu hỏa nhập ma!",
-          speech: cap(daoHuu(this.possessPending.nickname)) + " tu luyện quá nhanh, khí tức hỗn loạn, sắp tẩu hỏa nhập ma!" });
+          speech: this.pickLine("possess_warn", { ten: daoHuu(this.possessPending.nickname) }) || cap(daoHuu(this.possessPending.nickname)) + " tu luyện quá nhanh, khí tức hỗn loạn, sắp tẩu hỏa nhập ma!" });
       }
     }
     // Đang đánh quái: sát thương lên rồng.
     if (this.boss.phase === "fight") this.boss.hit({ id: id, nickname: m ? m.nickname : "" }, dmg, now);
     // Thiên kiếp: người khác góp tu vi = hộ pháp, dựng kết giới cho người đang độ kiếp.
+    // Chính người độ kiếp tu luyện / dùng pháp bảo: tự hộ thân, selfShieldPct% tu vi nhận được tính vào kết giới.
     var k = this.kiep;
-    if (k && k.phase === "strike" && k.targetId !== id) { k.shield += amount; k.helpers[id] = (k.helpers[id] || 0) + amount; }
+    if (k && k.phase === "strike") {
+      if (k.targetId !== id) { k.shield += amount; k.helpers[id] = (k.helpers[id] || 0) + amount; }
+      else {
+        var own = Math.floor(amount * this.cfg.tribulation.selfShieldPct / 100);
+        if (own > 0) {
+          k.shield += own; k.selfShield += own;
+          k.selfHits.push({ id: ++this.kiepSelfSeq, amount: own });
+          if (k.selfHits.length > 8) k.selfHits.shift();
+          this.announcer.say({ kind: "kiep_self", priority: 1, silent: true, key: "kiep_self", member: m,
+            text: shown(k.name) + " tự hộ thân! +" + own.toLocaleString("vi-VN") + " kết giới" });
+        }
+      }
+    }
     return amount;
   };
 
@@ -620,9 +783,11 @@
       for (var i = 0; i < eggs; i++) this.hatches.push({ id: ++this.hatchSeq, fxId: fx.id, userId: id, due: now + this.cfg.pets.hatchMs + i * 700 });
     }
     var name = m ? m.nickname : "", times = count > 1 ? " x" + count : "", fmt = gained.toLocaleString("vi-VN");
-    this.announcer.say({ kind: "item", priority: item.speak ? 2 : 1, silent: !item.speak, member: m, key: "item:" + id + ":" + itemId,
-      text: shown(name) + " dùng " + item.name + times + "! +" + fmt + " tu vi",
-      speech: cap(daoHuu(name)) + " dùng " + item.name + ", tăng " + fmt + " tu vi" });
+    // Mọi pháp bảo đều đọc (anh chốt 14/11): "Đạo hữu A vừa sử dụng pháp bảo Chu Quả, cộng 100 tu vi".
+    // Món đắt (speak: true) ưu tiên cao hơn; live đông thì câu món rẻ có thể bị bỏ bớt (hàng chờ giọng đọc giới hạn, câu chờ lâu bị bỏ).
+    this.announcer.say({ kind: "item", priority: item.speak ? 2 : 1, member: m, key: "item:" + id + ":" + itemId,
+      text: shown(name) + " vừa sử dụng pháp bảo " + item.name + times + "! +" + fmt + " tu vi",
+      speech: cap(daoHuu(name)) + " vừa sử dụng pháp bảo " + item.name + (count > 1 ? " " + count + " lần" : "") + ", cộng " + fmt + " tu vi" });
     return true;
   };
 
@@ -654,19 +819,36 @@
         : shown(m.nickname) + (result === "new" ? " nở ra " + t.name + "! " : " nở thêm " + t.name + ", hợp thể lên " + starText + "! ") + "(" + effect + ")";
       var speech = result === "wheel" ? cap(daoHuu(m.nickname)) + " nở ra " + t.name + " đã đủ " + P.maxStars + " sao, được một lượt quay thưởng"
         : cap(daoHuu(m.nickname)) + (result === "new" ? " nở ra linh thú " + t.name : " có " + t.name + " hợp thể lên " + starText) + ", " + effect.replace(/%/g, " phần trăm");
-      self.announcer.say({ kind: "hatch", priority: 3, member: m, text: text, speech: speech });
+      self.announcer.say({ kind: "hatch", priority: 3, member: m, text: text, speech: self.pickLine("hatch_" + result, { ten: daoHuu(m.nickname), linh_thu: t.name, sao: stars }) || speech });
       return false;
     });
   };
 
   // ---------- Thiên kiếp ----------
-  Game.prototype.queueKiep = function (member, level) {
+  // Luật (anh chốt 14/11): từ Nguyên Anh trở lên, đủ tu vi lên đại cảnh giới mới thì phải độ kiếp.
+  //  - Chưa độ kiếp / thất bại: dừng ở Đại viên mãn cảnh giới cũ, KHÔNG mất tu vi (vẫn tích lũy). Thử lại sau retryMs
+  //    hoặc khi tu vi tăng thêm retryTuviPct% so với lúc thất bại.
+  //  - Thành công: đột phá + người độ kiếp +successBonusPct% tu vi, mọi người hộ pháp +helperBonusPct% số đã góp, người góp nhiều nhất thêm topHelperBonus.
+  //  - Người độ kiếp tự tu luyện / dùng pháp bảo trong lúc độ kiếp: selfShieldPct% tu vi nhận được vào kết giới (tự hộ thân).
+  Game.prototype.queueKiep = function (member, realmIdx) {
     if (!this.settings.kiep || !this.running || !member) return;
     var id = String(member.id), q = this.kiepQueue.filter(function (x) { return x.id === id; })[0];
     if (this.kiep && this.kiep.targetId === id) return;
-    if (q) { q.realmIdx = Math.max(q.realmIdx, level.realmIdx); return; }
+    if (q) { q.realmIdx = realmIdx; return; }
     if (this.kiepQueue.length >= this.cfg.tribulation.maxQueue) return;
-    this.kiepQueue.push({ id: id, realmIdx: level.realmIdx });
+    this.kiepQueue.push({ id: id, realmIdx: realmIdx });
+  };
+
+  /** Người đang ngồi đã đủ tu vi đột phá nhưng chưa độ kiếp (và hết thời gian chờ sau lần thất bại): xếp hàng độ kiếp. */
+  Game.prototype.queueBlocked = function (now) {
+    if (!this.settings.kiep || this.kiepQueue.length >= this.cfg.tribulation.maxQueue) return;
+    var self = this;
+    this.sect.ranking().forEach(function (m) {
+      var r = self.sect.needsKiep(m);
+      if (r < 0) return;
+      if (m.kiepRetryAt && now < m.kiepRetryAt && m.tuvi < (m.kiepRetryTuvi || 0)) return;
+      self.queueKiep(m, r);
+    });
   };
 
   /** Bắt đầu thiên kiếp khi không có tỉ thí / đánh quái / tẩu hỏa, và tỉ thí kế tiếp còn đủ xa. */
@@ -677,12 +859,14 @@
     if (this.duel.enabled && this.duel.nextStartAt && this.duel.nextStartAt - now < T.durationMs + T.resultMs + 2000) return false;
     var q = this.kiepQueue.shift(), m = this.sect.members.get(q.id);
     if (!m || !this.sect.isSeated(q.id)) return false;
-    var realm = this.cfg.realms[q.realmIdx], need = Math.max(100, Math.min(T.shieldMax, Math.round(realm.stages[0] * T.shieldPct / 100)));
-    this.kiep = { id: ++this.kiepSeq, targetId: q.id, name: m.nickname, realmIdx: q.realmIdx, realmName: realm.name, startAt: now, endsAt: now + T.durationMs,
-      need: need, shield: 0, helpers: {}, strikes: T.strikes[q.realmIdx] || 3, struck: 0, log: [], phase: "strike", success: null };
+    var realmIdx = this.sect.needsKiep(m);
+    if (realmIdx < 0) return false;        // đã đột phá (vd. tắt rồi bật lại lôi kiếp)
+    var realm = this.cfg.realms[realmIdx], need = Math.max(100, Math.min(T.shieldMax, Math.round(realm.stages[0] * T.shieldPct / 100)));
+    this.kiep = { id: ++this.kiepSeq, targetId: q.id, name: m.nickname, realmIdx: realmIdx, realmName: realm.name, startAt: now, endsAt: now + T.durationMs,
+      need: need, shield: 0, selfShield: 0, selfHits: [], helpers: {}, strikes: T.strikes[realmIdx] || 3, struck: 0, log: [], phase: "strike", success: null };
     this.announcer.say({ kind: "kiep_start", priority: 3, member: m,
-      text: "Lôi kiếp giáng xuống " + shown(m.nickname) + "! Thả tim, tặng quà hộ pháp (" + need.toLocaleString("vi-VN") + ")",
-      speech: cap(daoHuu(m.nickname)) + " đột phá " + realm.name + ", lôi kiếp giáng xuống! Đồng môn mau thả tim, tặng quà hộ pháp" });
+      text: "Lôi kiếp giáng xuống " + shown(m.nickname) + "! Độ kiếp thành công mới đột phá " + realm.name + ". Sử dụng pháp bảo để hộ pháp",
+      speech: this.pickLine("kiep_start", { ten: daoHuu(m.nickname), canh_gioi: realm.name }) || "Lôi kiếp giáng xuống " + daoHuu(m.nickname) + ", độ kiếp thành công mới đột phá " + realm.name + "! " + JOIN_CALL });
     return true;
   };
 
@@ -697,23 +881,38 @@
         k.log.push({ n: k.struck, blocked: k.shield >= k.need * k.struck / k.strikes });
       }
       if (now < k.endsAt) return;
-      var m = this.sect.members.get(k.targetId);
+      var m = this.sect.members.get(k.targetId), self = this;
       k.success = k.shield >= k.need;
       k.phase = "result";
       k.resultUntil = now + T.resultMs;
       var helpers = Object.keys(k.helpers).sort(function (a, b) { return k.helpers[b] - k.helpers[a]; }), top = helpers[0] ? this.sect.members.get(helpers[0]) : null;
+      var fmt = function (n) { return (n || 0).toLocaleString("vi-VN"); };
+      k.topHelper = top ? top.nickname : null;
+      k.helperCount = helpers.length;
       if (k.success && m) {
+        // Thưởng trước rồi mới đột phá, để câu "đột phá thành công" đọc đúng cảnh giới cuối cùng.
         k.bonus = Math.floor(m.tuvi * T.successBonusPct / 100);
         this.sect.addTuvi({ id: m.id }, k.bonus, "kiep", true);
-        if (top) this.sect.addTuvi({ id: top.id }, T.topHelperBonus, "kiep", true);
+        helpers.forEach(function (id) {
+          var extra = Math.floor(k.helpers[id] * T.helperBonusPct / 100) + (top && id === top.id ? T.topHelperBonus : 0);
+          if (extra > 0) self.sect.addTuvi({ id: id }, extra, "kiep", true);
+        });
+        m.kiepRetryAt = 0; m.kiepRetryTuvi = 0;
+        this.announcer.say({ kind: "kiep_end", priority: 3, member: m,
+          text: shown(k.name) + " độ kiếp thành công! +" + fmt(k.bonus) + " tu vi" + (helpers.length ? " · người hộ pháp +" + T.helperBonusPct + "% tu vi đã góp" : "") +
+            (top ? " · hộ pháp đầu " + shown(top.nickname) + " thêm +" + fmt(T.topHelperBonus) : ""),
+          speech: this.pickLine("kiep_success", { ten: daoHuu(k.name), thuong: fmt(k.bonus) }) || "Chúc mừng " + daoHuu(k.name) + " độ kiếp thành công" + (helpers.length ? ". Đồng môn hộ pháp được thưởng thêm tu vi" : "") +
+            (top ? ". Hộ pháp nhiều nhất là " + daoHuu(top.nickname) : "") });
+        // Báo "độ kiếp thành công" trước, rồi mới tới câu "đột phá thành công, bước vào cảnh giới …".
+        this.sect.passKiep(m.id, k.realmIdx);
+      } else if (m) {
+        // Thất bại: kẹt ở Đại viên mãn, không mất tu vi. Thử lại sau retryMs hoặc khi tu vi tăng thêm retryTuviPct%.
+        m.kiepRetryAt = now + T.retryMs;
+        m.kiepRetryTuvi = m.tuvi + Math.ceil(m.tuvi * T.retryTuviPct / 100);   // cộng số nguyên, tránh lệch 1 do số thực (13000 x 1,1 = 14300,000…2)
+        this.announcer.say({ kind: "kiep_end", priority: 3, member: m,
+          text: shown(k.name) + " độ kiếp thất bại, chưa đột phá được " + k.realmName + ". Tu vi vẫn giữ nguyên, sẽ độ kiếp lại sau",
+          speech: this.pickLine("kiep_failed", { ten: daoHuu(k.name), canh_gioi: k.realmName }) || cap(daoHuu(k.name)) + " độ kiếp thất bại, chưa đột phá được " + k.realmName + ". Tu vi vẫn được giữ nguyên, lần sau đồng môn cùng hộ pháp nhé" });
       }
-      k.topHelper = top ? top.nickname : null;
-      var fmt = function (n) { return (n || 0).toLocaleString("vi-VN"); };
-      this.announcer.say({ kind: "kiep_end", priority: 3, member: m,
-        text: k.success ? shown(k.name) + " độ kiếp thành công! +" + fmt(k.bonus) + " tu vi" + (top ? " · hộ pháp đầu " + shown(top.nickname) + " +" + fmt(T.topHelperBonus) : "")
-                        : shown(k.name) + " vượt qua lôi kiếp, kết giới chưa đủ nên không có thưởng",
-        speech: k.success ? "Chúc mừng " + daoHuu(k.name) + " độ kiếp thành công, được cộng " + fmt(k.bonus) + " tu vi" + (top ? ". Hộ pháp nhiều nhất là " + daoHuu(top.nickname) : "")
-                          : cap(daoHuu(k.name)) + " đã vượt qua lôi kiếp. Lần sau đồng môn hộ pháp nhiều hơn để được thưởng nhé" });
       return;
     }
     if (k.phase === "result" && now >= k.resultUntil) this.kiep = null;
@@ -737,7 +936,7 @@
     this.surge = { startAt: now, endsAt: now + S.durationMs };
     var sec = Math.round(S.durationMs / 1000);
     this.announcer.say({ kind: "surge_start", priority: 3, text: "Linh khí triều dâng! " + sec + " giây tới mọi tu vi x" + S.multiplier,
-      speech: "Linh khí triều dâng! Trong " + sec + " giây tới, mọi tu vi nhận được đều nhân " + (S.multiplier === 2 ? "đôi" : S.multiplier) + ". Thả tim, tặng quà ngay!" });
+      speech: this.pickLine("surge_start", { giay: sec, he_so: S.multiplier }) || "Linh khí triều dâng! Trong " + sec + " giây tới, mọi tu vi nhận được đều nhân " + (S.multiplier === 2 ? "đôi" : S.multiplier) + ". Hãy sử dụng pháp bảo để tu luyện nhanh hơn" });
   };
 
   // ---------- Quái rồng ----------
@@ -763,13 +962,16 @@
     if (fire) {
       seated.forEach(function (id) { var lost = self.sect.removeTuvi(id, b.fireDamage); hits.push({ id: id, amount: lost }); });
       this.announcer.say({ kind: "boss_fire", priority: 2, key: "boss_fire", text: b.name + " phun lửa! Cả tông môn -" + b.fireDamage + " tu vi",
-        speech: b.name + " phun lửa! Cả tông môn mất " + b.fireDamage + " tu vi" });
+        speech: this.pickLine("boss_fire", { boss: b.name, sat_thuong: b.fireDamage }) || b.name + " phun lửa! Cả tông môn mất " + b.fireDamage + " tu vi" });
     } else {
-      var target = seated[Math.floor(this.random() * seated.length)];
+      // Ưu tiên đánh người còn tu vi (đánh người 0 tu vi thì banner "-0 tu vi" vô nghĩa).
+      var pool = seated.filter(function (id) { var m = self.sect.members.get(id); return m && m.tuvi > 0; });
+      if (!pool.length) pool = seated;
+      var target = pool[Math.floor(this.random() * pool.length)];
       hits.push({ id: target, amount: this.sect.removeTuvi(target, b.attackDamage) });
       var t = this.sect.members.get(target);
       this.announcer.say({ kind: "boss_attack", priority: 1, silent: true, key: "boss_attack",
-        text: b.name + " đánh trúng " + shown(t ? t.nickname : "") + ": -" + hits[0].amount + " tu vi" });
+        text: b.name + " đánh trúng " + shown(t ? t.nickname : "") + (hits[0].amount > 0 ? ": -" + hits[0].amount + " tu vi" : "") });
     }
     this.bossAttacks.push({ id: ++this.bossAttackSeq, kind: fire ? "fire" : "single", hits: hits });
     if (this.bossAttacks.length > 6) this.bossAttacks.shift();
@@ -778,14 +980,14 @@
   Game.prototype.onBossEvent = function (e) {
     var fmt = function (n) { return n.toLocaleString("vi-VN"); }, b = this.cfg.boss;
     if (e.type === "boss_start") {
-      this.announcer.say({ kind: "boss_start", priority: 3, text: "Quái rồng " + b.name + " xuất hiện! Thả tim, tặng quà để tấn công (" + fmt(e.hp) + " máu)",
-        speech: "Quái rồng " + b.name + " đã xuất hiện! Cả tông môn thả tim và tặng quà để tấn công. Đạo hữu gây sát thương nhiều nhất được cộng " + fmt(b.mvpBonus) + " tu vi và một lượt quay thưởng" });
+      this.announcer.say({ kind: "boss_start", priority: 3, text: "Quái rồng " + b.name + " xuất hiện! Mọi tu vi đều đánh vào rồng (" + fmt(e.hp) + " máu)",
+        speech: this.pickLine("boss_start", { boss: b.name, mau: fmt(e.hp) }) || "Quái rồng " + b.name + " đã xuất hiện! Mọi tu vi đồng môn nhận được đều đánh vào rồng" });
     } else if (e.type === "boss_hit") {
       this.bossHits.push({ id: ++this.bossHitSeq, userId: e.userId, amount: e.amount });
       if (this.bossHits.length > 12) this.bossHits.shift();
     } else if (e.type === "boss_milestone") {
       this.announcer.say({ kind: "boss_milestone", priority: 2, key: "boss_milestone", text: "Quái rồng chỉ còn " + e.percent + "% máu!",
-        speech: "Quái rồng chỉ còn " + e.percent + " phần trăm máu. Cố lên chư vị đạo hữu!" });
+        speech: this.pickLine("boss_milestone", { boss: b.name, phan_tram: e.percent }) || "Quái rồng chỉ còn " + e.percent + " phần trăm máu. Cố lên chư vị đạo hữu!" });
     } else if (e.type === "boss_killed") {
       var top = e.top;
       if (top) {
@@ -795,7 +997,7 @@
       this.lastBossResult = top ? { name: shown(top.nickname), damage: top.damage } : null;
       this.announcer.say({ kind: "boss_killed", priority: 3,
         text: "Quái rồng đã bị tiêu diệt!" + (top ? " Công đầu " + shown(top.nickname) + " (" + fmt(top.damage) + " sát thương) +" + fmt(b.mvpBonus) + " tu vi + 1 lượt quay" : ""),
-        speech: "Quái rồng đã bị tiêu diệt!" + (top ? " Công đầu thuộc về " + daoHuu(top.nickname) + " với " + fmt(top.damage) + " sát thương, được cộng " + fmt(b.mvpBonus) + " tu vi và một lượt quay thưởng" : "") });
+        speech: this.pickLine(top ? "boss_killed" : "boss_killed_no_top", { ten: top ? daoHuu(top.nickname) : "", sat_thuong: top ? fmt(top.damage) : "", boss: b.name }) || "Quái rồng đã bị tiêu diệt!" + (top ? " Công đầu thuộc về " + daoHuu(top.nickname) + " với " + fmt(top.damage) + " sát thương, được cộng " + fmt(b.mvpBonus) + " tu vi và một lượt quay thưởng" : "") });
     } else if (e.type === "boss_over") {
       // Rồng chết xong: chu kỳ tu luyện / tỉ thí tính lại từ đầu (tẩu hỏa đang chờ sẽ bắt đầu ngay ở tick sau).
       this.restartCycle(this.now());
@@ -822,7 +1024,7 @@
     var name = m ? m.nickname : next.member.nickname;
     this.wheel = { id: ++this.wheelSeq, memberId: String(next.member.id), name: name, reason: next.reason, index: index,
       prize: this.cfg.wheel.prizes[index].tuvi, startAt: now, spinMs: this.cfg.wheel.spinMs, applied: false };
-    this.announcer.say({ kind: "wheel_start", priority: 3, text: shown(name) + " quay thưởng!",
+    this.announcer.say({ kind: "wheel_start", priority: 3, silent: true, text: shown(name) + " quay thưởng!",
       speech: daoHuu(name).replace(/^đ/, "Đ") + " được một lượt quay thưởng" });
   };
 
@@ -834,7 +1036,7 @@
       this.sect.addTuvi({ id: w.memberId }, w.prize, "wheel", true);
       var fmt = w.prize.toLocaleString("vi-VN");
       this.announcer.say({ kind: "wheel_result", priority: 3, member: this.sect.members.get(w.memberId),
-        text: shown(w.name) + " quay trúng +" + fmt + " tu vi!", speech: "Chúc mừng " + daoHuu(w.name) + " quay trúng " + fmt + " tu vi" });
+        text: shown(w.name) + " quay trúng +" + fmt + " tu vi!", speech: this.pickLine("wheel_result", { ten: daoHuu(w.name), thuong: fmt }) || "Chúc mừng " + daoHuu(w.name) + " quay trúng " + fmt + " tu vi" });
     }
     if (w.applied && now >= w.startAt + w.spinMs + WHEEL_SHOW_MS) this.startWheel(now);
   };
@@ -845,6 +1047,10 @@
     var now = this.now(), duel = this.duel, showSides = duel.phase !== "idle", bubbles = this.bubbles;
     var psn = this.possession, possessedId = psn.phase !== "idle" && psn.member ? psn.member.id : null, sect = this.sect;
     var auraMs = this.cfg.aura.ms, petTypes = this.cfg.pets.types, k = this.kiep;
+    // Đánh rồng / giải cứu: hạng sát thương của từng người (renderer phóng to hào quang theo hạng, thay cho bảng top).
+    var fightRank = {}, fightList = this.boss.phase !== "idle" ? this.boss.ranking().map(function (d) { return { id: d.id, v: d.damage }; })
+      : psn.phase !== "idle" ? psn.rescuerList().map(function (r) { return { id: r.id, v: r.amount }; }) : [];
+    fightList.forEach(function (d, i) { if (d.v > 0) fightRank[d.id] = { rank: i + 1, pct: Math.round(100 * d.v / fightList[0].v) / 100 }; });
     return {
       running: this.running,
       settings: { voice: this.settings.voice, duel: this.settings.duel },
@@ -858,6 +1064,7 @@
           side: showSides && duel.players.has(s.member.id) ? duel.players.get(s.member.id).side : 0,
           duelPoints: showSides && duel.players.has(s.member.id) ? duel.players.get(s.member.id).points : 0,
           aura: !!s.member.lastGainAt && now - s.member.lastGainAt < auraMs,
+          fight: fightRank[s.member.id] || null,
           pets: petTypes.filter(function (t) { return s.member.pets && s.member.pets[t.id]; }).map(function (t) { return { id: t.id, stars: s.member.pets[t.id] }; }) };
       }),
       capacity: this.cfg.capacity,
@@ -867,7 +1074,7 @@
         nextInMs: this.settings.boss && this.boss.phase === "idle" ? Math.ceil(Math.max(0, this.cycleStart + this.cfg.boss.everyMs - now) / 1000) * 1000 : null }),
       possession: psn.phase === "idle" ? { phase: "idle", pending: this.possessPending ? shown(this.possessPending.nickname) : null }
         : Object.assign(psn.snapshot(), (function () {
-            var m = sect.members.get(possessedId), lv = m ? sect.levelOf(m.tuvi) : null;
+            var m = sect.members.get(possessedId), lv = m ? sect.levelOfMember(m) : null;
             return { name: shown(psn.member.nickname), tuvi: m ? m.tuvi : 0, label: lv ? lv.label : "", realm: lv ? lv.realmIdx : 0,
               hits: self.possessHits.slice(), lastResult: self.lastPossessResult || null,
               top: psn.snapshot().top.map(function (t) { return { id: t.id, name: shown(t.name), amount: t.amount }; }) };
@@ -878,7 +1085,8 @@
       items: this.itemFx.slice(),
       hatches: this.hatchFx.slice(),
       kiep: k ? { id: k.id, targetId: k.targetId, name: shown(k.name), realmName: k.realmName, phase: k.phase, need: k.need, shield: k.shield,
-        realm: (function () { var km = sect.members.get(k.targetId); return km ? sect.levelOf(km.tuvi).realmIdx : k.realmIdx; })(),
+        realm: (function () { var km = sect.members.get(k.targetId); return km ? sect.levelOfMember(km).realmIdx : k.realmIdx; })(),
+        selfShield: k.selfShield || 0, selfHits: (k.selfHits || []).slice(),
         strikes: k.strikes, struck: k.struck, log: k.log.slice(), success: k.success, bonus: k.bonus || 0,
         remainingMs: k.phase === "strike" ? Math.ceil(Math.max(0, k.endsAt - now) / 1000) * 1000 : 0 } : null,
       surge: this.surgeActive(now) ? { multiplier: this.cfg.surge.multiplier, remainingMs: Math.ceil((this.surge.endsAt - now) / 1000) * 1000 } : null,
@@ -962,5 +1170,5 @@
     };
   }
 
-  return { Game: Game, hubStore: hubStore, ACTION_IDS: Object.keys(ACTIONS), localStore: localStore, defaultSettings: defaultSettings, weekKey: weekKey };
+  return { Game: Game, hubStore: hubStore, ACTION_IDS: Object.keys(ACTIONS), localStore: localStore, defaultSettings: defaultSettings, weekKey: weekKey, periodKey: periodKey };
 }));

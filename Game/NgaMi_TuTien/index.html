@@ -22,7 +22,7 @@
     <label class="row"><span>Âm lượng giọng</span><input id="sVolume" type="range" min="0" max="1" step="0.05"></label>
     <label class="row"><span>Âm thanh lên cấp<small>Phát mỗi khi nhân vật thăng cấp</small></span><input id="sSfx" type="checkbox"></label>
     <div class="row"><span>Âm lượng âm thanh</span><span><input id="sSfxVolume" type="range" min="0" max="1" step="0.05"> <button id="testSfx" type="button">Nghe thử</button></span></div>
-    <label class="row"><span>Đọc nhắc luật mỗi (giây)<small>Còn bao lâu tới tỉ thí, comment gì, cách nhập môn. 0 = chỉ hiện chữ, không đọc.</small><small class="hint" data-for="sInfo">Gợi ý: {v} giây. Live đông, nhiều thông báo thì tăng lên 60.</small></span><input id="sInfo" type="number" min="0" max="600" step="5"></label>
+    <label class="row"><span>Lời dẫn khi rảnh (giây)<small>Khoảng nghỉ sau khi giọng đọc xong. 0 = chỉ hiện chữ, không đọc lời dẫn.</small><small class="hint" data-for="sInfo">Gợi ý: {v} giây; chọn 0 hoặc từ 15 đến 120 giây.</small></span><input id="sInfo" type="number" min="0" max="120" step="5"></label>
     <label class="row"><span>Đọc cả tiểu cảnh<small>Tắt thì chỉ đọc khi lên đại cảnh giới (vd. Trúc Cơ, Kết Đan). Live đông nên tắt cho đỡ ồn.</small></span><input id="sStage" type="checkbox"></label>
     <div class="row"><span>Thử giọng</span><button id="testVoice" type="button">Nghe thử</button></div>
 
@@ -42,11 +42,11 @@
     <label class="row"><span>Trong (giây)<small class="hint" data-for="sTauHoaSec">Gợi ý: {v} giây.</small></span><input id="sTauHoaSec" type="number" min="5" max="600" step="5"></label>
 
     <h2>Sự kiện khác</h2>
-    <label class="row"><span>Thiên kiếp<small>Lên đại cảnh giới từ Nguyên Anh trở lên thì lôi kiếp giáng xuống 15 giây; đồng môn thả tim, tặng quà hộ pháp. Đủ kết giới: +5% tu vi, hộ pháp nhiều nhất +1.000. Không đủ: không phạt.</small></span><input id="sKiep" type="checkbox"></label>
+    <label class="row"><span>Thiên kiếp<small>Từ Nguyên Anh trở lên phải độ kiếp (30 giây) mới đột phá; đồng môn dùng pháp bảo để hộ pháp. Thành công: +5% tu vi, người hộ pháp +50% đã góp, hộ pháp nhiều nhất thêm +1.000. Thất bại: kẹt ở Đại viên mãn, không mất tu vi, độ kiếp lại sau. Tắt: lên cảnh giới theo tu vi, không cần độ kiếp.</small></span><input id="sKiep" type="checkbox"></label>
     <label class="row"><span>Linh Khí Triều Dâng<small>Ngẫu nhiên 15–25 phút một lần, 60 giây mọi tu vi nhân đôi.</small></span><input id="sLinhKhi" type="checkbox"></label>
 
     <h2>Dữ liệu</h2>
-    <div class="row"><span>Xóa tu vi tuần này<small>Tu vi giữ qua các buổi live trong tuần, tự reset 0h thứ Hai. Top tuần xuất ở thẻ game trên TikTool.</small></span><button id="resetData" type="button">Xóa</button></div>
+    <div class="row"><span>Xóa tu vi kỳ này<small>Tu vi và linh thú giữ 2 tuần qua các buổi live, tự reset 0h thứ Hai đầu kỳ mới. Top kỳ xuất ở thẻ game trên TikTool.</small></span><button id="resetData" type="button">Xóa</button></div>
     <div class="row"><span>Điền gợi ý<small>Đưa tất cả ô số và công tắc về giá trị gợi ý (chưa lưu cho tới khi bấm Vào game).</small></span><button id="useDefaults" type="button">Điền gợi ý</button></div>
     <p class="note" id="demoNote">Đang mở trực tiếp, không qua TikTool: game sẽ không nhận sự kiện nào. Hãy mở game bằng nút Start Game trong TikTool.</p>
     <button id="enterBtn" class="primary" type="button">Vào game</button>
@@ -63,7 +63,9 @@
 <script src="src/boss.js"></script>
 <script src="src/possession.js"></script>
 <script src="src/announcer.js"></script>
+<script src="src/lines.js"></script>
 <script src="src/game.js"></script>
+<script src="src/tag-layout.js"></script>
 <script src="src/render.js"></script>
 <script src="src/sound.js"></script>
 <script>
@@ -119,7 +121,7 @@
     onAction: function (a, p, s) { return game.handleAction(a, p, s); },
     onLiveEvent: function (e) { game.handleLiveEvent(e); },   // tim/quà thô: tham gia + giữ chỗ, không cộng tu vi
     onState: function (state) { view.render(state); },    // chế độ overlay mirror: chỉ vẽ lại state nhận được
-    onStatus: function (s) { document.title = "Nga Mi Tu Tiên · " + s; }
+    onStatus: function (s) { game.setHubStatus(s); document.title = "Nga Mi Tu Tiên · " + s; }
   }) : { emit: function () {}, isOverlay: false };
 
   if (live.isOverlay) {   // overlay: không có màn Cài đặt, không đọc giọng
@@ -149,18 +151,20 @@
     var b = CFG.boss, d = CFG.duel, ps = CFG.possession;
     var trucCo = CFG.realms.filter(function (r) { return r.id === "truc_co"; })[0];
     var items = [
-      "<b>Vào tông môn:</b> thả tim hoặc tặng quà là có chỗ ngồi (tối đa " + CFG.capacity + " người). Không tương tác " + Math.round(CFG.idleMs / 60000) + " phút thì mờ dần rồi rời chỗ, tu vi vẫn giữ.",
+      "<b>Vào tông môn:</b> người xem tương tác trên live là có chỗ ngồi (tối đa " + CFG.capacity + " người). Không tương tác " + Math.round(CFG.idleMs / 60000) + " phút thì mờ dần rồi rời chỗ, tu vi vẫn giữ.",
       "<b>Tu vi:</b> game chỉ nhận số tu vi TikTool gửi sang. Mapping gợi ý ở TikTool: <b>100 tim = 100 tu vi</b>, <b>Rose = 50 tu vi</b>; quà khác tự đặt theo giá xu.",
       "<b>Cảnh giới:</b> 10 đại cảnh giới" + (trucCo ? ", lên Trúc Cơ cần " + vn(trucCo.stages[0]) + " tu vi" : "") + ". Top 3 ngồi ghế Chưởng môn, Tả / Hữu hộ pháp.",
-      "<b>Tỉ thí:</b> comment <b>1</b> vào " + d.sides[0].name + ", <b>2</b> vào " + d.sides[1].name + "; ai không chọn thì ngồi dưới xem và tu luyện. Phe thắng mỗi người +" + vn(d.winBonus) + " tu vi, công đầu phe thắng được x" + d.mvpMultiplier + " tu vi đã góp và 1 lượt vòng quay; hòa mỗi người +" + vn(d.drawBonus) + ".",
+      "<b>Tỉ thí:</b> comment <b>1</b> vào " + d.sides[0].name + ", <b>2</b> vào " + d.sides[1].name + "; ai không chọn thì ngồi dưới xem và tu luyện. Phe thắng: công đầu được x" + d.mvpMultiplier + " tu vi đã góp (thay cho +" + vn(d.winBonus) + "), các đồng đội khác mỗi người +" + vn(d.winBonus) + " tu vi. Sau đó <b>bốc thăm 1 người phe thắng</b> được 1 lượt vòng quay (công đầu có 2 phần, mỗi đồng đội 1 phần; công đầu không chắc chắn được quay). Hòa: mỗi người +" + vn(d.drawBonus) + ", không bốc thăm. Trong trận, mỗi lần góp tu vi là 1 đòn đánh 1 người ngẫu nhiên phe kia: người trúng mất " + Math.round(d.hitLossRatio * 100) + "% tu vi của đòn (điểm phe không bị trừ).",
       "<b>Quái rồng:</b> mỗi " + (b.attackEveryMs / 1000) + " giây rồng đánh 1 người -" + b.attackDamage + " tu vi, đòn thứ " + b.fireEvery + " phun lửa cả tông môn -" + b.fireDamage + ". Người gây sát thương nhiều nhất +" + vn(b.mvpBonus) + " tu vi và 1 lượt vòng quay.",
       "<b>Tẩu hỏa nhập ma:</b> người bị tẩu hỏa đánh đồng môn mất tu vi; ai góp tu vi giải cứu được x" + ps.rewardMultiplier + " phần đã góp khi giải cứu xong.",
-      "<b>Pháp bảo:</b> mỗi quà gắn 1 pháp bảo trong TikTool (" + CFG.items.map(function (it) { return it.name; }).join(", ") + "). Cộng tu vi như tu luyện, mỗi món một hiệu ứng.",
-      "<b>Linh thú:</b> trứng (Linh Thú Đản) nở ngẫu nhiên " + CFG.pets.types.map(function (t) { return t.name + " " + t.weight + "%"; }).join(", ") + ". Mỗi sao +5% (Ngọc Thố: tu vi, Hỏa Kỳ Lân: sát thương, Kim Phượng: cả hai), tối đa 3 sao; đủ 3 sao mà nở trùng thì được 1 lượt vòng quay. Linh thú reset theo tuần.",
-      "<b>Thiên kiếp:</b> lên đại cảnh giới từ Nguyên Anh trở lên thì độ kiếp 15 giây; đồng môn góp tu vi hộ pháp. Đủ kết giới: +" + CFG.tribulation.successBonusPct + "% tu vi, hộ pháp nhiều nhất +" + vn(CFG.tribulation.topHelperBonus) + ".",
+      "<b>Pháp bảo:</b> mỗi quà gắn 1 pháp bảo trong TikTool (" + CFG.items.map(function (it) { return it.name; }).join(", ") + "). Cộng tu vi như tu luyện, mỗi món một hiệu ứng và pháp trận riêng, có giọng đọc “Đạo hữu A vừa sử dụng pháp bảo …”.",
+      "<b>Linh thú:</b> trứng (Linh Thú Đản) nở ngẫu nhiên " + CFG.pets.types.map(function (t) { return t.name + " " + t.weight + "%"; }).join(", ") + ". Mỗi sao +5% (Ngọc Thố: tu vi, Hỏa Kỳ Lân: sát thương, Kim Phượng: cả hai), tối đa 3 sao; đủ 3 sao mà nở trùng thì được 1 lượt vòng quay. Linh thú giữ cùng tu vi, reset mỗi 2 tuần.",
+      (function (T) { return "<b>Thiên kiếp:</b> từ Nguyên Anh trở lên, đủ tu vi lên đại cảnh giới mới thì phải độ kiếp (" + (T.durationMs / 1000) + " giây) mới đột phá; chưa độ kiếp thì dừng ở Đại viên mãn, tu vi vẫn tích lũy. Đồng môn góp tu vi để dựng kết giới; người độ kiếp tự tu luyện thì " + T.selfShieldPct + "% vào kết giới. " +
+        "<b>Thành công:</b> đột phá, người độ kiếp +" + T.successBonusPct + "% tu vi, mọi người hộ pháp +" + T.helperBonusPct + "% tu vi đã góp, hộ pháp nhiều nhất thêm +" + vn(T.topHelperBonus) + ". " +
+        "<b>Thất bại:</b> không mất tu vi, độ kiếp lại sau " + Math.round(T.retryMs / 60000) + " phút hoặc khi tu vi tăng thêm " + T.retryTuviPct + "%."; })(CFG.tribulation),
       "<b>Linh Khí Triều Dâng:</b> ngẫu nhiên 15–25 phút một lần, 60 giây mọi tu vi x" + CFG.surge.multiplier + ".",
-      "<b>Vòng quay:</b> " + CFG.wheel.prizes.map(function (p) { return vn(p.tuvi); }).join(" / ") + " tu vi.",
-      "<b>Lưu theo tuần:</b> tu vi giữ qua các buổi live, reset 0h thứ Hai."
+      "<b>Vòng quay:</b> ai được lượt (công đầu đánh quái, người trúng bốc thăm tỉ thí, linh thú nở trùng khi đủ sao) thì quay 1 lần, trúng " + CFG.wheel.prizes.map(function (p) { return vn(p.tuvi); }).join(" / ") + " tu vi.",
+      "<b>Lưu 2 tuần:</b> tu vi và linh thú giữ qua các buổi live trong " + (CFG.save.periodWeeks || 1) + " tuần, reset 0h thứ Hai đầu kỳ mới (kỳ hiện tại bắt đầu " + NgaMi.periodKey(Date.now(), CFG.save.periodWeeks).split("-").reverse().join("/") + ")."
     ];
     $("rulesBox").innerHTML = "<ul>" + items.map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ul>";
   })();
@@ -207,7 +211,7 @@
           : " Đã phát xong. Không nghe thấy thì kiểm tra Volume Mixer của Windows (TikTool có bị tắt tiếng?) và loa đang chọn.";
       }, function (e) { $("voiceWarn").textContent = " Lỗi giọng AI: " + (e && e.message || e); });
   };
-  $("resetData").onclick = function () { if (confirm("Xóa tu vi của TẤT CẢ người chơi trong tuần này? Không hoàn tác được.")) game.resetAllData(); };
+  $("resetData").onclick = function () { if (confirm("Xóa tu vi và linh thú của TẤT CẢ người chơi trong kỳ này? Không hoàn tác được.")) game.resetAllData(); };
 
   // Vẽ lại 4 lần/giây. Chỉ gửi state lên TikTool khi state thật sự đổi (khi rảnh khoảng 1 lần/giây vì đồng hồ),
   // để hub không bị dội state liên tục làm lệnh tim/quà chạy trễ.

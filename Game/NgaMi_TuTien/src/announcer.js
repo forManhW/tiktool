@@ -35,6 +35,13 @@
     return s.length > max ? s.slice(0, max - 1).join("") + "…" : s.join("");
   }
 
+  // Chỉ đổi cách đọc; giữ nguyên chữ trên màn hình và dữ liệu người chơi.
+  function spokenText(text) {
+    return String(text || "").normalize("NFC")
+      .replace(/thả\s+tim|tap\s+tim/gi, "tap tay")
+      .replace(/tặng\s+quà|gửi\s+quà/gi, "sử dụng pháp bảo");
+  }
+
   function Announcer(voiceCfg, hooks) {
     this.cfg = voiceCfg;
     this.hooks = hooks || {};
@@ -50,6 +57,7 @@
 
   Announcer.prototype.say = function (item) {
     item = Object.assign({ priority: 1, at: Date.now() }, item);
+    item.speech = spokenText(item.speech || item.text);
     if (typeof this.hooks.show === "function") this.hooks.show(item);   // chữ luôn hiện
     if (!this.voiceOn || !this.hooks.speaker || item.silent) return;
     var q = this.queue;
@@ -69,11 +77,12 @@
   };
 
   Announcer.prototype.pump = function () {
-    if (this.speaking || !this.queue.length || !this.voiceOn) return;
+    if (this.speaking || !this.voiceOn) return;
+    if (!this.queue.length) { if (typeof this.hooks.idle === "function") this.hooks.idle(); return; }
     // Câu chờ quá lâu (giọng đang bận đọc câu trước) thì bỏ, để giọng không đọc chuyện đã qua.
     var self = this, item = this.queue.shift(), now = Date.now();
     while (item && now - item.at > (item.priority >= 3 ? this.cfg.maxWaitImportantMs || 12000 : this.cfg.maxWaitMs || 6000)) item = this.queue.shift();
-    if (!item) return;
+    if (!item) { if (typeof this.hooks.idle === "function") this.hooks.idle(); return; }
     this.speaking = true;
     Promise.resolve(this.hooks.speaker.speak(item.speech || item.text, this.cfg, item.prepared))
       .catch(function () { /* giọng lỗi thì bỏ qua, chữ đã hiện */ })

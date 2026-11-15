@@ -21,7 +21,10 @@
   function shortName(name, max) {
     var t = String(name || "Đạo hữu").trim();
     var a = typeof Intl !== "undefined" && Intl.Segmenter ? Array.from(new Intl.Segmenter("vi", { granularity: "grapheme" }).segment(t), function (x) { return x.segment; }) : Array.from(t);
-    return a.length > max ? a.slice(0, max - 1).join("") + "…" : a.join("");
+    if (a.length <= max) return a.join("");
+    // Cắt ở GIỮA, giữ cả đầu và đuôi tên: "NguoiChoiThu1" / "NguoiChoiThu2" -> "Nguo…Thu1" / "Nguo…Thu2", không bị giống nhau.
+    var tail = Math.max(2, Math.floor((max - 1) / 2)), head = max - 1 - tail;
+    return a.slice(0, head).join("") + "…" + a.slice(a.length - tail).join("");
   }
 
   /** Vị trí từng chỗ ngồi theo thứ hạng: 3 ghế đài, rồi điền kín từng hàng từ trái sang phải. */
@@ -63,8 +66,12 @@
     // Thanh tỉ thí và banner nằm ngoài camera nên luôn đứng yên, đọc được.
     var camera = el("div", "nm-camera", stage);
     // Nền mở rộng (chính ảnh nền, phóng to + làm mờ) phía sau: camera thu vào người ngồi sát mép thì không lộ khoảng trống.
-    var bgExt = el("img", "nm-bg-ext", camera); bgExt.src = base + "bg_main.png"; bgExt.alt = "";
-    var bg = el("img", "nm-bg", camera); bg.src = base + "bg_main.png"; bg.alt = "";
+    var bgExt = el("img", "nm-bg-ext", camera); bgExt.src = base + "bg_main_wide.jpg"; bgExt.alt = "";
+    // Nền: 1 ảnh rộng duy nhất (rộng hơn khung 2 bên): camera thu vào người ngồi sát mép vẫn thấy cảnh rõ nét.
+    // Rộng 1440, lệch trái 179 px để phần giữa nằm đúng khung 1080. Thiếu ảnh thì quay về nền cũ bg_main.png.
+    var bg = el("img", "nm-bg nm-bg-wide", camera); bg.alt = "";
+    bg.onerror = function () { bg.onerror = null; bg.className = "nm-bg"; bg.src = bgExt.src = base + "bg_main.png"; };
+    bg.src = base + "bg_main_wide.jpg";
     var title = el("img", "nm-title", camera); title.src = base + "title_NgaMi.png"; title.alt = "Nga Mi";
     title.style.cssText = "left:" + (W - L.titleWidth) / 2 + "px;top:" + L.titleTop + "px;width:" + L.titleWidth + "px";
     var status = el("div", "nm-status", stage); status.style.top = L.statusTop + "px";
@@ -72,7 +79,7 @@
 
     // Quái rồng: nằm trong camera, đè lên chỗ logo. Chưa có ảnh thì hiện hình tạm vẽ bằng code.
     // Ảnh rồng ngang 3:2 (900x600). Người tẩu hỏa: khung dọc giữa phía trên.
-    var BOSS = Object.assign({ x: 90, y: 80, w: 900, h: 600, crowdShift: 360, panelTop: 690 }, L.boss || {});
+    var BOSS = Object.assign({ x: 90, y: 80, w: 900, h: 600, crowdShift: 360, panelTop: 598 }, L.boss || {});
     var dragonBox = el("div", "nm-dragon", camera);
     dragonBox.style.cssText = "left:" + BOSS.x + "px;top:" + BOSS.y + "px;width:" + BOSS.w + "px;height:" + BOSS.h + "px";
 
@@ -113,7 +120,7 @@
     var fxLayer = el("div", "nm-fx", camera);
     var bossPanel = el("div", "nm-boss-panel", stage); bossPanel.style.top = BOSS.panelTop + "px";
     var wheelBox = el("div", "nm-wheel-box", stage);
-    var bossMode = false, possessMode = false, kiepMode = false;
+    var bossMode = false, possessMode = false, kiepMode = false, duelMode = false;
     // Lôi kiếp: người độ kiếp đứng dưới mây giông phía trên, cả tông môn lùi xuống KIEP.shift.
     var KIEP = Object.assign({ shift: 430, figTop: 400, figH: 340 }, L.kiep || {});
     function crowdShift() { return (bossMode || possessMode) ? BOSS.crowdShift : kiepMode ? KIEP.shift : 0; }
@@ -125,15 +132,32 @@
       var rootEl = el("div", "nm-disciple nm-enter", layer);
       // root đặt vị trí (transform translate); body là lớp con để phóng to / rung TẠI CHỖ mà không đẩy lệch vị trí.
       var body = el("div", "nm-body", rootEl);
-      el("div", "nm-aura", body);                 // hào quang sau lưng (bật khi đang tu luyện)
+      // Hào quang sau lưng (bật khi đang tu luyện): quầng sáng + tia sáng xoay + 2 vòng sáng + hạt sáng bay lên.
+      // Khi đánh rồng / giải cứu: ai gây sát thương nhiều hơn thì hào quang to và rực hơn (--hs, nm-halo-lv2/3).
+      // Bản 3: hào quang = ảnh pháp trận riêng từng đại cảnh giới (ban3/halo) + quầng sáng mờ + hạt sáng bay lên.
+      // h-wrap thở (phóng / thu), ảnh bên trong xoay chậm. Mỗi người chỉ 1 vòng hào quang (đánh rồng / giải cứu: to hơn, xoay nhanh hơn).
+      var halo = el("div", "nm-halo", body);
+      el("i", "h-glow", halo);
+      var haloWrap = el("span", "h-wrap", halo);
+      var haloImg = el("img", "h-img", haloWrap);
+      haloImg.alt = "";
+      haloImg.onerror = function () { this.style.visibility = "hidden"; };
+      el("i", "h-spark", halo);
+      // Pháp trận của pháp bảo: thay chỗ hào quang cảnh giới trong lúc món đang chạy hiệu ứng.
+      var itemHalo = el("img", "nm-ihalo", body); itemHalo.alt = "";
       var img = el("img", "nm-sprite", body); img.alt = "";
       var petsEl = el("div", "nm-pets", body);    // linh thú ngồi cạnh chân
+      // Trên đầu: chức vị (ghế đài) + bóng thoại. Dưới chân: khung tên bằng ảnh theo cảnh giới (ban3/tag).
+      var head = el("div", "nm-head", body);
+      var bubble = el("div", "nm-bubble", head);
+      var titleEl = el("div", "nm-tag-title", head);
       var tag = el("div", "nm-tag", body);
-      var bubble = el("div", "nm-bubble", tag);
-      var titleEl = el("div", "nm-tag-title", tag);
-      var nameEl = el("div", "nm-tag-name", tag);
-      var bar = el("div", "nm-bar", tag), fill = el("i", "", bar);
-      n = nodes[seat.id] = { root: rootEl, body: body, grow: 1, img: img, petsEl: petsEl, petSig: "", tag: tag, bubble: bubble, titleEl: titleEl, nameEl: nameEl, fill: fill,
+      var plate = el("div", "nm-plate", tag);
+      var realmEl = el("div", "nm-tag-realm", plate);   // chữ trên ruy băng: tên đại cảnh giới (chỉ hiện ở khung lớn)
+      var nameEl = el("div", "nm-tag-name", plate);
+      var gemsEl = el("div", "nm-gems", plate);         // ngọc ở cạnh dưới: số viên sáng = tiểu cảnh
+      n = nodes[seat.id] = { root: rootEl, body: body, grow: 1, img: img, haloImg: haloImg, haloSrc: "", itemHalo: itemHalo, petsEl: petsEl, petSig: "", tag: tag, bubble: bubble, titleEl: titleEl, nameEl: nameEl, realmEl: realmEl, realmIdx: -1,
+        plate: plate, gemsEl: gemsEl, tagW: 0, plateSrc: "", gemSig: "", maxChars: 8,
         sprite: null, key: null, pos: null, level: seat.level, name: null, bubbleId: 0 };
       // setTimeout thay vì requestAnimationFrame: cửa sổ bị che / chạy nền thì rAF dừng, nhân vật mới sẽ tàng hình.
       setTimeout(function () { rootEl.classList.remove("nm-enter"); }, 40);
@@ -154,7 +178,8 @@
     var camBusy = false, camNext = null;
     function requestFocus(id, big) {
       // Đang đánh quái: không thu camera vào người (để rồng và thanh máu luôn trong khung), chỉ lóe sáng.
-      if (bossMode || possessMode || kiepMode) return;   // đang độ kiếp: giữ toàn cảnh để thấy mây, sét, kết giới
+      // Đang tỉ thí: giữ toàn cảnh để thấy rõ hai phe và ai ra đòn.
+      if (bossMode || possessMode || kiepMode || duelMode) return;   // đang độ kiếp: giữ toàn cảnh để thấy mây, sét, kết giới
       // Đang thu vào người khác: chỉ giữ 1 người chờ (ưu tiên lên đại cảnh giới), người chờ quá lâu thì bỏ.
       if (camBusy) { if (!camNext || big || !camNext.big) camNext = { id: id, big: big, at: Date.now() }; return; }
       focus(id, big);
@@ -185,20 +210,92 @@
     }
 
     // Màu hào quang theo cảnh giới (theo màu trang phục).
-    var AURA_COLORS = ["#fff6dc", "#b9f08c", "#5fe6cf", "#6fa8ff", "#d6a6ff", "#e6f3ff", "#ffe27a", "#ff7a5c", "#b56bff", "#ffd84a"];
+    // Màu đậm, bão hoà để hào quang nổi trên nền trời sáng (màu pastel cũ gần như trắng, không thấy).
+    var AURA_COLORS = ["#ffc21a", "#5fd61c", "#00cfa8", "#2f7dff", "#a64dff", "#29c4ff", "#ffae00", "#ff4a2a", "#9a2cff", "#ffcc00"];
+    // Ảnh pháp trận theo đại cảnh giới (tên theo sprite: halo_luyenKhi.webp ...). Ảnh lỗi thì ẩn, chỉ còn quầng sáng code.
+    function haloSrc(realm) { return base + "ban3/halo/halo_" + (realms[realm] || realms[0]).sprite + ".webp"; }
     var PETS = {}; ((config.pets && config.pets.types) || []).forEach(function (t) { PETS[t.id] = t; });
     function petImg(id) { return PETS[id] ? PETS[id].img : "egg"; }
     var ITEMS = {}; (config.items || []).forEach(function (it) { ITEMS[it.id] = it; });
+    // Tải sẵn ảnh pháp trận + hào quang: lần đầu dùng món không bị trễ (trước đây pháp trận hiện muộn, lúc đó lẫn với hào quang cảnh giới).
+    var preload = [];
+    (config.items || []).forEach(function (it) { if (it.fx !== "egg") { var i = new Image(); i.src = base + "ban3/circle/circle_" + it.id + ".webp"; preload.push(i); } });
+    realms.forEach(function (r) { var i = new Image(); i.src = base + "ban3/halo/halo_" + r.sprite + ".webp"; preload.push(i); });
     var GROW = (config.duel && config.duel.grow) || [[0, 1]];
-    function growFor(points) {
-      if (!(points > 0)) return 1;
+    function growFor(points, inDuel) {
+      if (!inDuel) return 1;                       // chỉ người đã vào phe mới đổi cỡ
+      if (!(points > 0)) return GROW[0][1];
       for (var i = 1; i < GROW.length; i++) {
         var a = GROW[i - 1], b = GROW[i];
         if (points <= b[0]) return Math.round((a[1] + (b[1] - a[1]) * (points - a[0]) / (b[0] - a[0])) * 1000) / 1000;
       }
       return GROW[GROW.length - 1][1];
     }
-    function zFor(n, s) { return 10 + Math.round(s ? s.y : 0) + Math.round(((n.grow || 1) - 1) * 3000); }
+    // ---------- Khung tên dưới chân (bản 3) ----------
+    // Ảnh khung ngang khoảng 2,42 : 1; vẽ dẹt hơn một chút (2,6 : 1) cho đỡ tốn chỗ giữa các hàng.
+    // Vị trí ô tên và hốc ngọc trên từng ảnh khung (src/tag-layout.js, do tools/build-ban3.py đo). Thiếu thì dùng số trung bình.
+    var TAG_LAYOUT = (typeof NgaMi !== "undefined" && NgaMi.TAG_LAYOUT) || {};
+    var TAG_DEFAULT = { r: 2.7, panel: [6, 47, 94, 79], gx: [36.2, 45.4, 54.5, 63.7], gy: 83, gd: 5.1 };
+    var TAG_RATIO = TAG_DEFAULT.r, TAG_MAX_RATIO = 2.97;
+    var realmStart = []; (function () { var k = 0; realms.forEach(function (r, i) { realmStart[i] = k; k += r.stages.length; }); })();
+    function tagWidth(s) {
+      if (s.tagW) return s.tagW;
+      if (s.podium === 0) return 240;
+      if (s.podium != null) return 200;
+      return Math.min(150, (L.rowRight - L.rowLeft) / ((L.rows[s.row] || L.rows[0]).count) + 4);
+    }
+    /**
+     * Khung theo đại cảnh giới (Đại viên mãn dùng khung _dvm riêng), ngọc sáng theo tiểu cảnh:
+     * Sơ kỳ 1 / Trung kỳ 2 / Hậu kỳ 3 / Đại viên mãn 4 viên; Luyện Khí có 9 ngọc, tầng N sáng N viên; Chân Tiên sáng đủ 4.
+     * Đổi đại cảnh giới hoặc lên Đại viên mãn: khung lật sang ảnh mới.
+     */
+    function updatePlate(n, seat) {
+      var ri = Math.max(0, Math.min(realms.length - 1, seat.realm || 0)), r = realms[ri];
+      var st = Math.max(0, Math.min(r.stages.length - 1, (seat.level || 0) - realmStart[ri]));
+      var dvm = r.stages.length === 4 && st === 3, nine = r.stages.length === 9;
+      var key = "tag_" + r.sprite + (dvm ? "_dvm" : ""), src = base + "ban3/tag/" + key + ".webp";
+      var lay = TAG_LAYOUT[key] || TAG_DEFAULT;
+      // Kích thước khung theo đúng tỉ lệ ảnh; ô tên đặt đúng ô kem của ảnh; cỡ chữ theo chiều cao ô kem.
+      var size = n.tagW + "x" + key;
+      if (n.plateSize !== size) {
+        n.plateSize = size;
+        // Giới hạn tỉ lệ quá dẹt; vị trí ô tên và ngọc tính theo % kích thước khung.
+        var th = n.tagW / Math.min(lay.r, TAG_MAX_RATIO), p = lay.panel, ph = th * (p[3] - p[1]) / 100, pw = n.tagW * (p[2] - p[0]) / 100;
+        n.tag.style.height = th.toFixed(0) + "px";
+        // Tâm ô kem cách đỉnh khung p_mid %: dời khung lên để ô tên nằm ngay dưới chân (chữ cảnh giới đè lên đệm ngồi).
+        n.tag.style.top = "calc(100% - " + (th * p[1] / 100 - 4).toFixed(0) + "px)";
+        // Giảm nhẹ cỡ chữ và giới hạn theo chiều cao ô kem để dấu tiếng Việt không bị cắt.
+        var fpx = Math.max(1, Math.floor(Math.min(ph * 0.95, Math.max(11, Math.min(n.root.classList.contains("nm-podium") ? 27 : 24, n.tagW * 0.13)))));
+        n.tag.style.fontSize = fpx + "px";
+        var ns = n.nameEl.style;
+        ns.left = p[0] + 2 + "%"; ns.right = (100 - p[2] + 2) + "%"; ns.top = p[1] + "%"; ns.height = (p[3] - p[1]) + "%";
+        var mc = Math.max(6, Math.min(16, Math.floor(pw * 0.92 / (fpx * 0.6))));
+        if (mc !== n.maxChars) { n.maxChars = mc; n.name = shortName(seat.name, mc); n.nameEl.textContent = n.name; }
+      }
+      if (n.plateSrc !== src) {
+        var first = !n.plateSrc;
+        n.plateSrc = src;
+        n.plate.style.backgroundImage = "url(\"" + src + "\")";
+        n.plate.style.setProperty("--tagimg", "url(\"" + src + "\")");
+        if (!first) { n.plate.classList.remove("nm-plate-flip"); void n.plate.offsetWidth; n.plate.classList.add("nm-plate-flip"); }
+      }
+      n.root.classList.toggle("nm-dvm", dvm || ri === realms.length - 1);   // Đại viên mãn, Chân Tiên: vệt sáng chạy ngang khung
+      n.root.classList.toggle("nm-houky", r.stages.length === 4 && st === 2);
+      var lit = nine ? st + 1 : r.stages.length === 1 ? 4 : st + 1, slots = nine ? 9 : 4;
+      var sig = slots + ":" + lit + ":" + key;
+      if (n.gemSig !== sig) {
+        var grew = n.gemSig && n.gemSig.split(":")[0] == slots && Number(n.gemSig.split(":")[1]) < lit;
+        n.gemSig = sig;
+        var html = "";
+        for (var i = 0; i < slots; i++) html += '<i class="' + (i < lit ? "on" : "") + (grew && i === lit - 1 ? " nm-gem-new" : "") + '" style="left:' +
+          (lay.gx[i] != null ? lay.gx[i] : 50).toFixed(1) + "%;top:" + lay.gy + "%;width:" + lay.gd + '%"></i>';
+        n.gemsEl.className = "nm-gems " + (nine ? "nm-gems9" : "nm-gems4");
+        n.gemsEl.innerHTML = html;
+        n.gemsEl.style.setProperty("--gem", AURA_COLORS[ri] || AURA_COLORS[0]);
+      }
+    }
+    // Tỉ thí: hàng sau luôn vẽ đè hàng trước (không xét độ to) để bảng tên hàng sau không bị người to ở hàng trước che.
+    function zFor(n, s) { return 10 + Math.round(s ? s.y : 0) + (s && s.duel ? 0 : Math.round(((n.grow || 1) - 1) * 3000)); }
     /** Đặt nhân vật vào chỗ s ({x, y(chân), h, podium?, seat?}); key đổi thì mới dời chỗ. */
     function place(n, seat, s, key) {
       var hgt = s.h, wid = hgt * SPRITE_RATIO;
@@ -209,21 +306,48 @@
         n.root.style.height = hgt + "px";
         n.root.style.setProperty("--h", hgt.toFixed(0) + "px");
         n.root.style.zIndex = String(zFor(n, s));
-        n.tag.style.fontSize = (s.podium === 0 ? 30 : s.podium != null ? 25 : Math.max(15, Math.round(hgt * 0.15))) + "px";
+        // Khung tên dưới chân: bề ngang theo chỗ (ghế đài 240 / 200, hàng thường vừa 1 chỗ ngồi, tỉ thí theo ô).
+        // Chữ tên to theo bề ngang khung; số ký tự tối đa để tên nằm gọn trong ô giữa khung.
+        // Chiều cao, cỡ chữ, ô tên đặt trong updatePlate theo ảnh khung của cảnh giới.
+        var tw = tagWidth(s);
+        n.tag.style.width = tw.toFixed(0) + "px";
+        n.tagW = tw; n.plateSize = "";
+        n.duelSpot = !!s.duel;
         n.root.classList.toggle("nm-podium", s.podium != null);
         n.titleEl.textContent = s.seat || "";
         n.name = null;
       }
       var sprite = spriteFor[seat.realm] || spriteFor[0];
       if (n.sprite !== sprite) { n.sprite = sprite; n.img.src = base + sprite + ".png"; }
-      var label = shortName(seat.name, s.podium != null ? 16 : 9);
+      // Tên dài: cắt giữa, giữ đuôi (Thu1 / Thu2). Tỉ thí 2 cột rộng chỗ nên giữ được dài hơn.
+      var label = shortName(seat.name, n.maxChars);
       if (n.name !== label) { n.name = label; n.nameEl.textContent = label; }
-      n.fill.style.width = (Math.max(0, Math.min(1, seat.progress)) * 100).toFixed(1) + "%";
       n.tag.style.setProperty("--realm", REALM_COLORS[seat.realm] || REALM_COLORS[0]);
       // Hào quang: màu chủ đạo của cảnh giới, sáng khi vừa được cộng tu vi (game tắt sau 1 phút 30 giây).
       n.body.style.setProperty("--aura", AURA_COLORS[seat.realm] || AURA_COLORS[0]);
-      n.root.classList.toggle("nm-aura-on", !!seat.aura);
-      n.root.classList.toggle("nm-aura-max", seat.realm >= realms.length - 1);
+      if (n.realmIdx !== seat.realm) {
+        var firstHalo = n.realmIdx < 0;
+        n.realmIdx = seat.realm; n.realmEl.textContent = (realms[seat.realm] || realms[0]).name;
+        var hsrc = haloSrc(seat.realm);
+        if (n.haloSrc !== hsrc) {
+          n.haloSrc = hsrc; n.haloImg.src = hsrc;
+          // Lên đại cảnh giới: pháp trận mới nở ra, xoay nhanh 1 vòng rồi chậm lại.
+          if (!firstHalo) { n.root.classList.remove("nm-halo-new"); void n.root.offsetWidth; n.root.classList.add("nm-halo-new"); }
+        }
+      }
+      updatePlate(n, seat);
+      // Mức hào quang: 0 tắt; 1 đang tu luyện; đánh rồng / giải cứu: hạng 1 = 3, hạng 2–3 = 2, còn lại 1 (to dần theo % so với hạng 1).
+      var f = seat.fight, lv = f ? (f.rank === 1 ? 3 : f.rank <= 3 ? 2 : 1) : seat.aura ? 1 : 0;
+      // Hào quang ảnh đã to sẵn (1,4 lần chiều cao người): hạng 1 to 1,45 lần, hạng 2–3 khoảng 1,2–1,3, còn lại 1–1,15.
+      var hs = f ? (f.rank === 1 ? 1.45 : f.rank <= 3 ? 1.2 + 0.1 * f.pct : 1 + 0.15 * f.pct) : 1;
+      if (seat.realm >= realms.length - 1 && lv) lv = Math.max(lv, 2);   // Chân Tiên: pháp trận xoay nhanh hơn
+      if (n.haloLv !== lv || n.haloHs !== hs) {
+        n.haloLv = lv; n.haloHs = hs;
+        n.root.classList.toggle("nm-aura-on", lv > 0);
+        n.root.classList.toggle("nm-halo-lv2", lv >= 2);
+        n.root.classList.toggle("nm-halo-lv3", lv >= 3);
+        n.body.style.setProperty("--hs", hs.toFixed(2));
+      }
       var petSig = (seat.pets || []).map(function (p) { return p.id + p.stars; }).join(",");
       if (petSig !== n.petSig) {
         n.petSig = petSig;
@@ -232,8 +356,9 @@
         }).join("");
       }
       n.tag.dataset.side = seat.side || 0;
+      n.root.style.setProperty("--sidec", seat.side === 1 ? "#4fd1bd" : seat.side === 2 ? "#f06b9a" : "#ffe9a8");
       // Tỉ thí: góp càng nhiều càng to (tại chỗ, neo ở chân), người to đè lên người nhỏ.
-      var g = growFor(seat.duelPoints || 0);
+      var g = growFor(seat.duelPoints || 0, seat.side === 1 || seat.side === 2);
       if (g !== n.grow) { n.grow = g; n.body.style.setProperty("--grow", g.toFixed(3)); if (!n.root.classList.contains("nm-strike")) n.root.style.zIndex = String(zFor(n, n.pos)); }
       n.root.classList.toggle("nm-fading", !!seat.fading);
       if (seat.bubble && seat.bubble.id !== n.bubbleId) { n.bubbleId = seat.bubble.id; n.bubble.textContent = seat.bubble.text; n.bubble.classList.add("nm-show"); }
@@ -268,7 +393,7 @@
       } else if (d.phase === "result" && d.lastResult) {
         var r = d.lastResult;
         status.className = "nm-status nm-result";
-        status.innerHTML = '<div class="nm-result-title">' + (r.winner ? "Phe " + (r.winner === 1 ? s1 : s2) + " chiến thắng" : "Hai phe hòa nhau") + "</div>" +
+        status.innerHTML = '<div class="nm-result-title">' + (r.winner ? "Phe " + (r.winner === 1 ? s1 : s2) + " chiến thắng" : r.empty ? "Chưa có đạo hữu nào chọn phe" : "Hai phe hòa nhau") + "</div>" +
           '<div class="nm-duel-sides"><span class="s1">' + s1 + " · " + r.scores[1].toLocaleString("vi-VN") + '</span><span class="s2">' + r.scores[2].toLocaleString("vi-VN") + " · " + s2 + "</span></div>";
         if (r.mvp) { var m = el("div", "nm-duel-hint", status); m.textContent = "Công đầu: " + r.mvp; }
       } else if (d.enabled || (bossInfo && bossInfo.enabled)) {
@@ -300,11 +425,10 @@
       }
       bossPhase = b.phase;
       var pct = b.maxHp ? Math.max(0, 100 * b.hp / b.maxHp) : 0;
-      var top = (b.top || []).map(function (t, i) { return "<span>" + (i + 1) + ". " + escapeHtml(shortName(t.name || "Đạo hữu", 12)) + " <b>" + t.damage.toLocaleString("vi-VN") + "</b></span>"; }).join("");
       bossPanel.innerHTML = b.phase === "result"
         ? '<div class="nm-boss-head"><b>' + escapeHtml(b.name) + ' đã bị tiêu diệt!</b></div>' + (b.lastResult ? '<div class="nm-boss-top">Công đầu: <b>' + escapeHtml(b.lastResult.name) + "</b> · " + b.lastResult.damage.toLocaleString("vi-VN") + " sát thương</div>" : "")
-        : '<div class="nm-boss-head"><b>' + escapeHtml(b.name) + '</b><em>Thả tim · tặng quà để tấn công</em><span>' + b.hp.toLocaleString("vi-VN") + " / " + b.maxHp.toLocaleString("vi-VN") + "</span></div>" +
-          '<div class="nm-hp"><i style="width:' + pct.toFixed(2) + '%"></i></div>' + (top ? '<div class="nm-boss-top">' + top + "</div>" : "");
+        : '<div class="nm-boss-head"><b>' + escapeHtml(b.name) + '</b><span>' + b.hp.toLocaleString("vi-VN") + " / " + b.maxHp.toLocaleString("vi-VN") + "</span></div>" +
+          '<div class="nm-hp"><i style="width:' + pct.toFixed(2) + '%"></i></div>' + '<div class="nm-boss-hint">Sử dụng pháp bảo để tấn công</div>';
       (b.hits || []).forEach(function (h) {
         if (h.id <= lastHitId) return;
         lastHitId = h.id;
@@ -364,11 +488,10 @@
       possPhase = ps.phase;
       possTag.innerHTML = '<div class="nm-poss-title">TẨU HỎA NHẬP MA</div><div class="nm-tag-name">' + escapeHtml(ps.name) + "</div>";
       var pct = ps.maxHp ? Math.max(0, 100 * ps.hp / ps.maxHp) : 0;
-      var top = (ps.top || []).map(function (t, i) { return "<span>" + (i + 1) + ". " + escapeHtml(shortName(t.name, 12)) + " <b>" + t.amount.toLocaleString("vi-VN") + "</b></span>"; }).join("");
       bossPanel.innerHTML = ps.phase === "result"
         ? '<div class="nm-boss-head"><b>' + escapeHtml(ps.name) + ' đã được giải cứu!</b></div>' + (ps.lastResult ? '<div class="nm-boss-top">' + ps.lastResult.rescuers + " người góp sức được x2 tu vi đã góp</div>" : "")
-        : '<div class="nm-boss-head"><b>Giải cứu ' + escapeHtml(ps.name) + '</b><em>Thả tim · tặng quà để đánh thức</em><span>' + ps.hp.toLocaleString("vi-VN") + " / " + ps.maxHp.toLocaleString("vi-VN") + "</span></div>" +
-          '<div class="nm-hp nm-hp-rescue"><i style="width:' + pct.toFixed(2) + '%"></i></div>' + (top ? '<div class="nm-boss-top">' + top + "</div>" : "");
+        : '<div class="nm-boss-head"><b>Giải cứu ' + escapeHtml(ps.name) + '</b><span>' + ps.hp.toLocaleString("vi-VN") + " / " + ps.maxHp.toLocaleString("vi-VN") + "</span></div>" +
+          '<div class="nm-hp nm-hp-rescue"><i style="width:' + pct.toFixed(2) + '%"></i></div>' + '<div class="nm-boss-hint">Sử dụng pháp bảo để giải cứu</div>';
       (ps.hits || []).forEach(function (h) {
         if (h.id <= lastPossHitId) return;
         lastPossHitId = h.id;
@@ -440,7 +563,7 @@
     }
     function trimFx() { while (fxLayer.children.length > 60) fxLayer.firstChild.remove(); }
     /**
-     * Kiếm bay (fx_sword.png, mũi chỉ sang phải) từ `from` tới `to` khoảng 0,42 giây, kèm vệt sáng đuôi theo màu
+     * Vệt sáng bay từ `from` tới `to` khoảng 0,42 giây, theo màu của phe.
      * (gold: đánh rồng / giải cứu, s1 / s2: màu phe tỉ thí). Tới nơi thì gọi onArrive.
      */
     var SWORD_RGB = { gold: "255,206,84", s1: "79,209,189", s2: "240,107,154" };
@@ -451,10 +574,16 @@
       wrap.style.cssText = "left:" + from.x.toFixed(0) + "px;top:" + from.y.toFixed(0) + "px;transform:rotate(" + ang.toFixed(1) + "deg)";
       wrap.style.setProperty("--c", SWORD_RGB[kind] || SWORD_RGB.gold);
       var mover = el("div", "nm-sword-move", wrap);
+      // Vệt sáng phép thuật: đuôi sáng mờ dần + quả cầu linh lực ở đầu (không dùng hình kiếm).
       el("div", "nm-sword-trail", mover);
-      var img = el("img", "nm-sword-img", mover); img.src = base + "fx_sword.png"; img.alt = "";
+      el("div", "nm-sword-head", mover);
       setTimeout(function () { mover.style.transform = "translateX(" + Math.max(0, len - 30).toFixed(0) + "px)"; }, 20);
-      setTimeout(function () { wrap.classList.add("nm-sword-done"); if (onArrive) onArrive(); }, 440);
+      setTimeout(function () {
+        wrap.classList.add("nm-sword-done"); if (onArrive) onArrive();
+        var hit = el("div", "nm-magic-hit", fxLayer); hit.style.cssText = "left:" + to.x.toFixed(0) + "px;top:" + to.y.toFixed(0) + "px";
+        hit.style.setProperty("--c", SWORD_RGB[kind] || SWORD_RGB.gold);
+        setTimeout(function () { hit.remove(); }, 520);
+      }, 440);
       setTimeout(function () { wrap.remove(); }, 760);
     }
 
@@ -468,7 +597,10 @@
     function itemBox(fx) {
       var c = discipleCenter(fx.userId), n = nodes[fx.userId];
       if (!c || !n) return null;
-      var h = n.pos.h * (n.grow || 1), size = Math.max(80, Math.min(240, h * 0.85));
+      var h = n.pos.h * (n.grow || 1), size;
+      // Mọi lớp của món (ảnh, chữ, hạt sáng) chung 1 tâm với pháp trận sau lưng: ngực nhân vật (40% từ đỉnh, tính cả phóng to).
+      c = { x: c.x, y: n.pos.y - h * 0.6 + crowdShift() };
+      size = Math.max(80, Math.min(240, h * 0.85));
       trimFx();
       var box = el("div", "nm-itemfx nm-fx-" + fx.fx, fxLayer);
       box.style.cssText = "left:" + c.x.toFixed(0) + "px;top:" + c.y.toFixed(0) + "px";
@@ -482,7 +614,21 @@
       var def = ITEMS[raw.item] || { fx: "rise", img: "egg", color: "#ffffff" };
       var fx = { userId: raw.userId, fx: def.fx, color: def.color, id: raw.id };
       var b = itemBox(fx);
-      if (!b) return;
+      if (!b) {
+        // Người đang độ kiếp không ngồi ở hàng dưới: pháp trận của món hiện quanh người đó trên mây giông.
+        if (last && last.kiep && last.kiep.targetId === raw.userId && def.fx !== "egg") {
+          var kt = TIER_MS[def.tier || 1] || TIER_MS[1];
+          kiepIhalo.className = "nm-ihalo nm-kiep-ihalo";
+          kiepIhalo.src = base + "ban3/circle/circle_" + raw.item + ".webp";
+          kiepIhalo.style.setProperty("--t", kt + "ms");
+          kiepIhalo.style.setProperty("--is", "1");
+          void kiepIhalo.offsetWidth;
+          kiepIhalo.className = "nm-ihalo nm-kiep-ihalo nm-ih-on nm-ih-" + raw.item;
+          clearTimeout(kiepIhalo.timer);
+          kiepIhalo.timer = setTimeout(function () { kiepIhalo.className = "nm-ihalo nm-kiep-ihalo"; }, kt + 150);
+        }
+        return;
+      }
       // Món càng đắt hiệu ứng càng to và càng lâu (tier trong config.items).
       var tier = def.tier || 1, dur = TIER_MS[tier] || TIER_MS[1];
       b.box.style.setProperty("--t", dur + "ms");
@@ -495,10 +641,10 @@
       if (raw.count > 1) { var cnt = el("div", "nm-item-count", b.box); cnt.textContent = "x" + raw.count; }
       var life = dur + 300;
       if (tier >= 2) sparks(b.box, tier >= 4 ? 18 : tier >= 3 ? 12 : 8);
-      if (tier >= 3) el("div", "nm-item-halo", b.box);
+      // Pháp trận riêng của món (ban3/circle) bao quanh người dùng, thay hào quang cảnh giới trong lúc món chạy.
+      if (def.fx !== "egg") itemCircle(b.n, raw.item, tier, dur, raw.count > 1);
       if (def.fx === "swords") {
-        // Phi Kiếm Trận: 8 thanh kiếm to xoay vòng quanh người (vòng sáng xanh), rồi hợp lại thành cột sáng.
-        el("div", "nm-sword-halo", b.box);
+        // Phi Kiếm Trận: 8 thanh kiếm to xoay vòng quanh người, rồi hợp lại thành cột sáng.
         var ring = el("div", "nm-sword-ring", b.box);
         for (var k = 0; k < 8; k++) {
           var arm = el("div", "nm-sword-arm", ring); arm.style.transform = "rotate(" + (k * 45) + "deg)";
@@ -508,10 +654,15 @@
       } else if (def.fx === "scroll") {
         // Bí Tịch: chữ vàng bay vòng quanh nhân vật.
         itemImg(b.box, def.img, "");
+        // 8 chữ Hán hiện quanh người, bay vòng theo pháp trận; tới 60% thời gian thì lần lượt lao vào ngực (mỗi chữ lóe 1 cái).
         var gring = el("div", "nm-glyph-ring", b.box);
         ["劍", "氣", "靈", "心", "功", "法", "神", "力"].forEach(function (ch, i) {
           var arm = el("div", "nm-glyph-arm", gring); arm.style.transform = "rotate(" + (i * 45) + "deg)";
           var g = el("div", "nm-scroll-glyph", arm); g.textContent = ch; g.style.setProperty("--a", (i * 45) + "deg");
+          setTimeout(function () {
+            g.classList.add("nm-glyph-in");
+            setTimeout(function () { flash(b.n, "nm-level-up"); }, 420);
+          }, dur * 0.58 + i * 110);
         });
       } else if (def.fx === "orb") {
         // Long Châu: tia sáng xoay, 3 vòng sóng, chớp sáng toàn màn, ngọc lớn tỏa hào quang.
@@ -531,7 +682,7 @@
       } else {
         itemImg(b.box, def.img, "");
         if (def.fx === "pour") el("div", "nm-pour-stream", b.box);
-        if (def.fx === "grow") el("div", "nm-item-mist", b.box);
+        if (def.fx === "grow" || def.fx === "sway") el("div", "nm-item-mist", b.box);
       }
       el("div", "nm-item-burst", b.box);
       if (tier >= 3) { var b2 = el("div", "nm-item-burst nm-burst2", b.box); b2.style.animationDelay = "calc(var(--t) * .62)"; }
@@ -539,6 +690,29 @@
         popNumber(b.c.x, b.c.y - b.h * 0.65, "+" + raw.amount.toLocaleString("vi-VN"), "nm-pop-gold " + (tier >= 4 ? "nm-pop-big" : "nm-pop-item"));
       }, dur * 0.45);
       setTimeout(function () { b.box.remove(); delete eggFx[raw.id]; }, life);
+    }
+    /**
+     * Pháp trận pháp bảo sau lưng người dùng: nở ra, xoay (kiểu chuyển động theo món: nm-ih-<id>), tan khi món tan.
+     * Trong lúc đó hào quang cảnh giới ẩn đi (nm-item-on). Tặng liên tiếp thì chạy lại từ đầu với món mới.
+     */
+    function itemCircle(n, id, tier, dur, combo) {
+      var ih = n.itemHalo;
+      ih.className = "nm-ihalo";
+      ih.onerror = function () { ih.className = "nm-ihalo"; n.root.classList.remove("nm-item-on"); };
+      ih.src = base + "ban3/circle/circle_" + id + ".webp";
+      ih.style.setProperty("--t", dur + "ms");
+      ih.style.setProperty("--is", ({ 1: 1, 2: 1.1, 3: 1.22, 4: 1.4 }[tier] || 1) * (combo ? 1.12 : 1));
+      void ih.offsetWidth;
+      ih.className = "nm-ihalo nm-ih-on nm-ih-" + id + (combo ? " nm-ih-combo" : "");
+      n.root.classList.add("nm-item-on");
+      // Người đang dùng món nổi lên trên người ngồi cạnh để pháp trận không bị che,
+      // nhưng vẫn DƯỚI lớp hiệu ứng .nm-fx (z-index 4800) để món đồ, chữ, số tu vi luôn nằm trước nhân vật.
+      n.root.style.zIndex = "4700";
+      clearTimeout(n.itemTimer);
+      n.itemTimer = setTimeout(function () {
+        ih.className = "nm-ihalo"; n.root.classList.remove("nm-item-on");
+        if (n.pos && !n.root.classList.contains("nm-strike")) n.root.style.zIndex = String(zFor(n, n.pos));
+      }, dur + 150);
     }
     var hatchMs = (config.pets && config.pets.hatchMs) || 3200;
     var TIER_MS = { 1: 1600, 2: 2200, 3: 3000, 4: 5000 };
@@ -584,13 +758,24 @@
     var kiepTag = el("div", "nm-kiep-tag", kiepFig);
     var kiepBar = el("div", "nm-kiep-bar", kiepBox);
     var kiepBolts = el("div", "nm-kiep-bolts", kiepBox);
-    var kiepId = 0, kiepStruck = 0, kiepDone = false;
+    var kiepId = 0, kiepStruck = 0, kiepDone = false, kiepSelfId = 0;
+    // Pháp trận pháp bảo của người đang độ kiếp: hiện quanh người đó trên mây giông (người đó không ngồi ở hàng dưới).
+    var kiepIhalo = el("img", "nm-ihalo nm-kiep-ihalo", kiepFig); kiepIhalo.alt = "";
+    kiepFig.style.setProperty("--h", KIEP.figH + "px");
     var KIEP_BODY = { x: W / 2, y: KIEP.figTop + KIEP.figH * 0.45 };
     function renderKiep(k) {
       var active = !!k;
       if (active !== kiepMode) { kiepMode = active; stage.classList.toggle("nm-kiep-mode", active); setCrowd(); }
       if (!k) { if (kiepId) { kiepBox.classList.remove("nm-kiep-win"); kiepId = 0; } return; }
-      if (k.id !== kiepId) { kiepId = k.id; kiepStruck = 0; kiepDone = false; kiepBox.classList.remove("nm-kiep-win"); }
+      if (k.id !== kiepId) { kiepId = k.id; kiepStruck = 0; kiepDone = false; kiepBox.classList.remove("nm-kiep-win"); kiepSelfId = (k.selfHits && k.selfHits.length) ? k.selfHits[k.selfHits.length - 1].id : 0; }
+      // Tự hộ thân: người độ kiếp tự tu luyện / dùng pháp bảo -> vòng kết giới vàng lóe quanh người, số "+X kết giới" bay lên.
+      (k.selfHits || []).forEach(function (h) {
+        if (h.id <= kiepSelfId) return;
+        kiepSelfId = h.id;
+        kiepFig.classList.remove("nm-kiep-self"); void kiepFig.offsetWidth; kiepFig.classList.add("nm-kiep-self");
+        kiepDome.classList.remove("nm-dome-hit"); void kiepDome.offsetWidth; kiepDome.classList.add("nm-dome-hit");
+        popNumber(W / 2 + (Math.random() - 0.5) * 120, KIEP.figTop + 40, "+" + h.amount.toLocaleString("vi-VN") + " kết giới", "nm-pop-gold nm-pop-self");
+      });
       var sprite = spriteFor[k.realm] || spriteFor[0];
       if (kiepImg.dataset.sprite !== sprite) { kiepImg.dataset.sprite = sprite; kiepImg.src = base + sprite + ".png"; }
       kiepTag.innerHTML = '<div class="nm-kiep-label">ĐỘ KIẾP · ' + escapeHtml(k.realmName).toUpperCase() + '</div><div class="nm-tag-name">' + escapeHtml(k.name) + "</div>";
@@ -598,26 +783,54 @@
       kiepDome.style.opacity = (0.15 + 0.75 * pct / 100).toFixed(2);
       kiepBar.innerHTML = '<div class="nm-kiep-title">Lôi kiếp · ' + escapeHtml(k.realmName) + (k.phase === "strike" ? " · " + Math.ceil(k.remainingMs / 1000) + "s · đạo " + k.struck + "/" + k.strikes : "") + "</div>" +
         '<div class="nm-kiep-track"><i style="width:' + pct.toFixed(1) + '%"></i></div><div class="nm-kiep-sub">Kết giới ' +
-        Math.min(k.shield, k.need).toLocaleString("vi-VN") + " / " + k.need.toLocaleString("vi-VN") + " · thả tim, tặng quà hộ pháp</div>";
+        Math.min(k.shield, k.need).toLocaleString("vi-VN") + " / " + k.need.toLocaleString("vi-VN") + "</div><div class=\"nm-kiep-sub\">Sử dụng pháp bảo để hộ pháp</div>";
       (k.log || []).forEach(function (st) {
         if (st.n <= kiepStruck) return;
         kiepStruck = st.n;
-        // Tia chính giáng xuống người độ kiếp (bị kết giới chặn thì dừng ở vòm), kèm 2 tia phụ đánh xuống hai bên.
-        lightning(kiepBolts, W / 2 + (Math.random() - 0.5) * 240, 300, W / 2, st.blocked ? KIEP.figTop - 30 : KIEP_BODY.y, st.blocked, true);
-        lightning(kiepBolts, 120 + Math.random() * 200, 260, 60 + Math.random() * 260, 640 + Math.random() * 200, false, false);
-        lightning(kiepBolts, W - 120 - Math.random() * 200, 260, W - 60 - Math.random() * 260, 640 + Math.random() * 200, false, false);
-        var fl = el("div", "nm-kiep-flash", kiepBox); setTimeout(function () { fl.remove(); }, 450);
-        if (st.blocked) { kiepDome.classList.remove("nm-dome-hit"); void kiepDome.offsetWidth; kiepDome.classList.add("nm-dome-hit"); }
-        else { kiepFig.classList.remove("nm-kiep-struck"); void kiepFig.offsetWidth; kiepFig.classList.add("nm-kiep-struck"); }
+        strikeSequence(st.blocked, kiepId);
       });
       if (k.phase === "result" && !kiepDone) {
         kiepDone = true;
         if (k.success) { kiepBox.classList.add("nm-kiep-win"); if (k.bonus) popNumber(W / 2, KIEP.figTop - 10, "+" + k.bonus.toLocaleString("vi-VN"), "nm-pop-gold nm-pop-big"); }
       }
     }
+    /**
+     * 1 đạo lôi kiếp kéo dài khoảng 3 giây (anh chốt 14/11): sấm chớp nối nhau trước sau rồi mới giáng đòn chính.
+     *  0–2,2 giây: 6 tia phụ đánh xuống hai bên / trước mặt, lóe sáng nhẹ, mây rung; tia gần cuối càng dày và sát người độ kiếp.
+     *  2,4 giây: tia chính + 2 tia kèm giáng thẳng xuống người độ kiếp (kết giới đủ thì chặn ở vòm), chớp toàn màn.
+     *  2,7 giây: 1 tia dư chấn nhỏ.
+     */
+    function strikeSequence(blocked, id) {
+      var alive = function () { return kiepId === id; };
+      var side = function (near) {
+        var left = Math.random() < 0.5, x0 = left ? 100 + Math.random() * 300 : W - 100 - Math.random() * 300;
+        var x1 = near ? W / 2 + (left ? -1 : 1) * (90 + Math.random() * 120) : (left ? 40 + Math.random() * 300 : W - 40 - Math.random() * 300);
+        lightning(kiepBolts, x0, 240 + Math.random() * 60, x1, near ? KIEP.figTop + 60 + Math.random() * 120 : 600 + Math.random() * 260, false, false);
+      };
+      var flash = function (cls) { var fl = el("div", "nm-kiep-flash" + (cls ? " " + cls : ""), kiepBox); setTimeout(function () { fl.remove(); }, 450); };
+      [0, 380, 700, 1150, 1500, 1850, 2100].forEach(function (t, i) {
+        setTimeout(function () {
+          if (!alive()) return;
+          side(i >= 4);
+          if (i % 2 === 1) side(i >= 5);
+          if (i >= 3) flash("nm-kiep-flash-soft");
+        }, t + Math.random() * 120);
+      });
+      setTimeout(function () {
+        if (!alive()) return;
+        var top = blocked ? KIEP.figTop - 30 : KIEP_BODY.y;
+        lightning(kiepBolts, W / 2 + (Math.random() - 0.5) * 240, 280, W / 2, top, blocked, true);
+        lightning(kiepBolts, W / 2 - 160 - Math.random() * 80, 260, W / 2 - 40, top + 10, blocked, true);
+        lightning(kiepBolts, W / 2 + 160 + Math.random() * 80, 260, W / 2 + 40, top + 10, blocked, true);
+        flash();
+        if (blocked) { kiepDome.classList.remove("nm-dome-hit"); void kiepDome.offsetWidth; kiepDome.classList.add("nm-dome-hit"); }
+        else { kiepFig.classList.remove("nm-kiep-struck"); void kiepFig.offsetWidth; kiepFig.classList.add("nm-kiep-struck"); }
+      }, 2400);
+      setTimeout(function () { if (alive()) { side(true); flash("nm-kiep-flash-soft"); } }, 2750);
+    }
     /** Tia sét gấp khúc (SVG) từ (x0,y0) xuống (x1,y1); bị kết giới chặn thì tóe sáng xanh. */
     function lightning(layerEl, x0, y0, x1, y1, blocked, main) {
-      while (layerEl.children.length > 24) layerEl.firstChild.remove();
+      while (layerEl.children.length > 40) layerEl.firstChild.remove();
       var pts = [], seg = 9;
       for (var i = 0; i <= seg; i++) {
         var t = i / seg, jitter = (i === 0 || i === seg) ? 0 : (Math.random() - 0.5) * 70;
@@ -626,9 +839,18 @@
       var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("class", "nm-bolt" + (blocked ? " nm-bolt-blocked" : "") + (main ? "" : " nm-bolt-side"));
       svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+      // Nhánh rẽ: 1–2 nhánh ngắn tách ra từ thân tia, trông giống sấm sét thật hơn.
+      var lines = [pts], nb = 1 + (Math.random() < 0.6 ? 1 : 0);
+      for (var bI = 0; bI < nb; bI++) {
+        var from = pts[3 + Math.floor(Math.random() * 4)].split(",").map(Number), dir = Math.random() < 0.5 ? -1 : 1, bp = [from.join(",")];
+        for (var k = 1; k <= 3; k++) bp.push((from[0] + dir * (25 + Math.random() * 25) * k).toFixed(0) + "," + (from[1] + (30 + Math.random() * 30) * k).toFixed(0));
+        lines.push(bp);
+      }
       ["nm-bolt-glow", "nm-bolt-core"].forEach(function (cls) {
-        var pl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
-        pl.setAttribute("points", pts.join(" ")); pl.setAttribute("class", cls); svg.appendChild(pl);
+        lines.forEach(function (l, li) {
+          var pl = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+          pl.setAttribute("points", l.join(" ")); pl.setAttribute("class", cls + (li ? " nm-bolt-branch" : "")); svg.appendChild(pl);
+        });
       });
       layerEl.appendChild(svg);
       var fl = el("div", "nm-bolt-flash", layerEl); fl.style.cssText = "left:" + x1 + "px;top:" + y1 + "px";
@@ -646,15 +868,25 @@
 
     // ---------- Tỉ thí: xếp chỗ theo phe ----------
     // Phe 1 nửa trái, phe 2 nửa phải (4 người / hàng, chân từ y≈FIGHT.top tới FIGHT.bottom). Người chưa chọn phe ngồi dải dưới.
-    var FIGHT = Object.assign({ top: 560, bottom: 1170, left: 40, mid: 540, right: 1040, gap: 30, cols: 4, maxH: 140,
+    var FIGHT = Object.assign({ top: 560, bottom: 1170, left: 40, mid: 540, right: 1040, gap: 30, cols: 4, maxH: 145, bigH: 195, hugeH: 280,
       watchTop: 1210, watchBottom: 1440, watchMaxH: 100 }, L.duelLayout || {});
     function grid(list, x0, x1, top, bottom, cols, maxH, tag) {
-      var rows = Math.max(1, Math.ceil(list.length / cols)), h = Math.min(maxH, (bottom - top) / rows), out = {};
-      var y0 = top + ((bottom - top) - h * rows) / 2;                    // khối người canh giữa theo chiều dọc
+      // Ít người thì 3 cột, nhân vật to hơn (tới bigH); đông mới chia 4 cột.
+      // Ít người thì ít cột, nhân vật to hơn: <= 4 người 2 cột (to nhất), <= 9 người 3 cột, đông mới chia 4 cột.
+      var fontPx = 22;
+      if (tag !== "w") {
+        if (list.length <= 4) { cols = 2; maxH = FIGHT.hugeH; fontPx = 30; }
+        else if (list.length <= 9) { cols = 3; maxH = FIGHT.bigH; fontPx = 23; }
+      }
+      // Mỗi ô = nhân vật + khung tên dưới chân (khung đè lên đệm ngồi 8px). Khung rộng gần bằng ô, tối đa 240.
+      var rows = Math.max(1, Math.ceil(list.length / cols)), step = (x1 - x0) / cols, out = {};
+      var tw = Math.min(240, step - 6), th = tw / TAG_RATIO * 0.58, cellH = (bottom - top) / rows;   // phần khung thò xuống dưới chân
+      var h = Math.min(maxH, cellH - th), pitch = h + th;
+      var y0 = top + ((bottom - top) - pitch * rows) / 2;              // khối người canh giữa theo chiều dọc
       list.forEach(function (id, i) {
-        var r = Math.floor(i / cols), c = i % cols, inRow = Math.min(cols, list.length - r * cols), step = (x1 - x0) / cols;
+        var r = Math.floor(i / cols), c = i % cols, inRow = Math.min(cols, list.length - r * cols);
         var x = x0 + (x1 - x0) / 2 + (c - (inRow - 1) / 2) * step;     // hàng thiếu người thì dồn vào giữa nửa sân
-        out[id] = { s: { x: x, y: y0 + h * (r + 1), h: h * 0.96 }, key: tag + list.length + ":" + i };
+        out[id] = { s: { x: x, y: y0 + pitch * r + h, h: h * 0.96, duel: tag !== "w", fontPx: fontPx, tagW: tw }, key: tag + list.length + ":" + i };
       });
       return out;
     }
@@ -697,6 +929,8 @@
     var wheelId = 0, wheelDisc = null, wheelResult = null;
     function renderWheel(w) {
       if (!w) { if (wheelId) { wheelBox.classList.remove("nm-show"); wheelId = 0; } return; }
+      // Đang hiện kết quả tỉ thí: vòng quay hạ xuống giữa sân, không đè lên bảng công bố phe thắng.
+      wheelBox.classList.toggle("nm-wheel-low", !!(last && last.duel && last.duel.phase === "result"));
       if (w.id !== wheelId) {
         wheelId = w.id;
         var n = w.prizes.length, seg = 360 / n, colors = ["#f6d77c", "#fff4d6", "#e9b949", "#fbe7a8", "#d99a2b", "#fff0c2", "#f1c75b", "#fde9b0"];
@@ -755,6 +989,7 @@
       var seats = state.seats || [], now = Date.now();
       // Đang tỉ thí: xếp theo phe (phe 1 bên trái, phe 2 bên phải, ai chưa chọn ngồi dưới xem).
       var d = state.duel || {}, duelLayout = d.phase === "duel" || d.phase === "result";
+      duelMode = duelLayout;
       var sig = (duelLayout ? "D" : "N") + seats.map(function (s) { return s.id + (duelLayout ? ":" + s.side : ""); }).sort().join("|") + "#" + seats.slice(0, 3).map(function (s) { return s.id; }).join("|");
       // Có người thăng cấp: xếp lại chỗ ngay để camera thu vào đúng chỗ MỚI của người đó.
       var leveled = seats.some(function (s) { return nodes[s.id] && s.level > nodes[s.id].level; });
@@ -773,6 +1008,7 @@
       }
       seatImgs.forEach(function (img, i) { img.classList.toggle("nm-empty", !seats[i]); });
       stage.classList.toggle("nm-duel-layout", duelLayout);
+      stage.classList.toggle("nm-duel-result", d.phase === "result");
       renderDuelHits(d);
       renderBoss(state.boss || null);
       renderPossession(state.possession || null);

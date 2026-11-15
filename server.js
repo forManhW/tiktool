@@ -15,10 +15,13 @@ const dashboardClients = new Set(), logs = [], seenEvents = new Map(), sockets =
 // Bản cài đặt có dữ liệu khởi đầu (scripts/build-seed.js): mapping chỉ chép khi máy chưa có, ảnh chỉ chép file còn thiếu; không ghi đè thứ người dùng đã sửa.
 const SEED = process.env.TIKTOOL_SEED_DIR && fs.existsSync(process.env.TIKTOOL_SEED_DIR) ? process.env.TIKTOOL_SEED_DIR : null;
 fs.mkdirSync(DATA, { recursive: true });
-if (SEED) { const seedMaps = path.join(SEED, "mappings.json"), seedAssets = path.join(SEED, "assets"); if (!fs.existsSync(MAPS) && fs.existsSync(seedMaps)) fs.copyFileSync(seedMaps, MAPS); if (fs.existsSync(seedAssets)) fs.cpSync(seedAssets, ASSETS, { recursive: true, force: false, errorOnExist: false }); }
+// Chép file còn thiếu (không ghi đè). Không dùng fs.cpSync: Node/Electron sập cả app (0xC0000409) khi đường dẫn có dấu tiếng Việt.
+function copyMissing(from, to) { fs.mkdirSync(to, { recursive: true }); for (const e of fs.readdirSync(from, { withFileTypes: true })) { const a = path.join(from, e.name), b = path.join(to, e.name); if (e.isDirectory()) copyMissing(a, b); else if (!fs.existsSync(b)) fs.copyFileSync(a, b); } }
+if (SEED) { const seedMaps = path.join(SEED, "mappings.json"), seedAssets = path.join(SEED, "assets"); if (!fs.existsSync(MAPS) && fs.existsSync(seedMaps)) fs.copyFileSync(seedMaps, MAPS); if (fs.existsSync(seedAssets)) copyMissing(seedAssets, ASSETS); }
 fs.mkdirSync(ASSETS, { recursive: true }); for (const file of [MAPS, SESSIONS]) if (!fs.existsSync(file)) fs.writeFileSync(file, "[]\n");
 const db = new DatabaseSync(path.join(DATA, "tiktool.db"));
-const players = require("./core/player-store").createPlayerStore(db);   // điểm người chơi theo tuần cho từng game
+// Điểm người chơi theo kỳ cho từng game (kỳ dài weeklyBoard.periodWeeks tuần trong manifest, mặc định 1).
+const players = require("./core/player-store").createPlayerStore(db, { periodWeeksFor: (id) => games().find((g) => g.id === id)?.weeklyBoard?.periodWeeks || 1 });
 db.exec("CREATE TABLE IF NOT EXISTS event_log (id TEXT PRIMARY KEY, at TEXT NOT NULL, level TEXT NOT NULL, message TEXT NOT NULL, details TEXT NOT NULL)");
 db.exec("CREATE TABLE IF NOT EXISTS gift_catalog (gift_id TEXT PRIMARY KEY, name TEXT NOT NULL, diamonds INTEGER, image_url TEXT, last_seen_at TEXT NOT NULL)");
 // Danh sách quà đóng kèm: thêm quà còn thiếu, giữ nguyên quà máy này đã thấy khi live.
@@ -81,10 +84,33 @@ function dispatchNext(session) { if (session.inFlight || !session.queue?.length)
 function enqueue(session, command) { session = getSession(session.id) || session; if (!gameSocket(session.id)) return false; if ((session.queue?.length || 0) >= 100) { log("error", "Game queue full", { sessionId: session.id }); return false; } session.queue ||= []; session.queue.push(command); saveSession(session); dispatchNext(session); return true; }
 function manifestFor(gameId) { return games().find((g) => g.id === gameId); }
 function engineFor(sessionId) { if (!engines.has(sessionId)) engines.set(sessionId, new LiveRuleEngine()); return engines.get(sessionId); }
-function forwardLiveEvent(session, manifest, event) { const wanted = manifest?.liveEvents; if (!Array.isArray(wanted) || !wanted.includes(event.type)) return; const payload = { type: "live_event", event: publicEvent(event) }; send(gameSocket(session.id), payload); for (const overlay of overlays(session.id)) send(overlay, payload); }
+function forwardLiveEvent(session, manifest, event, mapped) { const wanted = manifest?.liveEvents; if (!Array.isArray(wanted) || !wanted.includes(event.type)) return; const raw = publicEvent(event); if (event.type === "gift" && typeof mapped === "boolean") raw.mapped = mapped; const payload = { type: "live_event", event: raw }; send(gameSocket(session.id), payload); for (const overlay of overlays(session.id)) send(overlay, payload); }
 let statsTimer = null;
 function publishStats(sessionId) { if (statsTimer) return; statsTimer = setTimeout(() => { statsTimer = null; const engine = engines.get(sessionId); if (engine) publish("live_stats", { sessionId, stats: engine.stats }); }, 500); }
-function processEvent(input) { const event = normalizeEvent(input); if (!input.sessionId) throw new Error("Event requires sessionId"); if (seenEvents.has(event.eventId)) return { event, duplicate: true, matches: [] }; seenEvents.set(event.eventId, Date.now()); if (seenEvents.size > 5000) seenEvents.delete(seenEvents.keys().next().value); const session = getSession(input.sessionId); if (!session || session.status !== "live") throw new Error("Live session not found"); const manifest = manifestFor(session.gameId); forwardLiveEvent(session, manifest, event); const engine = engineFor(session.id); if (listener.safeMode && event.source.mode !== "test") { publishStats(session.id); return { event, sessionId: session.id, duplicate: false, matches: [{ status: "safe_mode" }] }; } const rules = read(MAPS).filter((r) => r.gameId === session.gameId); const { commands, results } = engine.evaluate(event, rules, { actionFor: (rule) => manifest?.actions?.find((a) => a.id === rule.action) }); const statusById = new Map(commands.map((command) => [command.id, enqueue(session, command) ? "queued" : "game_offline"])); const matches = results.map((r) => r.commandId ? { ...r, status: statusById.get(r.commandId) } : r); publishStats(session.id); if (commands.length || event.type === "gift" || event.type === "follow") log("info", "Live event received", { sessionId: session.id, eventId: event.eventId, type: event.type, user: event.user.nickname, matches: matches.map((m) => ({ ruleId: m.ruleId, action: m.action, status: m.status, times: m.times })) }); return { event, sessionId: session.id, duplicate: false, matches }; }
+function processEvent(input) {
+  const event = normalizeEvent(input);
+  if (!input.sessionId) throw new Error("Event requires sessionId");
+  if (seenEvents.has(event.eventId)) return { event, duplicate: true, matches: [] };
+  seenEvents.set(event.eventId, Date.now());
+  if (seenEvents.size > 5000) seenEvents.delete(seenEvents.keys().next().value);
+  const session = getSession(input.sessionId);
+  if (!session || session.status !== "live") throw new Error("Live session not found");
+  const manifest = manifestFor(session.gameId), engine = engineFor(session.id);
+  if (listener.safeMode && event.source.mode !== "test") {
+    forwardLiveEvent(session, manifest, event, false);
+    publishStats(session.id);
+    return { event, sessionId: session.id, duplicate: false, matches: [{ status: "safe_mode" }] };
+  }
+  const rules = read(MAPS).filter((r) => r.gameId === session.gameId);
+  const { commands, results } = engine.evaluate(event, rules, { actionFor: (rule) => manifest?.actions?.find((a) => a.id === rule.action) });
+  // Quà thô đến game trước action để người tặng được vào chỗ, nhưng sau khi đã biết có lệnh hay không.
+  forwardLiveEvent(session, manifest, event, commands.length > 0);
+  const statusById = new Map(commands.map((command) => [command.id, enqueue(session, command) ? "queued" : "game_offline"]));
+  const matches = results.map((r) => r.commandId ? { ...r, status: statusById.get(r.commandId) } : r);
+  publishStats(session.id);
+  if (commands.length || event.type === "gift" || event.type === "follow") log("info", "Live event received", { sessionId: session.id, eventId: event.eventId, type: event.type, user: event.user.nickname, matches: matches.map((m) => ({ ruleId: m.ruleId, action: m.action, status: m.status, times: m.times })) });
+  return { event, sessionId: session.id, duplicate: false, matches };
+}
 function validMapping(rule) { const manifest = manifestFor(rule?.gameId); if (!manifest) throw new Error("Game not found"); const valid = validateRule(rule, manifest); return { ...valid, id: valid.id || crypto.randomUUID(), updatedAt: new Date().toISOString() }; }
 function body(req) { return new Promise((resolve, reject) => { let raw = ""; req.on("data", (c) => { raw += c; if (raw.length > 100000) reject(new Error("Request too large")); }); req.on("end", () => { try { resolve(raw ? JSON.parse(raw) : {}); } catch { reject(new Error("Invalid JSON")); } }); }); }
 function json(res, status, value) { res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }); res.end(JSON.stringify(value)); }

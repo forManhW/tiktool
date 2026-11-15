@@ -16,6 +16,7 @@ const TARGETS = {
   boss_dragon_defeated: { w: 900 },
   tauHoaNhapMa: { h: 700 },           // người tẩu hỏa nhập ma: hiện to ở chỗ quái (khoảng 560 px)
   bg_main: { copy: true },      // nền gốc 941x1672 nhỏ hơn khung: giữ nguyên, để trình duyệt tự phóng mượt
+  bg_main_wide: { skip: true }, // nền rộng 2 bên: tools/build-ban3.py nén thành bg_main_wide.jpg
   // Bản 2 (12/11): kiếm bay, mây thiên kiếp, pháp bảo, trứng, linh thú.
   fx_sword: { w: 480, trim: true },   // kiếm bay: cắt bỏ viền trong suốt (ảnh gốc 2172x724, kiếm chỉ cao ~330) cho lưỡi kiếm không bị mảnh
   fx_storm_cloud: { w: 620 },
@@ -31,6 +32,7 @@ for (const file of fs.readdirSync(RAW).filter((f) => f.endsWith(".png"))) {
   const raw = file.replace(/\.png$/, ""), key = ALIAS[raw] || raw;
   const t = CHARACTERS.includes(key) ? TARGETS.character : TARGETS[key] || (key.startsWith("item_") ? TARGETS.item : key.startsWith("pet_") ? TARGETS.pet : null);
   if (!t) { console.warn("bỏ qua (không có trong danh sách):", file); continue; }
+  if (t.skip) continue;
   if (t.copy) { fs.copyFileSync(path.join(RAW, file), path.join(OUT, key + ".png")); console.log(file.padEnd(22), "giữ nguyên"); continue; }
   let img = P.decode(path.join(RAW, file));
   if (t.trim) img = trim(img, 6);

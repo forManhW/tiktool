@@ -40,3 +40,31 @@ test("hàng chờ đầy: bỏ câu ưu tiên thấp nhất, cùng mức thì b�
   ann.say({ text: "mới hơn", priority: 3 });     // đầy, cùng mức 3: bỏ "cũ"
   assert.deepEqual(ann.queue.map((i) => i.text), ["mới", "mới hơn"]);
 });
+
+test("móc idle chỉ báo sau khi đọc xong và hàng chờ đã cạn", async () => {
+  const releases = [], idle = [];
+  const speaker = { speak: () => new Promise((resolve) => releases.push(resolve)), cancel() {} };
+  const ann = new Announcer(cfg, { speaker, idle: () => idle.push(true) });
+  ann.say({ text: "một" }); ann.say({ text: "hai" });
+  releases.shift()(true); await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(idle.length, 0);
+  releases.shift()(true); await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(idle.length, 1);
+});
+
+test("thay cách gọi trong lời đọc, kể cả dữ liệu động, nhưng không sửa chữ hiển thị", () => {
+  const spoken = [], shown = [];
+  const ann = new Announcer(cfg, { show: (i) => shown.push(i), speaker: { speak: (s) => { spoken.push(s); return Promise.resolve(); }, cancel() {} } });
+  ann.say({ text: "An thả tim", speech: "An thả tim và gửi quà, Bình tặng quà" });
+  assert.equal(shown[0].text, "An thả tim");
+  assert.equal(spoken[0], "An tap tay và sử dụng pháp bảo, Bình sử dụng pháp bảo");
+});
+
+test("sự kiện đẩy câu nền ưu tiên 0 ra khỏi hàng chờ khi hàng đầy", () => {
+  const ann = new Announcer(cfg, { speaker: { speak: () => new Promise(() => {}), cancel() {} } });
+  ann.say({ text: "đang đọc", priority: 3 });
+  ann.say({ kind: "idle", key: "idle", text: "lời nền", priority: 0 });
+  for (let i = 0; i < 4; i++) ann.say({ text: "sự kiện " + i, priority: 1 });
+  assert.equal(ann.queue.length, 4);
+  assert.equal(ann.queue.some((item) => item.kind === "idle"), false);
+});

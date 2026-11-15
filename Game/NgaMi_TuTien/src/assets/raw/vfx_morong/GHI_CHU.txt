@@ -1,0 +1,34 @@
+tag_mau_luyen_khi.png: nền trong suốt
+tag_mau_nguyen_anh.png: nền trong suốt
+tag_mau_dai_vien_man.png: nền trong suốt
+tag_mau_chan_tien.png: nền trong suốt
+tag_mau_truc_co.png: nền trong suốt
+tag_mau_truc_co_dvm.png: nền trong suốt
+tag_mau_ket_dan.png: nền trong suốt
+tag_mau_ket_dan_dvm.png: nền trong suốt
+tag_mau_hoa_than.png: nền trong suốt
+tag_mau_hoa_than_dvm.png: nền trong suốt
+tag_mau_luyen_hu.png: nền trong suốt
+tag_mau_luyen_hu_dvm.png: nền trong suốt
+tag_mau_hop_the.png: nền trong suốt
+tag_mau_hop_the_dvm.png: nền trong suốt
+tag_mau_dai_thua.png: nền trong suốt
+tag_mau_dai_thua_dvm.png: nền trong suốt
+tag_mau_do_kiep.png: nền trong suốt
+tag_mau_do_kiep_dvm.png: nền trong suốt
+
+vfx_kiem_quang.png: nền đen (có sai lệch mức 1–2 so với đen tuyệt đối)
+vfx_va_cham.png: nền đen (có sai lệch mức 1–2 so với đen tuyệt đối)
+vfx_manh_linh_thach.png: nền trong suốt, có kênh alpha; còn pixel alpha mờ quanh mảnh
+vfx_long_khi.png: nền đen (có sai lệch mức 1 so với đen tuyệt đối)
+vfx_trung_no.png: nền trong suốt, có kênh alpha; còn pixel alpha mờ quanh mảnh
+
+Lưu ý trước khi đưa bộ cảnh giới vào game: một số chữ và dấu khó đọc ở bề ngang 96 px; hốc ngọc của cả hai mẫu Đại Thừa chưa trống rõ. Cần kiểm tra và xử lý trước khi ghép.
+
+vfx_song_linh_khi.png: nền đen; có pixel lệch đen tuyệt đối mức 1–2
+vfx_hoa_tien.png: nền đen; có pixel lệch đen tuyệt đối mức 1–2
+vfx_canh_dao.png: nền trong suốt có alpha; còn pixel alpha mờ quanh cánh
+vfx_linh_chi.png: nền trong suốt có alpha; còn quầng alpha mờ rộng, hình chưa đặc hoàn toàn
+vfx_ngoc_dich.png: nền đen; có pixel lệch đen tuyệt đối mức 1–2
+vfx_phu_van.png: nền đen; có pixel lệch đen tuyệt đối mức 1
+vfx_khoi_bui.png: nền đen; có pixel lệch đen tuyệt đối mức 1
