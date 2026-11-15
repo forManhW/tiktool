@@ -222,14 +222,20 @@
     (config.items || []).forEach(function (it) { if (it.fx !== "egg") { var i = new Image(); i.src = base + "ban3/circle/circle_" + it.id + ".webp"; preload.push(i); } });
     realms.forEach(function (r) { var i = new Image(); i.src = base + "ban3/halo/halo_" + r.sprite + ".webp"; preload.push(i); });
     var GROW = (config.duel && config.duel.grow) || [[0, 1]];
-    function growFor(points, inDuel) {
-      if (!inDuel) return 1;                       // chỉ người đã vào phe mới đổi cỡ
+    var DUEL_DRAW = (config.duel && config.duel.drawScale) || 1;
+    var STRIKE_PEAK = Math.max(1.15, Math.min(1.2, (config.duel && config.duel.strikePeak) || 1.18));
+    function growBase(points) {
       if (!(points > 0)) return GROW[0][1];
       for (var i = 1; i < GROW.length; i++) {
         var a = GROW[i - 1], b = GROW[i];
-        if (points <= b[0]) return Math.round((a[1] + (b[1] - a[1]) * (points - a[0]) / (b[0] - a[0])) * 1000) / 1000;
+        if (points <= b[0]) return a[1] + (b[1] - a[1]) * (points - a[0]) / (b[0] - a[0]);
       }
       return GROW[GROW.length - 1][1];
+    }
+    /** Cỡ vẽ khi tỉ thí: nội suy theo đóng góp như cũ rồi nhân hệ số vẽ cuối cùng. Người chưa vào phe giữ nguyên 1. */
+    function growFor(points, inDuel) {
+      if (!inDuel) return 1;
+      return Math.round(growBase(points) * DUEL_DRAW * 1000) / 1000;
     }
     // ---------- Khung tên dưới chân (bản 3) ----------
     // Ảnh khung ngang khoảng 2,42 : 1; vẽ dẹt hơn một chút (2,6 : 1) cho đỡ tốn chỗ giữa các hàng.
@@ -540,14 +546,19 @@
       var sl = n.pos;
       return { x: sl.x, y: sl.y - sl.h * 0.5 + crowdShift() };
     }
-    /** Người ra đòn phóng to 1,5 lần trong 0,5 giây. */
-    function strike(id) {
+    /** Người ra đòn phóng to 1,5 lần trong 0,5 giây. Tỉ thí (side 1/2): lấy đà, lao ngắn về phía đối thủ, đỉnh phóng nhỏ hơn. */
+    function strike(id, duelSide) {
       var n = nodes[id];
       if (!n) return;
-      n.root.classList.remove("nm-strike"); void n.root.offsetWidth; n.root.classList.add("nm-strike");
+      n.root.classList.remove("nm-strike", "nm-strike-duel"); void n.root.offsetWidth; n.root.classList.add("nm-strike");
+      if (duelSide === 1 || duelSide === 2) {
+        n.root.classList.add("nm-strike-duel");
+        n.body.style.setProperty("--lunge", duelSide === 1 ? "1" : "-1");   // phe 1 đứng bên trái, lao sang phải
+        n.body.style.setProperty("--peak", String(STRIKE_PEAK));
+      }
       n.root.style.zIndex = "9000";
       clearTimeout(n.strikeTimer);
-      n.strikeTimer = setTimeout(function () { n.root.classList.remove("nm-strike"); if (n.pos) n.root.style.zIndex = String(zFor(n, n.pos)); }, 520);
+      n.strikeTimer = setTimeout(function () { n.root.classList.remove("nm-strike", "nm-strike-duel"); if (n.pos) n.root.style.zIndex = String(zFor(n, n.pos)); }, 520);
     }
     /** Luồng sáng bay từ `from` tới `to` (khoảng 0,4 giây), tới nơi thì gọi onArrive. */
     function beam(from, to, kind, onArrive) {
@@ -900,7 +911,7 @@
         grid(g[0], FIGHT.left, FIGHT.right, FIGHT.watchTop, FIGHT.watchBottom, watchCols, FIGHT.watchMaxH, "w"));
       return seats.map(function (s) { return all[s.id]; });
     }
-    // Đòn đánh giữa hai phe: người tung đòn phóng to 1,5 lần trong 0,5 giây, luồng sáng màu phe bay sang, người trúng rung nhẹ.
+    // Đòn đánh giữa hai phe: người tung đòn lấy đà rồi lao ngắn (0,5 giây), luồng sáng màu phe bay sang, người trúng rung nhẹ.
     var lastDuelHitId = 0;
     function renderDuelHits(d) {
       var hits = d.hits || [];
@@ -909,7 +920,7 @@
         if (h.id <= lastDuelHitId) return;
         lastDuelHitId = h.id;
         var from = discipleCenter(h.from), to = h.to != null ? discipleCenter(h.to) : null;
-        strike(h.from);
+        strike(h.from, h.side);
         if (from && to) swordFly(from, to, "s" + h.side, function () {
           shakeDisciple(h.to);
           var p = discipleCenter(h.to);

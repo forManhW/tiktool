@@ -90,7 +90,11 @@
       hitLossRatio: 0.5,
       // Người vào phe: nhỏ lại (0,82) khi chưa gây sát thương, góp càng nhiều càng to dần: [tu vi đã góp, tỉ lệ], nội suy giữa các mốc.
       // Tối đa 1,6 để người to không đè kín người bên cạnh (anh chốt 13/11, trước là 1 -> 2,6).
-      grow: [[0, 0.82], [300, 0.9], [1000, 1], [3000, 1.15], [8000, 1.3], [20000, 1.45], [50000, 1.6]]
+      grow: [[0, 0.82], [300, 0.9], [1000, 1], [3000, 1.15], [8000, 1.3], [20000, 1.45], [50000, 1.6]],
+      // Chỉ là cỡ VẼ (anh chốt 15/11): người đã vào phe vẽ bằng 0,8 lần cỡ tính từ bảng grow (0,82 -> 0,656; 1,6 -> 1,28).
+      // Các mốc đóng góp, điểm và luật trận không đổi.
+      drawScale: 0.8,
+      strikePeak: 1.18              // đỉnh phóng khi ra đòn trong tỉ thí, so với cỡ tỉ thí mới (cho phép 1,15–1,2)
     },
 
     // Quái rồng (anh chốt 10/11): cứ 30 phút (tính từ đầu chu kỳ) rồng xuất hiện, đánh tới khi rồng chết mới tính lại chu kỳ.
