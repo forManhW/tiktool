@@ -15,7 +15,7 @@
   "use strict";
 
   var SETTINGS_KEY = "ngami.tutien.settings.v1";
-  var SETTINGS_VERSION = 2;      // v2 (10/11): chu kỳ 7' tu + 3' tỉ thí, thêm quái rồng
+  var SETTINGS_VERSION = 3;      // v2 (10/11): chu kỳ 7' tu + 3' tỉ thí, thêm quái rồng · v3 (15/11): lời nền 30 -> 15 giây
   var WHEEL_SHOW_MS = 3000;      // vòng quay dừng rồi còn hiện kết quả 3 giây
   var INFO_QUIET_MS = 3000;     // im 3 giây không có thông báo nào thì hiện luật chơi
   var BUBBLE_MS = 4000;         // bóng thoại hiện 4 giây
@@ -140,6 +140,9 @@
     this.duelHitSeq = 0;
     this.itemFx = [];             // pháp bảo vừa dùng (renderer chạy hiệu ứng tại chỗ người tặng)
     this.itemFxSeq = 0;
+    this.itemBatches = [];        // lô pháp bảo đang gom cho giọng đọc { key, name, itemName, count, gained, at }
+    this.itemVoiceSeq = 0;
+    this.itemVoiceStats = { uses: 0, sentences: 0, merged: 0 };
     this.hatches = [];            // trứng đang chờ nở { id, fxId, userId, due }
     this.hatchFx = [];            // kết quả nở cho renderer { id, fxId, userId, pet, stars, result }
     this.hatchSeq = 0;
@@ -155,7 +158,12 @@
 
     var stored = this.read(SETTINGS_KEY) || {};
     // Cài đặt cũ (trước v2): chu kỳ tỉ thí mặc định cũ 15'/5' đổi sang luật mới 10'/3'.
-    if ((stored.settingsVersion || 1) < SETTINGS_VERSION) { delete stored.duelEveryMin; delete stored.duelDurationMin; stored.settingsVersion = SETTINGS_VERSION; }
+    // Mỗi lần nâng phiên bản chỉ chạy đúng phần của nó, không lặp lại phần cũ.
+    var storedVersion = Number(stored.settingsVersion) || 1;
+    if (storedVersion < 2) { delete stored.duelEveryMin; delete stored.duelDurationMin; }
+    // v3: mặc định lời nền cũ 30 giây chuyển sang 15 giây đúng một lần; 0 và giá trị khác giữ nguyên.
+    if (storedVersion < 3 && stored.infoVoiceEverySec != null && stored.infoVoiceEverySec !== "" && Number(stored.infoVoiceEverySec) === 30) stored.infoVoiceEverySec = 15;
+    if (storedVersion < SETTINGS_VERSION) stored.settingsVersion = SETTINGS_VERSION;
     this.settings = Object.assign(defaultSettings(this.cfg), stored);
     this.applySettings(this.settings);
     var saved = this.read(this.saveKey());
@@ -226,6 +234,7 @@
     this.possession.cancel();
     this.possessPending = null;
     this.pendingGifts = []; this.giftBatchAt = null; this.idleSince = null;
+    this.itemBatches = [];
     this.tickHatches(Infinity);       // trứng đã mua mà chưa kịp nở: nở luôn, không để mất linh thú
     this.kiep = null; this.kiepQueue = [];
     this.surge = null;
@@ -389,6 +398,7 @@
       if (this.pendingJoins.length && now - this.lastJoinFlush >= this.cfg.voice.joinBatchMs) this.flushJoins(now);
       if ((this.pendingSides[1].length || this.pendingSides[2].length) && now - this.lastSideFlush >= this.cfg.voice.sideJoinBatchMs) this.flushSides(now);
       if (this.giftBatchAt !== null && now - this.giftBatchAt >= 5000) this.flushGifts();
+      while (this.itemBatches.length && now - this.itemBatches[0].at >= this.cfg.voice.itemBatchMs) this.flushItemBatch(now);
       if (now - this.lastEventBannerAt >= INFO_QUIET_MS && now - this.lastInfoAt >= INFO_QUIET_MS) this.showInfo(now);
       this.tickIdle(now);
     }
@@ -456,7 +466,7 @@
   Game.prototype.tickIdle = function (now) {
     var ann = this.announcer, seconds = Number(this.settings.infoVoiceEverySec) || 0;
     if (!this.running || !this.hubConnected || !ann.voiceOn || !ann.hooks.speaker || !seconds || this.duel.phase === "result") { this.idleSince = null; return; }
-    if (ann.speaking || ann.queue.length) { this.idleSince = null; return; }
+    if (ann.speaking || ann.queue.length || this.itemBatches.length) { this.idleSince = null; return; }
     if (this.idleSince === null) { this.idleSince = now; return; }
     if (now - this.idleSince < seconds * 1000) return;
     var groups = ["luat", "khong_khi", "nhap_mon", "khong_khi", "luat", "loi_moi"], state = this.idleState(now);
@@ -582,10 +592,10 @@
   Game.prototype.onDuelEvent = function (e) {
     var s1 = this.sideName(1), s2 = this.sideName(2), self = this;
     if (e.type === "duel_soon") {
-      this.announcer.say({ kind: "duel_soon", priority: 3, text: "1 phút nữa bắt đầu tỉ thí!",
+      this.announcer.say({ kind: "duel_soon", priority: 3, valid: stillTrue(this, function (g) { return g.duel.phase === "idle"; }), text: "1 phút nữa bắt đầu tỉ thí!",
         speech: this.pickLine("duel_soon", {}) || "Còn một phút nữa, đại hội tỉ thí Nga Mi bắt đầu. Chuẩn bị chọn phe " + s1 + " hoặc " + s2 });
     } else if (e.type === "duel_start") {
-      this.announcer.say({ kind: "duel_start", priority: 3, text: "Tỉ thí bắt đầu! Bình luận 1 vào " + s1 + ", 2 vào " + s2,
+      this.announcer.say({ kind: "duel_start", priority: 3, valid: stillTrue(this, function (g) { return g.duel.phase === "duel"; }), text: "Tỉ thí bắt đầu! Bình luận 1 vào " + s1 + ", 2 vào " + s2,
         speech: this.pickLine("duel_start", {}) || "Tỉ thí bắt đầu! Bình luận số một để vào phe " + s1 + ", số hai để vào phe " + s2 + ". Hãy sử dụng pháp bảo để tu luyện nhanh hơn" });
     } else if (e.type === "duel_join") {
       var jm = this.sect.members.get(String(e.userId));
@@ -770,6 +780,16 @@
     return this.cfg.items.filter(function (it) { return it.id === itemId; })[0] || { id: itemId, name: itemId, fx: "rise", color: "#ffffff" };
   };
 
+  /** Điều kiện để một câu chỉ dẫn còn đúng lúc tới lượt đọc (giọng dồn thì câu có thể tới trễ). */
+  function stillTrue(game, check) { return function () { return game.running && check(game); }; }
+
+  /** Câu đọc đã duyệt (14/11): "Đạo hữu A vừa sử dụng pháp bảo Chu Quả 2 lần, cộng 100 tu vi". Nhiều cặp thì nối bằng dấu chấm. */
+  function itemSpeech(pairs) {
+    return pairs.map(function (p) {
+      return cap(daoHuu(p.name)) + " vừa sử dụng pháp bảo " + p.itemName + (p.count > 1 ? " " + p.count + " lần" : "") + ", cộng " + p.gained.toLocaleString("vi-VN") + " tu vi";
+    }).join(". ");
+  }
+
   Game.prototype.useItem = function (itemId, params, source) {
     var user = userOf(source), base = Math.floor(Number(params.amount) || 0);
     if (base <= 0) throw new Error("amount phải > 0");
@@ -783,12 +803,45 @@
       for (var i = 0; i < eggs; i++) this.hatches.push({ id: ++this.hatchSeq, fxId: fx.id, userId: id, due: now + this.cfg.pets.hatchMs + i * 700 });
     }
     var name = m ? m.nickname : "", times = count > 1 ? " x" + count : "", fmt = gained.toLocaleString("vi-VN");
-    // Mọi pháp bảo đều đọc (anh chốt 14/11): "Đạo hữu A vừa sử dụng pháp bảo Chu Quả, cộng 100 tu vi".
-    // Món đắt (speak: true) ưu tiên cao hơn; live đông thì câu món rẻ có thể bị bỏ bớt (hàng chờ giọng đọc giới hạn, câu chờ lâu bị bỏ).
-    this.announcer.say({ kind: "item", priority: item.speak ? 2 : 1, member: m, key: "item:" + id + ":" + itemId,
+    // Chữ hiện ngay cho từng lần dùng, vị trí và mức như cũ. Giọng đọc đi riêng: gom theo người + món rồi đọc ở mức 4.
+    this.announcer.say({ kind: "item", priority: item.speak ? 2 : 1, silent: true, member: m, key: "item:" + id + ":" + itemId,
       text: shown(name) + " vừa sử dụng pháp bảo " + item.name + times + "! +" + fmt + " tu vi",
-      speech: cap(daoHuu(name)) + " vừa sử dụng pháp bảo " + item.name + (count > 1 ? " " + count + " lần" : "") + ", cộng " + fmt + " tu vi" });
+      speech: itemSpeech([{ name: name, itemName: item.name, count: count, gained: gained }]) });
+    this.batchItem("item:" + id + ":" + itemId, name, item.name, count, gained, now);
     return true;
+  };
+
+  /** Gom lời đọc pháp bảo: cùng người + cùng món trong voice.itemBatchMs thành 1 lô, cộng số lần và tu vi THỰC NHẬN. */
+  Game.prototype.batchItem = function (key, name, itemName, count, gained, now) {
+    var ann = this.announcer, list = this.itemBatches;
+    if (!ann.voiceOn || !ann.hooks.speaker) return;
+    this.itemVoiceStats.uses++;
+    for (var i = 0; i < list.length; i++) if (list[i].key === key) { list[i].count += count; list[i].gained += gained; list[i].name = name; return; }
+    list.push({ key: key, name: name, itemName: itemName, count: count, gained: gained, at: now });
+    while (list.length > this.cfg.voice.itemBatchMax) this.flushItemBatch(now);
+  };
+
+  /**
+   * Chốt lô cũ nhất thành câu đọc mức 4. Lô đã chốt là khóa số: lần dùng sau mở lô mới.
+   * Câu cùng người + món còn nằm chờ (chưa đọc) thì cộng dồn vào câu đó. Khi giọng đang dồn (đã có từ 2 câu pháp bảo chờ),
+   * ghép thêm tối đa 3 cặp người–món vào câu chờ cuối, giữ đúng cặp và thứ tự đến.
+   */
+  Game.prototype.flushItemBatch = function (now) {
+    var b = this.itemBatches.shift(), ann = this.announcer;
+    if (!b || !ann.voiceOn || !ann.hooks.speaker) return;
+    var waiting = ann.queue.filter(function (q) { return q.kind === "item" && q.pairs; }), target = null, pairs;
+    for (var i = 0; i < waiting.length && !target; i++) if (waiting[i].pairs.some(function (p) { return p.key === b.key; })) target = waiting[i];
+    if (target) {
+      pairs = target.pairs.map(function (p) { return p.key === b.key ? Object.assign({}, p, { name: b.name, count: p.count + b.count, gained: p.gained + b.gained }) : p; });
+    } else if (waiting.length >= 2 && waiting[waiting.length - 1].pairs.length < 3) {
+      target = waiting[waiting.length - 1];
+      pairs = target.pairs.concat([b]);
+    } else pairs = [b];
+    var speech = itemSpeech(pairs);
+    if (target) this.itemVoiceStats.merged++; else this.itemVoiceStats.sentences++;
+    this.idleSince = null; this.lastInfoSpokenAt = now;
+    ann.say({ kind: "item", voiceOnly: true, priority: 4, key: target ? target.key : "item_voice:" + (++this.itemVoiceSeq),
+      at: target ? target.at : Date.now(), pairs: pairs, text: speech, speech: speech });
   };
 
   // ---------- Linh thú: trứng nở ----------
@@ -935,7 +988,7 @@
     if (this.surge || !this.settings.linhKhi || !this.nextSurgeAt || now < this.nextSurgeAt) return;
     this.surge = { startAt: now, endsAt: now + S.durationMs };
     var sec = Math.round(S.durationMs / 1000);
-    this.announcer.say({ kind: "surge_start", priority: 3, text: "Linh khí triều dâng! " + sec + " giây tới mọi tu vi x" + S.multiplier,
+    this.announcer.say({ kind: "surge_start", priority: 3, valid: stillTrue(this, function (g) { return g.surgeActive(g.now()); }), text: "Linh khí triều dâng! " + sec + " giây tới mọi tu vi x" + S.multiplier,
       speech: this.pickLine("surge_start", { giay: sec, he_so: S.multiplier }) || "Linh khí triều dâng! Trong " + sec + " giây tới, mọi tu vi nhận được đều nhân " + (S.multiplier === 2 ? "đôi" : S.multiplier) + ". Hãy sử dụng pháp bảo để tu luyện nhanh hơn" });
   };
 
@@ -980,7 +1033,7 @@
   Game.prototype.onBossEvent = function (e) {
     var fmt = function (n) { return n.toLocaleString("vi-VN"); }, b = this.cfg.boss;
     if (e.type === "boss_start") {
-      this.announcer.say({ kind: "boss_start", priority: 3, text: "Quái rồng " + b.name + " xuất hiện! Mọi tu vi đều đánh vào rồng (" + fmt(e.hp) + " máu)",
+      this.announcer.say({ kind: "boss_start", priority: 3, valid: stillTrue(this, function (g) { return g.boss.phase === "fight"; }), text: "Quái rồng " + b.name + " xuất hiện! Mọi tu vi đều đánh vào rồng (" + fmt(e.hp) + " máu)",
         speech: this.pickLine("boss_start", { boss: b.name, mau: fmt(e.hp) }) || "Quái rồng " + b.name + " đã xuất hiện! Mọi tu vi đồng môn nhận được đều đánh vào rồng" });
     } else if (e.type === "boss_hit") {
       this.bossHits.push({ id: ++this.bossHitSeq, userId: e.userId, amount: e.amount });

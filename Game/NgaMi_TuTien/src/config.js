@@ -207,7 +207,9 @@
       maxQueue: 4,
       maxWaitMs: 10000,             // câu thường chờ quá 10 giây thì bỏ (mỗi câu giọng AI đọc mất 3–5 giây)
       maxWaitImportantMs: 12000,    // câu tỉ thí / lên ghế được chờ tới 12 giây
-      infoEverySec: 30,             // đọc câu nhắc luật (còn bao lâu tới tỉ thí, comment gì) tối đa 1 lần / 30 giây; 0 = chỉ hiện chữ
+      infoEverySec: 15,             // lời nền: đọc sau khi giọng và hàng chờ đã rảnh đủ 15 giây; 0 = chỉ hiện chữ
+      itemBatchMs: 4000,            // gom các lần dùng pháp bảo của cùng người + cùng món trong 4 giây rồi đọc 1 câu
+      itemBatchMax: 8,              // tối đa 8 lô đang gom; quá thì chốt lô cũ nhất sớm
       announceStageUps: true,       // false = chỉ đọc khi lên ĐẠI cảnh giới
       joinBatchMs: 10000,           // gom người mới nhập môn rồi đọc 1 câu
       sideJoinBatchMs: 3000         // gom người vừa vào phe tỉ thí (3 giây) rồi đọc 1 câu

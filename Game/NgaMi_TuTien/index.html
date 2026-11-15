@@ -132,7 +132,7 @@
 
   function fillSettings() {
     var s = game.settings;
-    $("sVoice").checked = s.voice; $("sVolume").value = s.volume; $("sStage").checked = s.announceStageUps; $("sInfo").value = s.infoVoiceEverySec == null ? 30 : s.infoVoiceEverySec;
+    $("sVoice").checked = s.voice; $("sVolume").value = s.volume; $("sStage").checked = s.announceStageUps; $("sInfo").value = s.infoVoiceEverySec == null ? 15 : s.infoVoiceEverySec;
     $("sSfx").checked = s.sfx !== false; $("sSfxVolume").value = s.sfxVolume == null ? 0.8 : s.sfxVolume;
     $("sDuel").checked = s.duel; $("sEvery").value = s.duelEveryMin; $("sDur").value = s.duelDurationMin;
     $("sBoss").checked = s.boss !== false; $("sBossHp").value = s.bossHp; $("sBossEvery").value = s.bossEveryMin;

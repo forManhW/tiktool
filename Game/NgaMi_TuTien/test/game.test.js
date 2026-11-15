@@ -391,7 +391,7 @@ test("chữ luật vẫn hiện mỗi 3 giây; lời nền đọc khi rảnh và
   const info = shown.filter((i) => i.kind === "info");
   assert.ok(info.length >= 15);
   assert.equal(info.filter((i) => !i.silent).length, 0, "nhắc luật trên màn hình không tự đọc");
-  assert.equal(shown.filter((i) => i.kind === "idle").length, 2, "60 giây: hai câu nền khi giọng rảnh");
+  assert.equal(shown.filter((i) => i.kind === "idle").length, 4, "60 giây, nghỉ 15 giây mỗi câu: bốn câu nền khi giọng rảnh");
   await new Promise((r) => setImmediate(r));
   assert.ok(spoken.length >= 2);
 
@@ -735,8 +735,8 @@ test("tỉ thí: góp tu vi = 1 đòn trúng ngẫu nhiên 1 người phe kia, n
 // ---------- Bản 2: pháp bảo, linh thú, thiên kiếp, linh khí, hào quang ----------
 const item = (game, id, itemId, amount, count = 1) => game.handleAction(itemId, { amount, count }, src(id));
 
-test("pháp bảo: cộng tu vi như tu luyện, có hiệu ứng và banner; mọi món đều có giọng đọc", () => {
-  const { game, shown } = setup();
+test("pháp bảo: cộng tu vi như tu luyện, có hiệu ứng và banner; mọi món đều có giọng đọc", async () => {
+  const { game, shown, spoken, advance } = setup();
   join(game, "a", "An");
   item(game, "a", "ban_dao", 5000);
   item(game, "a", "long_chau", 20000, 2);
@@ -744,12 +744,148 @@ test("pháp bảo: cộng tu vi như tu luyện, có hiệu ứng và banner; m�
   const fx = game.getState().items;
   assert.deepEqual(fx.map((f) => [f.item, f.userId, f.count]), [["ban_dao", "a", 1], ["long_chau", "a", 2]]);
   const msgs = shown.filter((i) => i.kind === "item");
-  assert.notEqual(msgs[0].silent, true);
+  assert.equal(msgs.length, 2, "chữ hiện ngay, mỗi lần dùng một dòng");
+  assert.deepEqual(msgs.map((i) => [i.priority, i.silent]), [[1, true], [2, true]], "chữ giữ mức cũ; giọng đi qua lô gom");
   assert.match(msgs[0].text, /vừa sử dụng pháp bảo Bàn Đào! \+5\.000 tu vi/);
-  assert.match(msgs[0].speech, /^Đạo hữu \S+ vừa sử dụng pháp bảo Bàn Đào, cộng 5\.000 tu vi$/);
-  assert.notEqual(msgs[1].silent, true);
   assert.match(msgs[1].text, /Long Châu x2/);
-  assert.match(msgs[1].speech, /Long Châu 2 lần/);
+  const voiced = () => spoken.filter((t) => /pháp bảo/.test(t));
+  assert.equal(voiced().length, 0, "chưa hết 4 giây gom thì chưa đọc");
+  advance(4000); await flush(); await flush(); await flush();
+  assert.deepEqual(voiced(), ["Đạo hữu a vừa sử dụng pháp bảo Bàn Đào, cộng 5.000 tu vi", "Đạo hữu a vừa sử dụng pháp bảo Long Châu 2 lần, cộng 20.000 tu vi"]);
+  assert.equal(shown.filter((i) => i.kind === "item").length, 2, "câu đọc gom không hiện thêm dòng chữ");
+});
+
+const flush = () => new Promise((r) => setImmediate(r));
+// Bộ đọc giữ câu đang đọc cho tới khi test gọi next(): mô phỏng giọng đang bận.
+function slowVoice(settings = {}) {
+  let now = WED;
+  const spoken = [], shown = [], pending = [];
+  // Chỉ giữ các câu test đang theo dõi; câu chào nhập môn / thăng cấp đọc xong ngay và không ghi lại.
+  const speaker = { cancel() {}, speak: (t) => {
+    if (!/pháp bảo|mức \d|đang đọc/.test(t)) return Promise.resolve(true);
+    spoken.push(t); return new Promise((resolve, reject) => pending.push({ resolve, reject }));
+  } };
+  const game = new Game(DEFAULTS, { now: () => now, show: (i) => shown.push(i), speaker, storage: memoryStorage() });
+  game.applySettings({ voice: true, duel: false, boss: false, tauHoa: false, kiep: false, linhKhi: false, infoVoiceEverySec: 0, announceStageUps: false, ...settings });
+  game.enter();
+  return { game, spoken, shown, advance: (ms) => { now += ms; game.tick(now); },
+    next: async (ok = true) => { const p = pending.shift(); if (ok === "error") p.reject(new Error("tts")); else p.resolve(ok); await flush(); await flush(); } };
+}
+
+test("gom pháp bảo: cùng người cùng món trong 4 giây thành một câu, cộng số lần và tu vi thực nhận", async () => {
+  const { game, spoken, advance, next } = slowVoice();
+  join(game, "An"); join(game, "Bình"); advance(0); await flush();
+  game.sect.members.get("An").pets.ngoc_tho = 1;         // +5%: câu đọc phải dùng số thực nhận
+  item(game, "An", "chu_qua", 100); advance(1000);
+  item(game, "An", "chu_qua", 100, 2); advance(1000);
+  item(game, "Bình", "chu_qua", 100); item(game, "An", "ban_dao", 200);
+  assert.equal(game.itemBatches.length, 3);
+  advance(2000);                                         // lô đầu (a + Chu Quả) tròn 4 giây
+  assert.deepEqual(spoken, ["Đạo hữu An vừa sử dụng pháp bảo Chu Quả 3 lần, cộng 210 tu vi"]);
+  item(game, "An", "chu_qua", 100);                       // lô đã khóa: lần này mở lô mới
+  advance(2000);
+  assert.equal(game.announcer.queue.length, 2, "người khác / món khác là câu riêng, đúng thứ tự đến");
+  await next(); await next();
+  assert.deepEqual(spoken.slice(1), ["Đạo hữu Bình vừa sử dụng pháp bảo Chu Quả, cộng 100 tu vi", "Đạo hữu An vừa sử dụng pháp bảo Bàn Đào, cộng 210 tu vi"]);
+  advance(2000); await next();
+  assert.equal(spoken[3], "Đạo hữu An vừa sử dụng pháp bảo Chu Quả, cộng 105 tu vi");
+  assert.equal(game.sect.members.get("An").tuvi, 525, "gom giọng không đổi tu vi");
+});
+
+test("gom pháp bảo khi giọng dồn: cộng vào câu đang chờ, ghép tối đa 3 cặp, không sai tên và món", async () => {
+  const { game, spoken, advance, next } = slowVoice();
+  ["An", "Bình", "Chi", "Dung", "Em", "Phong"].forEach((id) => join(game, id)); advance(0); await flush();
+  item(game, "An", "chu_qua", 100); advance(4000);       // đang đọc câu của An
+  item(game, "Bình", "chu_qua", 100); advance(4000);     // chờ 1
+  item(game, "Chi", "ban_dao", 100); advance(4000);      // chờ 2
+  item(game, "Bình", "chu_qua", 100, 2); advance(4000);  // cùng cặp với câu chờ 1: cộng dồn
+  item(game, "Dung", "long_chau", 100); item(game, "Em", "chu_qua", 100); item(game, "Phong", "chu_qua", 100); advance(4000);
+  const waiting = game.announcer.queue.filter((q) => q.kind === "item").map((q) => q.speech);
+  assert.deepEqual(waiting, [
+    "Đạo hữu Bình vừa sử dụng pháp bảo Chu Quả 3 lần, cộng 200 tu vi",
+    "Đạo hữu Chi vừa sử dụng pháp bảo Bàn Đào, cộng 100 tu vi. Đạo hữu Dung vừa sử dụng pháp bảo Long Châu, cộng 100 tu vi. Đạo hữu Em vừa sử dụng pháp bảo Chu Quả, cộng 100 tu vi",
+    "Đạo hữu Phong vừa sử dụng pháp bảo Chu Quả, cộng 100 tu vi"]);
+  assert.equal(game.itemVoiceStats.uses, 7);
+  await next(); assert.equal(spoken[1], waiting[0]);
+});
+
+test("gom pháp bảo: quá 8 lô thì chốt lô cũ nhất sớm; tắt giọng hoặc thoát thì không đọc lại hàng cũ", async () => {
+  const { game, spoken, advance } = slowVoice();
+  for (let i = 0; i < 9; i++) join(game, "u" + i);
+  advance(0); await flush();
+  for (let i = 0; i < 9; i++) item(game, "u" + i, "chu_qua", 100);
+  assert.equal(game.itemBatches.length, 8);
+  assert.equal(spoken.length, 1, "lô cũ nhất được chốt ngay khi vượt giới hạn");
+  game.exit(); game.enter(); advance(10000); await flush();
+  assert.equal(game.itemBatches.length, 0);
+  assert.equal(spoken.length, 1);
+});
+
+test("giọng: pháp bảo trước mức 3; sau 3 câu pháp bảo đã đọc thì nhường đúng 1 câu mức 3 còn hiệu lực", async () => {
+  const { game, spoken, advance, next } = slowVoice();
+  const ann = game.announcer;
+  const p4 = (n) => ann.say({ kind: "item", voiceOnly: true, priority: 4, text: "pháp bảo " + n });
+  let valid = true;
+  ann.say({ text: "đang đọc", priority: 1 });
+  ann.say({ text: "mức 2", priority: 2 });
+  ann.say({ text: "mức 3 A", priority: 3, valid: () => valid });
+  p4(1); p4(2);
+  await next(); assert.equal(spoken.at(-1), "pháp bảo 1");
+  p4(3); await next(); assert.equal(spoken.at(-1), "pháp bảo 2");
+  p4(4); await next(); assert.equal(spoken.at(-1), "pháp bảo 3");
+  p4(5);
+  assert.deepEqual(ann.queue.map((q) => q.text), ["pháp bảo 4", "pháp bảo 5", "mức 3 A", "mức 2"]);
+  ann.say({ text: "mức 3 B", priority: 3 });             // hàng đầy: bỏ mức 2, câu mức 3 cũ nhất được giữ chỗ
+  p4(6);                                                 // đầy tiếp: bỏ câu mức 3 không được giữ chỗ, không bỏ câu được giữ
+  assert.deepEqual(ann.queue.map((q) => q.text), ["pháp bảo 4", "pháp bảo 5", "pháp bảo 6", "mức 3 A"]);
+  await next(); assert.equal(spoken.at(-1), "mức 3 A", "đủ 3 câu pháp bảo: tới lượt mức 3");
+  await next(); assert.equal(spoken.at(-1), "pháp bảo 4", "chỉ 1 câu mức 3 rồi quay lại pháp bảo");
+  assert.equal(ann.itemStreak, 0, "đọc xong câu mức 3 thì đặt lại bộ đếm");
+
+  // Câu lỗi không tính là đã đọc; chưa có mức 3 thì bộ đếm dừng ở 3 và mức 3 đến muộn được chọn ở lượt kế tiếp.
+  await next();        assert.equal(ann.itemStreak, 1, "pháp bảo 4 đọc xong, tính 1");
+  await next("error"); assert.equal(ann.itemStreak, 1, "pháp bảo 5 lỗi (reject) không tính");
+  p4(7); p4(8); p4(9); p4(10);
+  await next(false);   assert.equal(ann.itemStreak, 1, "pháp bảo 6 lỗi (false) không tính");
+  await next(); await next(); await next();
+  assert.equal(ann.itemStreak, 3, "chưa có mức 3: bộ đếm dừng ở 3");
+  assert.equal(spoken.at(-1), "pháp bảo 10");
+  valid = false;
+  ann.say({ text: "mức 3 hết hiệu lực", priority: 3, valid: () => valid });
+  ann.say({ text: "mức 3 đến muộn", priority: 3 });
+  await next();
+  assert.equal(spoken.at(-1), "mức 3 đến muộn", "bỏ câu đã sai trạng thái, đọc câu mức 3 còn đúng");
+  assert.equal(ann.stats.expired, 1);
+  advance(0);
+});
+
+test("cài đặt cũ: lời nền 30 giây chuyển sang 15 đúng một lần, giữ 0 và giá trị khác, không xóa lại chu kỳ tỉ thí", () => {
+  const open = (stored) => {
+    const storage = memoryStorage();
+    if (stored) storage.set("ngami.tutien.settings.v1", stored);
+    const game = new Game(DEFAULTS, { now: () => WED, storage });
+    return { game, storage };
+  };
+  assert.equal(open(null).game.settings.infoVoiceEverySec, 15, "chưa có dữ liệu: mặc định 15");
+  for (const [before, after] of [[30, 15], ["30", 15], [0, 0], [45, 45], [120, 120], ["abc", 15]]) {
+    const { game } = open({ settingsVersion: 2, infoVoiceEverySec: before, duelEveryMin: 20, duelDurationMin: 4, bossHp: 12345 });
+    assert.equal(game.settings.infoVoiceEverySec, after, "giá trị cũ " + before);
+    assert.equal(game.settings.duelEveryMin, 20, "nâng v2 -> v3 không xóa chu kỳ tỉ thí");
+    assert.equal(game.settings.duelDurationMin, 4);
+    assert.equal(game.settings.bossHp, 12345);
+    assert.equal(game.settings.settingsVersion, 3);
+  }
+  const v1 = open({ infoVoiceEverySec: 30, duelEveryMin: 15, duelDurationMin: 5 }).game.settings;
+  assert.deepEqual([v1.infoVoiceEverySec, v1.duelEveryMin, v1.duelDurationMin], [15, 10, 3], "bản rất cũ: chạy cả hai bước nâng");
+
+  // Sau khi đã chuyển, người dùng tự chọn lại 30 thì giữ 30 ở các lần mở sau.
+  const { game, storage } = open({ settingsVersion: 2, infoVoiceEverySec: 30 });
+  game.applySettings({ infoVoiceEverySec: 30 });
+  assert.equal(new Game(DEFAULTS, { now: () => WED, storage }).settings.infoVoiceEverySec, 30);
+
+  // Lưu không thành công: game vẫn chạy với 15.
+  const broken = { get: () => ({ settingsVersion: 2, infoVoiceEverySec: 30 }), set: () => { throw new Error("đầy"); } };
+  assert.equal(new Game(DEFAULTS, { now: () => WED, storage: broken }).settings.infoVoiceEverySec, 15);
 });
 
 test("trứng: nở ra linh thú theo tỉ lệ, trùng loại thì lên sao (5/10/15%), đủ 3 sao thì được vòng quay", () => {

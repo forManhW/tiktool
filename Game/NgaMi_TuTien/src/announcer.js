@@ -4,8 +4,10 @@
  *   const ann = new NgaMi.Announcer(cfg.voice, { show(item) {...}, speaker: NgaMi.webSpeechSpeaker() });
  *   ann.say({ text, speech?, priority, key? })
  *
- * priority: 3 = tỉ thí / đại cảnh giới / ghế top, 2 = tiểu cảnh, 1 = nhập môn.
+ * priority: 4 = pháp bảo (đã gom), 3 = tỉ thí / đại cảnh giới / ghế top, 2 = tiểu cảnh, 1 = nhập môn, 0 = lời nền.
  * Hàng đợi giọng có giới hạn: khi đầy sẽ bỏ câu ưu tiên thấp nhất, câu cùng `key` (vd. cùng 1 người) thì thay bằng câu mới.
+ * Đọc xong 3 câu mức 4 liên tiếp thì nhường đúng 1 câu mức 3 còn hiệu lực; khi có câu mức 4 chờ, 1 câu mức 3 được giữ chỗ.
+ * voiceOnly: chỉ đọc, không hiện chữ (chữ đã hiện riêng). valid(): trả false thì bỏ câu lúc tới lượt (chỉ dẫn đã sai trạng thái).
  */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
@@ -48,45 +50,66 @@
     this.voiceOn = !!voiceCfg.enabled;
     this.queue = [];
     this.speaking = false;
+    this.itemStreak = 0;   // số câu mức 4 đã ĐỌC XONG liên tiếp (tối đa 3)
+    this.gen = 0;
+    this.stats = { spoken: 0, failed: 0, expired: 0, dropped: 0 };
   }
 
   Announcer.prototype.setVoice = function (on) {
     this.voiceOn = !!on;
-    if (!on) { this.queue = []; if (this.hooks.speaker) this.hooks.speaker.cancel(); this.speaking = false; }
+    if (!on) { this.queue = []; this.gen++; this.itemStreak = 0; if (this.hooks.speaker) this.hooks.speaker.cancel(); this.speaking = false; }
   };
 
   Announcer.prototype.say = function (item) {
     item = Object.assign({ priority: 1, at: Date.now() }, item);
     item.speech = spokenText(item.speech || item.text);
-    if (typeof this.hooks.show === "function") this.hooks.show(item);   // chữ luôn hiện
+    if (!item.voiceOnly && typeof this.hooks.show === "function") this.hooks.show(item);   // chữ luôn hiện
     if (!this.voiceOn || !this.hooks.speaker || item.silent) return;
-    var q = this.queue;
-    if (item.key) for (var i = 0; i < q.length; i++) if (q[i].key === item.key) { q[i] = item; return this.pump(); }
+    var q = this.queue, canPrepare = typeof this.hooks.speaker.prepare === "function";
+    if (item.key) for (var i = 0; i < q.length; i++) if (q[i].key === item.key) {
+      q[i] = item;
+      if (canPrepare) item.prepared = this.hooks.speaker.prepare(item.speech || item.text);
+      return this.pump();
+    }
     q.push(item);
     // Hàng chờ đầy: bỏ câu ưu tiên thấp nhất; cùng mức thì bỏ câu CŨ nhất (câu mới đúng với màn hình hơn).
+    // Đang có câu mức 4 chờ thì giữ lại 1 câu mức 3 (câu cũ nhất) để pháp bảo dồn không đẩy hết tin quan trọng.
     while (q.length > this.cfg.maxQueue) {
-      var drop = 0;
-      for (var k = 1; k < q.length; k++) if (q[k].priority < q[drop].priority) drop = k;
-      q.splice(drop, 1);
+      var keep = -1, drop = -1;
+      if (q.some(function (x) { return x.priority >= 4; })) for (var p = 0; p < q.length; p++) if (q[p].priority === 3) { keep = p; break; }
+      for (var k = 0; k < q.length; k++) if (k !== keep && (drop < 0 || q[k].priority < q[drop].priority)) drop = k;
+      q.splice(drop, 1); this.stats.dropped++;
     }
     q.sort(function (a, b) { return b.priority - a.priority; });   // ổn định: cùng mức giữ thứ tự đến
     // Bộ đọc chạy trên máy (Piper qua hub) cần khoảng 0,5–1,3 giây để tạo câu: tạo trước ngay khi câu vào hàng chờ,
     // để lúc tới lượt đọc là có tiếng luôn.
-    if (q.indexOf(item) >= 0 && typeof this.hooks.speaker.prepare === "function") item.prepared = this.hooks.speaker.prepare(item.speech || item.text);
+    if (q.indexOf(item) >= 0 && canPrepare) item.prepared = this.hooks.speaker.prepare(item.speech || item.text);
     this.pump();
   };
 
   Announcer.prototype.pump = function () {
     if (this.speaking || !this.voiceOn) return;
-    if (!this.queue.length) { if (typeof this.hooks.idle === "function") this.hooks.idle(); return; }
-    // Câu chờ quá lâu (giọng đang bận đọc câu trước) thì bỏ, để giọng không đọc chuyện đã qua.
-    var self = this, item = this.queue.shift(), now = Date.now();
-    while (item && now - item.at > (item.priority >= 3 ? this.cfg.maxWaitImportantMs || 12000 : this.cfg.maxWaitMs || 6000)) item = this.queue.shift();
-    if (!item) { if (typeof this.hooks.idle === "function") this.hooks.idle(); return; }
+    // Câu chờ quá lâu (giọng đang bận đọc câu trước) hoặc đã sai trạng thái thì bỏ, để giọng không đọc chuyện đã qua.
+    var self = this, q = this.queue, now = Date.now(), st = this.stats, gen = this.gen;
+    for (var i = q.length - 1; i >= 0; i--) {
+      var it = q[i], limit = it.priority >= 3 ? this.cfg.maxWaitImportantMs || 12000 : this.cfg.maxWaitMs || 6000;
+      if (now - it.at > limit || (typeof it.valid === "function" && !it.valid())) { q.splice(i, 1); st.expired++; }
+    }
+    if (!q.length) { if (typeof this.hooks.idle === "function") this.hooks.idle(); return; }
+    // Hàng đã xếp theo mức giảm dần. Vừa đọc xong 3 câu pháp bảo liên tiếp: nhường 1 câu mức 3 (nếu có).
+    var pick = 0;
+    if (this.itemStreak >= 3) for (var k = 0; k < q.length; k++) if (q[k].priority === 3) { pick = k; break; }
+    var item = q.splice(pick, 1)[0], result;
     this.speaking = true;
-    Promise.resolve(this.hooks.speaker.speak(item.speech || item.text, this.cfg, item.prepared))
-      .catch(function () { /* giọng lỗi thì bỏ qua, chữ đã hiện */ })
-      .then(function () { self.speaking = false; self.pump(); });
+    try { result = Promise.resolve(this.hooks.speaker.speak(item.speech || item.text, this.cfg, item.prepared)); }
+    catch (e) { result = Promise.reject(e); }
+    result.then(function (ok) { return ok !== false; }, function () { return false; /* giọng lỗi thì bỏ qua, chữ đã hiện */ })
+      .then(function (ok) {
+        if (gen !== self.gen) return;   // đã tắt giọng / thoát trong lúc đọc
+        // Chỉ câu ĐỌC ĐƯỢC mới tính vào chuỗi; câu lỗi không đổi bộ đếm.
+        if (ok) { st.spoken++; self.itemStreak = item.priority >= 4 ? Math.min(3, self.itemStreak + 1) : 0; } else st.failed++;
+        self.speaking = false; self.pump();
+      });
   };
 
   /** Bộ đọc dùng Web Speech API có sẵn trong Chromium/Electron. Cần máy có giọng vi-VN (xem KE_HOACH.md mục 5). */
