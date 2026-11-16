@@ -103,6 +103,9 @@
     this.infoTurn = 0;
     this.idleSince = null;
     this.idleTurn = 0;
+    this.socialTurn = 0;
+    this.socialCursor = 0;
+    this.lastSocial = null;       // chỉ giữ người vừa được nhắc; không lưu lịch sử người chơi
     this.lastItemInviteAt = null;
     this.idleInviteItem = false;
     this.hubConnected = true; // Nếu SDK báo mất kết nối, tạm ngưng lời nền.
@@ -120,7 +123,7 @@
       // Đợi hết khoảng nhắc luật sau một sự kiện có lời đọc, tránh đọc lại ngay cùng nội dung.
       if (item.kind !== "info" && !item.silent && self.announcer.voiceOn) self.lastInfoSpokenAt = self.now();
       if (typeof deps.show === "function") deps.show(item, b);
-    }, idle: function () { self.idleSince = self.now(); } });
+    }, idle: function () { self.idleSince = self.now(); }, pendingItems: function () { return self.processingItem || (self.itemBatches && self.itemBatches.length > 0); } });
     this.sect = new C.Sect(this.cfg, { now: this.now, onEvent: function (e) { self.onSectEvent(e); } });
     this.duel = new D.Duel(this.cfg, { onEvent: function (e) { self.onDuelEvent(e); } });
     this.boss = new B.Boss(this.cfg, { onEvent: function (e) { self.onBossEvent(e); } });
@@ -145,6 +148,7 @@
     this.lastAct = null;
     this.itemFx = [];             // pháp bảo vừa dùng (renderer chạy hiệu ứng tại chỗ người tặng)
     this.itemFxSeq = 0;
+    this.processingItem = false;
     this.itemBatches = [];        // lô pháp bảo đang gom cho giọng đọc { key, name, itemName, count, gained, at }
     this.itemVoiceSeq = 0;
     this.itemVoiceStats = { uses: 0, sentences: 0, merged: 0 };
@@ -468,14 +472,63 @@
     return "tu_luyen";
   };
 
+  /** Chỉ kể dữ kiện đang có trên sân; khi chỉ có một người, cách ít nhất 3 phút mới nhắc lại. */
+  Game.prototype.idleSocialLine = function (now) {
+    var self = this, seats = this.getState().seats, last = this.lastSocial;
+    var candidates = seats.filter(function (s) {
+      return !!A.speakableName(s.name) && (!last || s.id !== last.id || now - last.at >= 180000);
+    });
+    if (!candidates.length) return null;
+    var kinds = ["canh_gioi", "chuong_mon", "linh_thu"], chosen = null, group;
+    for (var i = 0; i < kinds.length && !chosen; i++) {
+      var n = (this.socialTurn + i) % kinds.length, kind = kinds[n];
+      var eligible = candidates.filter(function (s) {
+        if (kind === "chuong_mon") return s.seat === "Chưởng môn" && self.idleState(now) === "tu_luyen";
+        if (kind === "linh_thu") return s.pets && s.pets.some(function (p) { return p.stars > 0 && self.cfg.pets.types.some(function (t) { return t.id === p.id; }); });
+        return !!s.label;
+      });
+      if (eligible.length) {
+        chosen = eligible[this.socialCursor++ % eligible.length];
+        group = kind;
+        this.socialTurn = (n + 1) % kinds.length;
+      }
+    }
+    if (!chosen) return null;
+    var member = this.sect.members.get(chosen.id), name = member && A.speakableName(member.nickname);
+    if (!name) return null;
+    var pet = null;
+    if (group === "linh_thu") {
+      var owned = this.cfg.pets.types.filter(function (t) { return chosen.pets.some(function (p) { return p.id === t.id && p.stars > 0; }); });
+      if (!owned.length) return null;
+      pet = owned[(this.socialCursor - 1) % owned.length];
+    }
+    // Chọn một mẫu duy nhất rồi thay tên riêng cho chữ hiện và giọng đọc; tên hiện vẫn giữ emoji.
+    var marker = "\u0001", template = this.pickLine("idle_tien_duyen_" + group,
+      { ten: marker, canh_gioi: chosen.label, linh_thu: pet && pet.name }, this.idleState(now));
+    if (!template) return null;
+    var selectedName = name, selectedDisplay = shown(member.nickname), selectedRealm = chosen.label, selectedId = chosen.id;
+    this.lastSocial = { id: selectedId, at: now };
+    return {
+      text: template.replace(marker, selectedDisplay),
+      speech: template.replace(marker, selectedName),
+      valid: function () {
+        var m = self.sect.members.get(selectedId), current = self.getState().seats.find(function (s) { return s.id === selectedId; });
+        if (!m || !current || A.speakableName(m.nickname) !== selectedName || shown(m.nickname) !== selectedDisplay) return false;
+        if (group === "canh_gioi") return current.label === selectedRealm;
+        if (group === "chuong_mon") return current.seat === "Chưởng môn" && self.idleState(self.now()) === "tu_luyen";
+        return current.pets && current.pets.some(function (p) { return p.id === pet.id && p.stars > 0; });
+      }
+    };
+  };
+
   Game.prototype.tickIdle = function (now) {
     var ann = this.announcer, seconds = Number(this.settings.infoVoiceEverySec) || 0;
     if (!this.running || !this.hubConnected || !ann.voiceOn || !ann.hooks.speaker || !seconds || this.duel.phase === "result") { this.idleSince = null; return; }
     if (ann.speaking || ann.queue.length || this.itemBatches.length) { this.idleSince = null; return; }
     if (this.idleSince === null) { this.idleSince = now; return; }
     if (now - this.idleSince < seconds * 1000) return;
-    var groups = ["luat", "khong_khi", "nhap_mon", "khong_khi", "luat", "loi_moi"], state = this.idleState(now);
-    var full = this.sect.seated.size >= this.cfg.capacity, info, text = null, usedItemInvite = false;
+    var groups = ["luat", "khong_khi", "nhap_mon", "tien_duyen", "luat", "loi_moi"], state = this.idleState(now);
+    var full = this.sect.seated.size >= this.cfg.capacity, info, text = null, social = null, usedItemInvite = false;
     for (var i = 0; i < groups.length && !text; i++) {
       usedItemInvite = false;
       var group = groups[this.idleTurn++ % groups.length];
@@ -493,6 +546,7 @@
       }
       else if (group === "khong_khi") text = this.pickLine("idle_khong_khi", {}, state);
       else if (group === "nhap_mon") text = this.pickLine(full ? "idle_full" : this.duel.phase === "duel" ? "idle_nhap_mon_duel" : "idle_nhap_mon", {}, state);
+      else if (group === "tien_duyen") { social = this.idleSocialLine(now); text = social && social.text; }
       else {
         if (full) continue;
         var canInvite = this.lastItemInviteAt === null || now - this.lastItemInviteAt >= 180000;
@@ -503,7 +557,7 @@
     }
     if (!text) { this.idleSince = now; return; }
     if (usedItemInvite) this.lastItemInviteAt = now;
-    this.announcer.say({ kind: "idle", priority: 0, key: "idle", text: text, speech: text });
+    this.announcer.say({ kind: "idle", priority: 0, key: "idle", text: text, speech: social ? social.speech : text, valid: social ? social.valid : undefined });
   };
 
   // ---------- Câu thông báo ----------
@@ -810,23 +864,29 @@
     var user = userOf(source), base = Math.floor(Number(params.amount) || 0);
     if (base <= 0) throw new Error("amount phải > 0");
     var item = this.itemDef(itemId), count = Math.max(1, Math.floor(Number(params.count) || 1)), now = this.now();
-    var gained = this.cultivate(user, base, source), id = String(user.id), m = this.sect.members.get(id);
-    // Cùng mã `act` với các đòn / kết quả mà lần dùng này thực sự tạo ra; effects rỗng = món chỉ thi triển tại chỗ.
-    var act = this.lastAct;
-    var fx = { id: ++this.itemFxSeq, act: act.id, item: itemId, userId: id, count: count, amount: gained, effects: act.effects.slice() };
-    this.itemFx.push(fx);
-    if (this.itemFx.length > 16) this.itemFx.shift();
-    if (itemId === "linh_thu_dan") {
-      var eggs = Math.min(count, this.cfg.pets.maxEggsPerEvent);
-      for (var i = 0; i < eggs; i++) this.hatches.push({ id: ++this.hatchSeq, fxId: fx.id, userId: id, due: now + this.cfg.pets.hatchMs + i * 700 });
+    this.processingItem = true;
+    try {
+      var gained = this.cultivate(user, base, source), id = String(user.id), m = this.sect.members.get(id);
+      // Cùng mã `act` với các đòn / kết quả mà lần dùng này thực sự tạo ra; effects rỗng = món chỉ thi triển tại chỗ.
+      var act = this.lastAct;
+      var fx = { id: ++this.itemFxSeq, act: act.id, item: itemId, userId: id, count: count, amount: gained, effects: act.effects.slice() };
+      this.itemFx.push(fx);
+      if (this.itemFx.length > 16) this.itemFx.shift();
+      if (itemId === "linh_thu_dan") {
+        var eggs = Math.min(count, this.cfg.pets.maxEggsPerEvent);
+        for (var i = 0; i < eggs; i++) this.hatches.push({ id: ++this.hatchSeq, fxId: fx.id, userId: id, due: now + this.cfg.pets.hatchMs + i * 700 });
+      }
+      var name = m ? m.nickname : "", times = count > 1 ? " x" + count : "", fmt = gained.toLocaleString("vi-VN");
+      // Chữ hiện ngay cho từng lần dùng, vị trí và mức như cũ. Giọng đọc đi riêng: gom theo người + món rồi đọc ở mức 4.
+      this.announcer.say({ kind: "item", priority: item.speak ? 2 : 1, silent: true, member: m, key: "item:" + id + ":" + itemId,
+        text: shown(name) + " vừa sử dụng pháp bảo " + item.name + times + "! +" + fmt + " tu vi",
+        speech: itemSpeech([{ name: name, itemName: item.name, count: count, gained: gained }]) });
+      this.batchItem("item:" + id + ":" + itemId, name, item.name, count, gained, now);
+      return true;
+    } finally {
+      this.processingItem = false;
+      this.announcer.pump();
     }
-    var name = m ? m.nickname : "", times = count > 1 ? " x" + count : "", fmt = gained.toLocaleString("vi-VN");
-    // Chữ hiện ngay cho từng lần dùng, vị trí và mức như cũ. Giọng đọc đi riêng: gom theo người + món rồi đọc ở mức 4.
-    this.announcer.say({ kind: "item", priority: item.speak ? 2 : 1, silent: true, member: m, key: "item:" + id + ":" + itemId,
-      text: shown(name) + " vừa sử dụng pháp bảo " + item.name + times + "! +" + fmt + " tu vi",
-      speech: itemSpeech([{ name: name, itemName: item.name, count: count, gained: gained }]) });
-    this.batchItem("item:" + id + ":" + itemId, name, item.name, count, gained, now);
-    return true;
   };
 
   /** Gom lời đọc pháp bảo: cùng người + cùng món trong voice.itemBatchMs thành 1 lô, cộng số lần và tu vi THỰC NHẬN. */

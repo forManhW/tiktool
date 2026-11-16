@@ -32,3 +32,54 @@ vfx_linh_chi.png: nền trong suốt có alpha; còn quầng alpha mờ rộng, 
 vfx_ngoc_dich.png: nền đen; có pixel lệch đen tuyệt đối mức 1–2
 vfx_phu_van.png: nền đen; có pixel lệch đen tuyệt đối mức 1
 vfx_khoi_bui.png: nền đen; có pixel lệch đen tuyệt đối mức 1
+
+Mẫu thử tag nền đục, chữ thư pháp (lưu riêng trong ../tag_thu_nen_duc/; chưa ghép vào game):
+thu_phap_hop_the.png: ngoài tag trong suốt, dải đỏ gần đục; 4 hốc có màu đỏ sẫm, chưa trong suốt; đã tạo lại 2 lần.
+thu_phap_nguyen_anh.png: ngoài tag trong suốt, dải xanh gần đục; 4 hốc có màu xanh sẫm, chưa trong suốt; ảnh hơi cao so với yêu cầu 4,5:1; đã tạo lại 2 lần.
+thu_phap_chan_tien.png: ngoài tag trong suốt, dải vàng nâu gần đục; có ngọc trang trí; đã tạo lại 2 lần.
+Cả ba cần kiểm tra nét chữ và dấu khi hiện thực tế ở 96 px; dải nền gần đục (alpha khoảng 253/255), không đục tuyệt đối.
+
+Mẫu thử phối màu tương phản (trong ../tag_thu_nen_duc/, chưa ghép game, 0 lần tạo lại mỗi mẫu ở lượt này):
+tuong_phan_nguyen_anh.png: chữ trắng ngà trên xanh đen, bốn hốc màu sẫm không trong suốt; tỷ lệ hình khoảng 3,4:1; dấu còn nhỏ ở 96 px.
+tuong_phan_hop_the.png: chữ trắng ngà trên đỏ rượu, bốn hốc màu sẫm không trong suốt; tỷ lệ hình khoảng 4,1:1; dấu còn nhỏ ở 96 px.
+tuong_phan_chan_tien.png: chữ trắng ngà trên tím than, có ngọc trang trí, không có hốc tiểu cảnh; tỷ lệ hình khoảng 3,9:1.
+Cả ba có ngoài hình trong suốt, nền bảng gần đục (alpha xấp xỉ 253/255); bản ghép 96 px chỉ để xem thử, chưa kiểm chứng trong game.
+
+Mẫu thử chữ sáng lấp lánh (trong ../tag_thu_nen_duc/, chưa ghép game; tạo lại 0 lần mỗi mẫu ở lượt này):
+lap_lanh_nguyen_anh.png: chữ ánh ngọc, nền xanh sẫm; 4 hốc sẫm chưa trong suốt, tỷ lệ khoảng 3,37:1.
+lap_lanh_hop_the.png: chữ ánh ngọc, nền đỏ sẫm; 4 hốc sẫm chưa trong suốt, tỷ lệ khoảng 4,04:1.
+lap_lanh_chan_tien.png: chữ ánh ngọc, nền tím sẫm; ngọc trang trí, không có hốc tiểu cảnh, tỷ lệ khoảng 3,91:1.
+Điểm sáng là chi tiết tĩnh trong ảnh; khi thu 96 px nét và dấu vẫn nhỏ. Dải nền gần đục (alpha khoảng 253/255), chưa đục tuyệt đối.
+
+Mẫu chữ lớn trên mây (trong ../tag_thu_nen_duc/, chưa ghép game; 0 lần tạo lại mỗi mẫu ở lượt này):
+chu_lon_may_nguyen_anh.png: chữ lam trên mây xanh đậm, 4 hốc sẫm; tỷ lệ hình 2,36:1, hình chạm mép phải.
+chu_lon_may_hop_the.png: chữ vàng cam trên mây đỏ, 4 hốc sẫm; tỷ lệ hình 2,72:1, hình chạm mép trên và trái.
+chu_lon_may_chan_tien.png: chữ vàng hồng trên mây tím, có phượng và ngọc; tỷ lệ hình 2,81:1, hình chạm mép trên và phải.
+Cả ba còn quá cao so với tỷ lệ 4,5:1 của kế hoạch và cần kiểm tra lại chữ, dấu ở 96 px. Các hốc chưa trong suốt. Cần chỉnh khung hoặc tạo lại trước khi đưa vào game.
+
+Mẫu thử tăng tương phản Hợp Thể: ../tag_thu_nen_duc/chu_lon_may_hop_the_tuong_phan.png; chữ vàng kem trên mây đỏ sẫm. Tạo một lần, chưa tạo lại. Nét đã phân biệt hơn khi xem 96 px, nhưng dấu vẫn nhỏ; hình còn sát mép, tỷ lệ khoảng 2,74:1 và bốn hốc chưa trong suốt. Chưa ghép game.
+
+Bộ 10 bảng tên mới: ../tag_canh_gioi_moi/, chỉ một ảnh mỗi cảnh giới, chưa ghép game. Các hốc có tâm màu sẫm trên nền, chưa trong suốt; alpha ở nền bảng gần đục nhưng không tuyệt đối. Mẫu cao hơn tỷ lệ 4,5:1 trong kế hoạch; chữ và dấu còn nhỏ ở 96 px, cần thử thực tế trước khi đưa vào game.
+tag_luyen_khi.png: chữ ngọc sáng trên mây xanh tối, 9 hốc; tạo lại 0 lần.
+tag_truc_co.png: chữ xanh ngọc sáng trên mây xanh tối, 4 hốc; tạo lại 0 lần.
+tag_ket_dan.png: chữ vàng trên mây nâu tối, 4 hốc; tạo lại 0 lần.
+tag_nguyen_anh.png: sao chép mẫu trước đã được anh duyệt; chữ xanh sáng trên mây xanh đậm, 4 hốc; chủ thể chạm cạnh phải.
+tag_hoa_than.png: chữ tím sáng trên mây tím tối, 4 hốc; tạo lại 0 lần.
+tag_luyen_hu.png: chữ lam sáng trên mây xanh tối, 4 hốc; tạo lại 0 lần; có tua mờ sát cạnh.
+tag_hop_the.png: sao chép mẫu tăng tương phản đã được anh duyệt, chữ vàng sáng trên mây đỏ tối, 4 hốc; hình sát mép.
+tag_dai_thua.png: chữ vàng hồng trên mây đỏ tối, 4 hốc; tạo lại 0 lần; hình sát mép.
+tag_do_kiep.png: chữ vàng lam trên mây chàm tối, 4 hốc; tạo lại 1 lần để giảm sát mép.
+tag_chan_tien.png: sao chép mẫu trước đã được anh duyệt, chữ vàng hồng trên mây tím tối, không hốc; chủ thể chạm mép trên và phải.
+
+Bộ chữ sáng và ít chi tiết bên trong nét: ../tag_canh_gioi_chu_sang/. Chỉ có một ảnh cho mỗi cảnh giới, chưa ghép game. Các ảnh sau đều là một lượt chỉnh sửa từ bộ tag_canh_gioi_moi, giữ bố cục và làm thân chữ sáng hơn:
+tag_luyen_khi.png: xanh ngọc nhạt trên mây xanh tối; 9 hốc sẫm.
+tag_truc_co.png: xanh ngọc nhạt trên mây xanh tối; 4 hốc sẫm.
+tag_ket_dan.png: vàng sáng trên mây nâu tối; 4 hốc sẫm.
+tag_nguyen_anh.png: lam sáng trên mây xanh tối; 4 hốc sẫm; hình chạm mép.
+tag_hoa_than.png: tím sáng trên mây tím tối; 4 hốc sẫm.
+tag_luyen_hu.png: lam ngọc sáng trên mây xanh tối; 4 hốc sẫm; có tua mờ sát cạnh.
+tag_hop_the.png: vàng sáng trên mây đỏ tối; 4 hốc sẫm; hình sát mép.
+tag_dai_thua.png: vàng hồng sáng trên mây đỏ tối; 4 hốc sẫm; hình sát mép.
+tag_do_kiep.png: vàng lam sáng trên mây chàm tối; 4 hốc sẫm.
+tag_chan_tien.png: vàng hồng sáng trên mây tím tối, không có hốc; hình chạm mép.
+Các hốc sẫm chưa trong suốt, ảnh cao hơn tỉ lệ 4,5:1 trong kế hoạch; dấu và chữ còn nhỏ ở 96 px. Cần thử thực tế trước khi ghép game; ảnh xem thử được ghép trên nền trích từ ảnh game, không phải ảnh chụp thực tế trong game.

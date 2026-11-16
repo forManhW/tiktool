@@ -404,20 +404,20 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 /* Long Châu: ngọc lớn, tia sáng xoay, hào quang nhấp nháy, 3 vòng sóng, chớp sáng toàn màn */
 .nm-fx-orb .nm-item-img { width: calc(var(--s) * 1.5); height: calc(var(--s) * 1.5); left: calc(var(--s) * -.75); top: calc(var(--s) * -.75); animation-name: nm-fx-orb2; }
 @keyframes nm-fx-orb2 { 0% { transform: translateY(-500px) scale(.5); opacity: 0; } 18% { transform: translateY(calc(var(--h) * -.8)) scale(1); opacity: 1; }
-  30% { transform: translateY(calc(var(--h) * -.8)) scale(1.15); filter: drop-shadow(0 0 30px #ffae00) drop-shadow(0 0 60px #ff8a00) brightness(1.15); } 40% { transform: translateY(calc(var(--h) * -.8)) scale(1); filter: drop-shadow(0 0 24px #ffae00) drop-shadow(0 0 40px #ff8a00); }
-  52% { transform: translateY(calc(var(--h) * -.8)) scale(1.15); filter: drop-shadow(0 0 34px #ffae00) drop-shadow(0 0 70px #ff7a00) brightness(1.2); } 64% { transform: translateY(calc(var(--h) * -.8)) scale(1); filter: drop-shadow(0 0 24px #ffae00) drop-shadow(0 0 40px #ff8a00); }
-  76% { transform: translateY(calc(var(--h) * -.8)) scale(1.2); filter: drop-shadow(0 0 40px #ffb300) drop-shadow(0 0 90px #ff7a00) brightness(1.25); opacity: 1; } 100% { transform: translateY(calc(var(--h) * -.8)) scale(2.2); opacity: 0; } }
-.nm-orb-rays { position: absolute; left: calc(var(--s) * -2.2); top: calc(var(--h) * -.8 - var(--s) * 2.2); width: calc(var(--s) * 4.4); height: calc(var(--s) * 4.4); border-radius: 50%; opacity: 0;
+  30%, 52% { transform: translateY(calc(var(--h) * -.8)) scale(1.1); filter: drop-shadow(0 0 18px #ffae00) brightness(1.1); }
+  40%, 64% { transform: translateY(calc(var(--h) * -.8)) scale(1); filter: drop-shadow(0 0 12px #ffae00); }
+  76% { transform: translateY(calc(var(--h) * -.8)) scale(1.15); filter: drop-shadow(0 0 20px #ffb300) brightness(1.1); opacity: 1; } 100% { transform: translateY(calc(var(--h) * -.8)) scale(1.25); opacity: 0; } }
+.nm-orb-rays { position: absolute; left: calc(var(--s) * -1.2); top: calc(var(--h) * -.8 - var(--s) * 1.2); width: calc(var(--s) * 2.4); height: calc(var(--s) * 2.4); border-radius: 50%; opacity: 0;
   background: repeating-conic-gradient(rgba(255,160,0,.7) 0deg 7deg, rgba(255,200,60,.15) 7deg 11deg, rgba(255,160,0,0) 11deg 22deg);
   -webkit-mask: radial-gradient(closest-side, #000 20%, transparent 100%); mask: radial-gradient(closest-side, #000 20%, transparent 100%);
   animation: nm-rays var(--t) linear forwards; }
 @keyframes nm-rays { 0% { opacity: 0; transform: rotate(0) scale(.4); } 18% { opacity: 1; transform: rotate(40deg) scale(1); } 85% { opacity: 1; transform: rotate(300deg) scale(1.15); } 100% { opacity: 0; transform: rotate(360deg) scale(1.4); } }
-.nm-orb-aura { position: absolute; left: calc(var(--h) * -1.6); top: calc(var(--h) * -1.8); width: calc(var(--h) * 3.2); height: calc(var(--h) * 3.2); border-radius: 50%;
+.nm-orb-aura { position: absolute; left: calc(var(--h) * -1); top: calc(var(--h) * -1.8); width: calc(var(--h) * 2); height: calc(var(--h) * 2); border-radius: 50%;
   background: radial-gradient(closest-side, rgba(255,214,90,.85), rgba(255,150,0,.45) 45%, rgba(255,120,0,0)); opacity: 0; animation: nm-orb-aura var(--t) ease-in-out forwards; }
 @keyframes nm-orb-aura { 0%, 15% { opacity: 0; transform: scale(.5); } 30% { opacity: .9; transform: scale(1); } 40% { opacity: .5; } 52% { opacity: 1; transform: scale(1.1); } 64% { opacity: .55; } 76% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; transform: scale(1.4); } }
-.nm-orb-wave { position: absolute; left: calc(var(--s) * -1); top: calc(var(--h) * -.8 - var(--s)); width: calc(var(--s) * 2); height: calc(var(--s) * 2); border-radius: 50%;
-  border: 12px solid #ffb300; box-shadow: 0 0 40px #ff9500, inset 0 0 40px #ffc640; opacity: 0; animation: nm-orb-wave calc(var(--t) * .35) ease-out forwards; }
-@keyframes nm-orb-wave { 0% { opacity: 1; transform: scale(.3); } 100% { opacity: 0; transform: scale(5); } }
+.nm-orb-wave { position: absolute; left: calc(var(--s) * -.65); top: calc(var(--h) * -.8 - var(--s) * .65); width: calc(var(--s) * 1.3); height: calc(var(--s) * 1.3); border-radius: 50%;
+  border: 6px solid #ffb300; box-shadow: 0 0 12px #ff9500, inset 0 0 12px #ffc640; opacity: 0; animation: nm-orb-wave calc(var(--t) * .35) ease-out forwards; }
+@keyframes nm-orb-wave { 0% { opacity: .8; transform: scale(.3); } 100% { opacity: 0; transform: scale(1.6); } }
 .nm-screen-flash { position: absolute; left: -200px; top: -300px; width: 1480px; height: 2520px; background: radial-gradient(ellipse at 50% 45%, rgba(255,236,170,.7), rgba(255,180,40,.35) 50%, rgba(255,160,0,0) 80%);
   pointer-events: none; animation: nm-flash .38s ease-out forwards; }
 
@@ -485,7 +485,10 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
   box-shadow: 0 0 26px 10px rgba(var(--c), .75); animation: nm-head-pulse .2s ease-in-out infinite alternate; }
 @keyframes nm-head-pulse { from { transform: scale(.9); } to { transform: scale(1.12); } }
 .nm-sword-done .nm-sword-head { opacity: 0; transition: opacity .25s; }
+.nm-sword-item .nm-sword-trail { scale: 2; transform-origin: 100% 50%; }
+.nm-sword-item .nm-sword-head { scale: 2; }
 .nm-magic-hit { position: absolute; width: 0; height: 0; pointer-events: none; }
+.nm-magic-hit-item::before { scale: 2; }
 .nm-magic-hit::before { content: ""; position: absolute; left: -60px; top: -60px; width: 120px; height: 120px; border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(var(--c), .8) 35%, rgba(var(--c), 0) 70%);
   animation: nm-magic-hit .5s ease-out forwards; }
@@ -802,11 +805,18 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .nm-top .nm-bubble { margin-bottom: 6px; }
 .nm-tag-v3 .nm-head { display: none; }
 .nm-tag-v3 .nm-plate .nm-tag-realm { display: none !important; }
+/* Bảng v3 đứng yên khi dùng pháp bảo hoặc nhân vật ra đòn, kể cả khi món làm tăng cấp. */
+.nm-tag-v3.nm-duel-layout .nm-tag { transform: translateX(-50%); }
+.nm-tag-v3 .nm-plate, .nm-tag-v3 .nm-level-up .nm-plate, .nm-tag-v3 .nm-plate.nm-plate-flip { animation: none; }
+.nm-tag-v3 .nm-dvm .nm-plate::after { content: none; }
+.nm-tag-v3 .nm-gems i.nm-gem-new { animation: none; }
 /* Bảng cảnh giới là chữ thư pháp màu sáng: thêm viền tối mảnh bằng mã để đọc được trên sân sáng ở bề ngang khoảng 90 px. */
-.nm-tag-v3 .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 1px 1px rgba(24, 14, 44, .85)); }
-.nm-tag-v3 .nm-houky .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 1px 1px rgba(24, 14, 44, .85)) brightness(1.07) saturate(1.2); }
-.nm-tag-v3 .nm-tag[data-side="1"] .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 0 4px #1fc7ae); }
-.nm-tag-v3 .nm-tag[data-side="2"] .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 0 4px #f0457f); }
+.nm-tag-v3 .nm-plate { z-index: 1; filter: drop-shadow(0 0 2px rgba(24, 14, 44, .98)) drop-shadow(0 1px 1px rgba(24, 14, 44, .9)); }
+.nm-tag-v3 .nm-houky .nm-plate { filter: drop-shadow(0 0 2px rgba(24, 14, 44, .98)) drop-shadow(0 1px 1px rgba(24, 14, 44, .9)) brightness(1.07) saturate(1.2); }
+.nm-tag-v3 .nm-tag[data-side="1"] .nm-plate { filter: drop-shadow(0 0 2px rgba(24, 14, 44, .98)) drop-shadow(0 0 4px #1fc7ae); }
+.nm-tag-v3 .nm-tag[data-side="2"] .nm-plate { filter: drop-shadow(0 0 2px rgba(24, 14, 44, .98)) drop-shadow(0 0 4px #f0457f); }
+.nm-tag-v3 .nm-gems i { min-width: 3px; background: transparent; box-shadow: none; }
+.nm-tag-v3 .nm-gems i.on { background: radial-gradient(circle, #fff 0 20%, var(--gem) 55%, transparent 75%); box-shadow: 0 0 0 .5px rgba(24, 14, 44, .95), 0 0 3px var(--gem); }
 .nm-tag-v3 .nm-strike .nm-tag[data-side] .nm-plate { filter: drop-shadow(0 0 1px rgba(24, 14, 44, .95)) drop-shadow(0 0 8px #fff) drop-shadow(0 0 4px var(--sidec)); }
 .nm-tag-v3 .nm-pets { bottom: 4px; }
 
@@ -814,6 +824,18 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 /* Chỉ dùng transform + opacity (không blur / filter lớn) để nhẹ khi sân đông. */
 .nm-vfx { position: absolute; height: auto; pointer-events: none; will-change: transform, opacity; }
 .nm-vfx-fly { opacity: 0; }
+.nm-vfx-glyphs { opacity: 0; display: flex; align-items: center; justify-content: space-between;
+  white-space: pre; color: #ffe066; font: 900 34px/1 "KaiTi", "STKaiti", "Microsoft YaHei", serif;
+  -webkit-text-stroke: 1px #5b2800; paint-order: stroke fill; text-shadow: 0 0 7px #ffae00, 0 0 2px #5b2800; }
+.nm-vfx-glyphs::before, .nm-vfx-glyphs::after { position: absolute; left: 0; width: 100%; text-align: center; }
+.nm-vfx-glyphs::before { content: "劍　　　 功"; top: 0; }
+.nm-vfx-glyphs::after { content: "法　　　 神"; bottom: 0; }
+.nm-vfx-ambient { width: 72px; opacity: 0; animation: nm-vfx-ambient .9s ease-out forwards; }
+@keyframes nm-vfx-ambient {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.65); }
+  30% { opacity: .45; }
+  100% { opacity: 0; transform: translate(-50%, -70%) scale(1); }
+}
 .nm-vfx-burst { width: var(--s); transform: translate(-50%, -50%) scale(.3) rotate(var(--r, 0deg)); animation: nm-vfx-burst var(--t, 450ms) ease-out forwards; }
 @keyframes nm-vfx-burst {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(.3) rotate(var(--r, 0deg)); }

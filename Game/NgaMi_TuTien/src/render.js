@@ -122,7 +122,7 @@
     var NAME_ABOVE = L.tagStyle === "v3";
     var nameLayer = NAME_ABOVE ? el("div", "nm-names", crowd) : null;
     stage.classList.toggle("nm-tag-v3", NAME_ABOVE);
-    var TAG_V3 = (typeof NgaMi !== "undefined" && NgaMi.TAG_LAYOUT_V3) || {};
+    var TAG_V3 = (typeof NgaMi !== "undefined" && NgaMi.TAG_LAYOUT_CLOUD) || {};
     // Lớp hiệu ứng (luồng sáng, số sát thương) nằm trên cùng khung cảnh, toạ độ theo khung 1080x1920.
     var fxLayer = el("div", "nm-fx", camera);
     var bossPanel = el("div", "nm-boss-panel", stage); bossPanel.style.top = BOSS.panelTop + "px";
@@ -160,7 +160,8 @@
       var bubble = el("div", "nm-bubble", top || head);
       var titleEl = el("div", "nm-tag-title", top || head);
       var topName = top ? el("div", "nm-top-name", top) : null;
-      var tag = el("div", "nm-tag", body);
+      // Bản v3 neo tag vào vị trí chỗ ngồi thay vì thân đang phóng to / lao / rung khi ra đòn.
+      var tag = el("div", "nm-tag", NAME_ABOVE ? rootEl : body);
       var plate = el("div", "nm-plate", tag);
       var realmEl = el("div", "nm-tag-realm", plate);   // chữ trên ruy băng: tên đại cảnh giới (chỉ hiện ở khung lớn)
       var nameEl = el("div", "nm-tag-name", plate);
@@ -287,15 +288,15 @@
       if (mc !== n.maxChars) { n.maxChars = mc; n.name = null; }
     }
     /**
-     * Khung theo đại cảnh giới (Đại viên mãn dùng khung _dvm riêng), ngọc sáng theo tiểu cảnh:
-     * Sơ kỳ 1 / Trung kỳ 2 / Hậu kỳ 3 / Đại viên mãn 4 viên; Luyện Khí có 9 ngọc, tầng N sáng N viên; Chân Tiên sáng đủ 4.
-     * Đổi đại cảnh giới hoặc lên Đại viên mãn: khung lật sang ảnh mới.
+     * Bản v3 dùng một ảnh mây cho mỗi đại cảnh giới, kể cả Đại viên mãn.
+     * Sơ kỳ / Trung kỳ / Hậu kỳ / Đại viên mãn sáng 1 / 2 / 3 / 4 ngọc;
+     * Luyện Khí có 9 ngọc, Chân Tiên không có hốc. Bản v2 giữ ảnh _dvm cũ.
      */
     function updatePlate(n, seat) {
       var ri = Math.max(0, Math.min(realms.length - 1, seat.realm || 0)), r = realms[ri];
       var st = Math.max(0, Math.min(r.stages.length - 1, (seat.level || 0) - realmStart[ri]));
       var dvm = r.stages.length === 4 && st === 3, nine = r.stages.length === 9;
-      var key = "tag_" + r.sprite + (dvm ? "_dvm" : ""), src = base + (NAME_ABOVE ? "tag_v3/" : "ban3/tag/") + key + ".webp";
+      var key = "tag_" + r.sprite + (!NAME_ABOVE && dvm ? "_dvm" : ""), src = base + (NAME_ABOVE ? "tag_cloud/" : "ban3/tag/") + key + ".webp";
       var lay = NAME_ABOVE ? TAG_V3[key] || { r: 3.3, gx: [], gy: 88, gd: 4.5 } : TAG_LAYOUT[key] || TAG_DEFAULT;
       // Kích thước khung theo đúng tỉ lệ ảnh; ô tên đặt đúng ô kem của ảnh; cỡ chữ theo chiều cao ô kem.
       var size = n.tagW + "x" + key;
@@ -560,7 +561,7 @@
         } else {
           // Người tẩu hỏa đánh 1 đệ tử: luồng sáng tím đỏ bay xuống, người trúng đòn lóe đỏ và mất tu vi.
           var to = discipleCenter(h.targetId), amt = h.amount, tid = h.targetId;
-          if (to) beam(POSS_CENTER, to, "dark", function () { hurtDisciple(tid, amt); popNumber(to.x, to.y - 40, "-" + amt.toLocaleString("vi-VN"), "nm-pop-red"); });
+          if (to) flyHit(h.act, POSS_CENTER, to, "dark", function () { hurtDisciple(tid, amt); if (amt > 0) popNumber(to.x, to.y - 40, "-" + amt.toLocaleString("vi-VN"), "nm-pop-red"); });
           else hurtDisciple(tid, amt);
         }
       });
@@ -624,61 +625,156 @@
      * Vệt sáng bay từ `from` tới `to` khoảng 0,42 giây, theo màu của phe.
      * (gold: đánh rồng / giải cứu, s1 / s2: màu phe tỉ thí). Tới nơi thì gọi onArrive.
      */
-    var SWORD_RGB = { gold: "255,206,84", s1: "79,209,189", s2: "240,107,154" };
-    function swordFly(from, to, kind, onArrive) {
+    var SWORD_RGB = { gold: "255,206,84", s1: "79,209,189", s2: "240,107,154", dark: "194,70,180" };
+    function swordFly(from, to, kind, onArrive, itemShot) {
       trimFx();
       var dx = to.x - from.x, dy = to.y - from.y, len = Math.sqrt(dx * dx + dy * dy), ang = Math.atan2(dy, dx) * 180 / Math.PI;
-      var wrap = el("div", "nm-sword", fxLayer);
+      var wrap = el("div", "nm-sword" + (itemShot ? " nm-sword-item" : ""), fxLayer);
+      fallbackNodes.push(wrap);
       wrap.style.cssText = "left:" + from.x.toFixed(0) + "px;top:" + from.y.toFixed(0) + "px;transform:rotate(" + ang.toFixed(1) + "deg)";
       wrap.style.setProperty("--c", SWORD_RGB[kind] || SWORD_RGB.gold);
-      var mover = el("div", "nm-sword-move", wrap);
-      // Vệt sáng phép thuật: đuôi sáng mờ dần + quả cầu linh lực ở đầu (không dùng hình kiếm).
-      el("div", "nm-sword-trail", mover);
-      el("div", "nm-sword-head", mover);
-      setTimeout(function () { mover.style.transform = "translateX(" + Math.max(0, len - 30).toFixed(0) + "px)"; }, 20);
-      setTimeout(function () {
+      var movers = [];
+      // Đòn thường một vệt; pháp bảo dùng ba vệt ngay cả khi quay về hiệu ứng dự phòng.
+      for (var m = 0; m < (itemShot ? 3 : 1); m++) {
+        var mover = el("div", "nm-sword-move", wrap);
+        if (itemShot) mover.style.top = ((m - 1) * 18) + "px";
+        el("div", "nm-sword-trail", mover);
+        el("div", "nm-sword-head", mover);
+        movers.push(mover);
+      }
+      scheduleVfx(function () { movers.forEach(function (e) { e.style.transform = "translateX(" + Math.max(0, len - 30).toFixed(0) + "px)"; }); }, 20);
+      scheduleVfx(function () {
         wrap.classList.add("nm-sword-done"); if (onArrive) onArrive();
-        var hit = el("div", "nm-magic-hit", fxLayer); hit.style.cssText = "left:" + to.x.toFixed(0) + "px;top:" + to.y.toFixed(0) + "px";
+        var hit = el("div", "nm-magic-hit" + (itemShot ? " nm-magic-hit-item" : ""), fxLayer); hit.style.cssText = "left:" + to.x.toFixed(0) + "px;top:" + to.y.toFixed(0) + "px";
+        fallbackNodes.push(hit);
         hit.style.setProperty("--c", SWORD_RGB[kind] || SWORD_RGB.gold);
-        setTimeout(function () { hit.remove(); }, 520);
+        scheduleVfx(function () { removeFallback(hit); }, 520);
       }, 440);
-      setTimeout(function () { wrap.remove(); }, 760);
+      scheduleVfx(function () { removeFallback(wrap); }, 760);
     }
 
     // ---------- Hiệu ứng mở rộng (ảnh vfx/): bộ đếm ngân sách riêng + đòn mang hình của đúng món ----------
-    var VFX = Object.assign({ enabled: true, maxElements: 64, maxSequences: 4 }, config.vfx || {});
-    var vfxCount = 0, vfxSeq = 0, actItems = {};
-    function vfxImg(name, cls, life) {
+    var VFX = Object.assign({ enabled: true, maxElements: 64, maxSequences: 4, maxAmbient: 2, maxParticles: 24, maxHighlights: 1 }, config.vfx || {});
+    VFX.maxElements = Math.max(0, Math.min(64, Math.floor(Number(VFX.maxElements) || 0)));
+    VFX.maxSequences = Math.max(0, Math.min(4, Math.floor(Number(VFX.maxSequences) || 0)));
+    var vfxCount = 0, vfxSeq = 0, vfxParticles = 0, vfxHighlights = 0, actItems = {}, ambient = [], nextAmbient = 0, vfxNodes = [], vfxTimers = [], fallbackNodes = [];
+    function scheduleVfx(fn, delay) {
+      var id = setTimeout(function () { var i = vfxTimers.indexOf(id); if (i >= 0) vfxTimers.splice(i, 1); fn(); }, delay);
+      vfxTimers.push(id); return id;
+    }
+    function cancelVfxTimer(id) { clearTimeout(id); var i = vfxTimers.indexOf(id); if (i >= 0) vfxTimers.splice(i, 1); }
+    function removeFallback(e) { e.remove(); var i = fallbackNodes.indexOf(e); if (i >= 0) fallbackNodes.splice(i, 1); }
+    function vfxNode(tag, cls, life) {
       if (vfxCount >= VFX.maxElements) return null;           // hết ngân sách: bỏ phần trang trí này
-      var e = el("img", "nm-vfx " + cls, fxLayer);
-      e.alt = ""; e.src = base + "vfx/" + name + ".webp";
-      vfxCount++;
-      setTimeout(function () { e.remove(); vfxCount--; }, life);
+      var particle = cls === "nm-vfx-shard";
+      if (particle && vfxParticles >= Math.max(0, Math.min(24, Number(VFX.maxParticles) || 0))) return null;
+      var e = el(tag, "nm-vfx " + cls, fxLayer);
+      vfxCount++; if (particle) vfxParticles++; vfxNodes.push(e);
+      var released = false;
+      e.releaseVfx = function () {
+        if (released) return;
+        released = true;
+        cancelVfxTimer(e.vfxTimer);
+        e.remove(); vfxCount--; if (particle) vfxParticles--;
+        var i = ambient.indexOf(e); if (i >= 0) ambient.splice(i, 1);
+        i = vfxNodes.indexOf(e); if (i >= 0) vfxNodes.splice(i, 1);
+      };
+      e.vfxTimer = scheduleVfx(e.releaseVfx, life);
       return e;
     }
+    function vfxImg(name, cls, life) {
+      var e = vfxNode("img", cls, life);
+      if (e) { e.alt = ""; e.src = base + "vfx/" + name + ".webp"; }
+      return e;
+    }
+    function clearAmbient() { ambient.slice().forEach(function (e) { e.releaseVfx(); }); }
+    function resetEffects() {
+      vfxTimers.slice().forEach(cancelVfxTimer);
+      vfxNodes.slice().forEach(function (e) { e.releaseVfx(); });
+      fallbackNodes.slice().forEach(removeFallback);
+      fxLayer.querySelectorAll(".nm-itemfx, .nm-hatch").forEach(function (e) { e.remove(); });
+      Object.keys(nodes).forEach(function (id) {
+        var n = nodes[id]; clearTimeout(n.itemTimer); n.itemHalo.className = "nm-ihalo"; n.root.classList.remove("nm-item-on");
+        if (n.pos && !n.root.classList.contains("nm-strike")) n.root.style.zIndex = String(zFor(n, n.pos));
+      });
+      if (kiepIhalo) { clearTimeout(kiepIhalo.timer); kiepIhalo.className = "nm-ihalo nm-kiep-ihalo"; }
+      eggFx = {};
+      vfxSeq = 0; vfxHighlights = 0; nextAmbient = 0; actItems = {};
+    }
+    function takeHighlight(life) {
+      if (vfxHighlights >= Math.max(0, Math.min(1, Number(VFX.maxHighlights) || 0))) return false;
+      vfxHighlights++;
+      scheduleVfx(function () { vfxHighlights--; }, life);
+      return true;
+    }
+    function playSound(name, gain) { if (typeof opts.onSound === "function") opts.onSound(name, gain); }
+    // Không khí giữa hai phe chỉ là hình nền: không gắn người và không sinh đòn / số tu vi.
+    function renderDuelAmbient(d, seats, now) {
+      var active = VFX.enabled && d.phase === "duel" && seats.some(function (s) { return s.side === 1; }) && seats.some(function (s) { return s.side === 2; });
+      if (!active) { clearAmbient(); nextAmbient = 0; return; }
+      if (!nextAmbient) { nextAmbient = now + 2000; return; }
+      if (now < nextAmbient) return;
+      var fighters = seats.filter(function (s) { return s.side === 1 || s.side === 2; }).length;
+      nextAmbient = now + (fighters >= 30 ? 2000 : fighters >= 10 ? 3000 : 4000);
+      var limit = Math.max(0, Math.min(2, Number(VFX.maxAmbient) || 0));
+      if (ambient.length >= limit || vfxSeq >= Math.max(1, VFX.maxSequences - 1) || vfxCount > VFX.maxElements - 9) return;
+      var e = vfxImg(Math.random() < .5 ? "vfx_kiem_quang" : "vfx_khoi_bui", "nm-vfx-ambient", 950);
+      if (!e) return;
+      e.style.left = FIGHT.mid + "px";
+      e.style.top = (FIGHT.top + 100 + Math.random() * Math.max(0, FIGHT.bottom - FIGHT.top - 200)).toFixed(0) + "px";
+      ambient.push(e);
+      if (Math.random() < .25) playSound("kiem", .35);
+    }
     /** Ảnh có đầu bên phải bay từ `from` tới `to`, tự xoay theo hướng bay. */
-    function vfxFly(name, from, to, w, ms, delay) {
+    function vfxFly(name, from, to, w, ms, delay, options) {
+      options = options || {};
+      if (name === "vfx_long_khi" && !options.realEndpoints) {
+        // Bóng rồng rộng: đẩy tâm ảnh vào sân ở hai mép, không đổi tọa độ va chạm thật của đòn.
+        var margin = Math.min(W / 2, w / 2);
+        from = { x: Math.max(margin, Math.min(W - margin, from.x)), y: from.y };
+        to = { x: Math.max(margin, Math.min(W - margin, to.x)), y: to.y };
+      }
       var dx = to.x - from.x, dy = to.y - from.y, ang = Math.atan2(dy, dx) * 180 / Math.PI;
       var e = vfxImg(name, "nm-vfx-fly", delay + ms + 90);
       if (!e) return;
       var turn = " rotate(" + ang.toFixed(1) + "deg)" + (Math.abs(ang) > 90 ? " scaleY(-1)" : "");   // bay sang trái: lật để không bị lộn ngược
       e.style.cssText = "left:" + from.x.toFixed(0) + "px;top:" + from.y.toFixed(0) + "px;width:" + w + "px;transform:translate(-50%,-50%)" + turn +
         ";transition:transform " + ms + "ms cubic-bezier(.5,0,.85,.55),opacity 120ms";
-      setTimeout(function () {
+      // Chữ Bí Tịch là một phần tử được tính vào cùng ngân sách, bay đúng đường đòn.
+      // Hai hàng chữ còn lại dùng pseudo-element, tránh nhân số nút DOM khi sân đông.
+      var glyphs = options.glyphs ? vfxNode("div", "nm-vfx-glyphs", delay + ms + 90) : null;
+      if (glyphs) {
+        glyphs.textContent = "氣　　　　 靈";
+        glyphs.style.cssText = "left:" + from.x.toFixed(0) + "px;top:" + from.y.toFixed(0) + "px;width:" + Math.round(w * .82) +
+          "px;height:" + Math.round(w * .42) + "px;transform:translate(-50%,-50%);transition:transform " + ms + "ms cubic-bezier(.5,0,.85,.55),opacity 120ms";
+      }
+      scheduleVfx(function () {
         e.style.opacity = "1";
         e.style.transform = "translate(calc(-50% + " + dx.toFixed(0) + "px),calc(-50% + " + dy.toFixed(0) + "px))" + turn;
+        if (glyphs) {
+          glyphs.style.opacity = "1";
+          glyphs.style.transform = "translate(calc(-50% + " + dx.toFixed(0) + "px),calc(-50% + " + dy.toFixed(0) + "px))";
+        }
       }, delay + 20);
     }
     /** Ảnh nở ra rồi tan tại một điểm (va chạm, vòng sóng). */
     function vfxBurst(name, at, size, ms, delay, rot) {
-      setTimeout(function () {
+      scheduleVfx(function () {
         var e = vfxImg(name, "nm-vfx-burst", ms + 60);
         if (e) e.style.cssText = "left:" + at.x.toFixed(0) + "px;top:" + at.y.toFixed(0) + "px;--s:" + size + "px;--t:" + ms + "ms;--r:" + (rot || 0) + "deg";
       }, delay || 0);
     }
+    // Ba ảnh đòn bay thành một loạt. Chỉ ảnh giữa mang vòng chữ Bí Tịch.
+    function vfxVolley(name, from, to, width, ms, delay, options) {
+      [0, 1, 2].forEach(function (i) {
+        var opts = Object.assign({}, options || {});
+        if (opts.glyphs && i !== 1) opts.glyphs = false;
+        vfxFly(name, { x: from.x, y: from.y + (i - 1) * 16 }, to, width, ms, delay + i * 60, opts);
+      });
+    }
     /** Các mảnh rời (linh thạch, vỏ trứng) văng ra quanh một điểm. */
     function vfxScatter(prefix, count, at, size, radius, ms, delay) {
-      setTimeout(function () {
+      scheduleVfx(function () {
         for (var i = 0; i < count; i++) {
           var e = vfxImg(prefix + (i + 1), "nm-vfx-shard", ms + 60);
           if (!e) return;
@@ -688,8 +784,16 @@
         }
       }, delay || 0);
     }
-    // Món đã có đòn riêng. Món chưa có (đang chờ duyệt 4 món mẫu) vẫn dùng vệt sáng cũ.
-    var ITEM_SHOT = { linh_thach: true, phi_kiem: true, long_chau: true };
+    // Trứng chỉ diễn hoạt khi nở; các món khác thay vệt sáng cũ nếu hành động có mục tiêu thật.
+    var ITEM_SHOT = { linh_thach: true, tu_khi_dan: true, chu_qua: true, ban_dao: true, linh_chi: true,
+      ngoc_dich: true, bi_tich: true, phi_kiem: true, long_chau: true };
+    var ITEM_PROJECTILE = {
+      tu_khi_dan: { image: "vfx_va_cham", impact: "vfx_song_linh_khi", width: 105 },
+      chu_qua: { image: "vfx_hoa_tien", impact: "vfx_va_cham", width: 180 },
+      linh_chi: { image: "vfx_linh_chi", impact: "vfx_song_linh_khi", width: 190 },
+      ngoc_dich: { image: "vfx_ngoc_dich", impact: "vfx_song_linh_khi", width: 190 },
+      bi_tich: { image: "vfx_kiem_quang", impact: "vfx_phu_van", width: 170 }
+    };
     /**
      * Đòn THẬT bay từ `from` tới `to`. Nếu đòn này thuộc cùng lần hành động với một pháp bảo có đòn riêng thì vẽ đòn của món đó
      * (thay vệt sáng thường, không vẽ thêm đòn trùng); kết quả (rung, số) chỉ gọi 1 lần qua onArrive.
@@ -697,28 +801,44 @@
      */
     function flyHit(act, from, to, kind, onArrive) {
       var it = act ? actItems[act] : null;
-      if (!VFX.enabled || !it || !ITEM_SHOT[it.item] || vfxSeq >= VFX.maxSequences || vfxCount > VFX.maxElements - 8) return swordFly(from, to, kind, onArrive);
+      var arrive = onArrive;
+      onArrive = function () { playSound("va_cham"); if (arrive) arrive(); };
+      var grouped = it && (it.item === "linh_thach" || it.item === "phi_kiem" || it.item === "ban_dao");
+      var needed = (grouped ? 9 : 3) + (it && it.item === "bi_tich" ? 1 : 0) + 2;
+      if (ambient.length && (vfxSeq >= VFX.maxSequences || vfxCount > VFX.maxElements - needed)) clearAmbient();
+      if (!VFX.enabled || !it || !ITEM_SHOT[it.item] || vfxSeq >= VFX.maxSequences || vfxCount > VFX.maxElements - needed) return swordFly(from, to, kind, onArrive, !!it);
       var def = ITEMS[it.item] || {}, dur = TIER_MS[def.tier || 1] || TIER_MS[1], t0 = Math.round(dur * 0.5), land;
       vfxSeq++;
       if (it.item === "linh_thach") {
         // Mảnh lam ngọc lao theo đòn, lóe vòng xanh tại điểm trúng.
-        [0, 1, 2].forEach(function (i) { vfxFly("vfx_manh_linh_thach_" + (i + 1), { x: from.x, y: from.y - 14 + i * 14 }, to, 30, 360, t0 + i * 70); });
-        land = t0 + 360 + 140;
-        vfxBurst("vfx_song_linh_khi", to, 120, 420, land);
+        [0, 1, 2].forEach(function (i) { vfxVolley("vfx_manh_linh_thach_" + (i + 1), { x: from.x, y: from.y - 14 + i * 14 }, to, 60, 360, t0 + i * 70); });
+        land = t0 + 360 + 140 + 120;
+        vfxBurst("vfx_song_linh_khi", to, 240, 420, land);
       } else if (it.item === "phi_kiem") {
-        // Kiếm trận hợp thế: 3 vệt kiếm quang nối nhau, kết quả chỉ hiện 1 lần ở vệt cuối.
-        [0, 1, 2].forEach(function (i) { vfxFly("vfx_kiem_quang", { x: from.x, y: from.y - 26 + i * 26 }, to, 170, 300, t0 + i * 120); });
-        land = t0 + 300 + 240;
-        vfxBurst("vfx_va_cham", to, 140, 420, land);
-      } else {
+        // Ba loạt kiếm, mỗi loạt ba vệt; kết quả chỉ hiện 1 lần ở vệt cuối.
+        [0, 1, 2].forEach(function (i) { vfxVolley("vfx_kiem_quang", { x: from.x, y: from.y - 26 + i * 26 }, to, 340, 300, t0 + i * 120); });
+        land = t0 + 300 + 240 + 120;
+        vfxBurst("vfx_va_cham", to, 280, 420, land);
+      } else if (it.item === "long_chau") {
         // Long Châu: bóng rồng vàng lao tới, va chạm lớn + vòng sóng. Không chớp trắng kín màn.
-        vfxFly("vfx_long_khi", from, to, 360, 720, t0);
-        land = t0 + 720;
-        vfxBurst("vfx_va_cham", to, 220, 520, land);
-        vfxBurst("vfx_song_linh_khi", to, 340, 620, land + 60);
+        var highlight = takeHighlight(t0 + 1340);
+        vfxVolley("vfx_long_khi", from, to, highlight ? 720 : 400, 720, t0, { realEndpoints: true });
+        land = t0 + 720 + 120;
+        vfxBurst("vfx_va_cham", to, highlight ? 440 : 240, 520, land);
+        if (highlight) vfxBurst("vfx_song_linh_khi", to, 680, 620, land + 60);
+      } else if (it.item === "ban_dao") {
+        [0, 1, 2].forEach(function (i) { vfxVolley("vfx_canh_dao_" + (i + 1), { x: from.x, y: from.y - 18 + i * 18 }, to, 72, 380, t0 + i * 65); });
+        land = t0 + 510 + 120;
+        vfxBurst("vfx_song_linh_khi", to, 220, 420, land);
+      } else {
+        var shot = ITEM_PROJECTILE[it.item];
+        if (it.item === "bi_tich") vfxBurst("vfx_phu_van", from, 220, 480, t0);
+        vfxVolley(shot.image, from, to, shot.width * 2, 420, t0, { glyphs: it.item === "bi_tich" });
+        land = t0 + 420 + 120;
+        vfxBurst(shot.impact, to, 240, 420, land);
       }
-      setTimeout(function () { if (onArrive) onArrive(); }, land);
-      setTimeout(function () { vfxSeq--; }, land + 500);
+      scheduleVfx(function () { if (onArrive) onArrive(); }, land);
+      scheduleVfx(function () { vfxSeq--; }, land + 500);
     }
     /** Món không tạo đòn trong trạng thái hiện tại: màn thi triển riêng TẠI CHỖ người dùng, không dựng mục tiêu hay va chạm. */
     function itemFlourish(raw, b, dur) {
@@ -730,11 +850,17 @@
       } else if (raw.item === "phi_kiem") {
         [0, 1].forEach(function (i) { vfxBurst("vfx_kiem_quang", b.c, Math.round(b.size * 1.5), 380, t0 + i * 160, i ? 150 : -30); });
       } else if (raw.item === "long_chau") {
-        vfxFly("vfx_long_khi", { x: b.c.x - 150, y: b.c.y + 40 }, { x: b.c.x + 130, y: b.c.y - b.h * 1.1 }, 340, 900, t0);
-        vfxBurst("vfx_song_linh_khi", b.c, Math.round(b.size * 2), 700, t0 + 200);
+        var highlight = takeHighlight(t0 + 1100);
+        vfxFly("vfx_long_khi", { x: b.c.x - 150, y: b.c.y + 40 }, { x: b.c.x + 130, y: b.c.y - b.h * 1.1 }, highlight ? 340 : 190, 900, t0);
+        if (highlight) vfxBurst("vfx_song_linh_khi", b.c, Math.round(b.size * 2), 700, t0 + 200);
+      } else if (raw.item === "ban_dao") {
+        vfxScatter("vfx_canh_dao_", 6, b.c, 32, b.size * .7, 700, t0);
+      } else if (ITEM_PROJECTILE[raw.item]) {
+        var local = raw.item === "bi_tich" ? "vfx_phu_van" : ITEM_PROJECTILE[raw.item].image;
+        vfxBurst(local, b.c, Math.round(b.size * 1.3), 600, t0);
       } else return;
       vfxSeq++;
-      setTimeout(function () { vfxSeq--; }, t0 + 1100);
+      scheduleVfx(function () { vfxSeq--; }, t0 + 1100);
     }
 
     // ---------- Pháp bảo: hiệu ứng tại chỗ người tặng ----------
@@ -764,9 +890,12 @@
       var def = ITEMS[raw.item] || { fx: "rise", img: "egg", color: "#ffffff" };
       var fx = { userId: raw.userId, fx: def.fx, color: def.color, id: raw.id };
       var b = itemBox(fx);
+      var inKiep = last && last.kiep && last.kiep.targetId === raw.userId;
+      var itemSounds = { linh_thach: "item_linh_thach", tu_khi_dan: "item_tu_khi_dan", chu_qua: "item_chu_qua", ban_dao: "item_ban_dao", linh_chi: "item_linh_chi", ngoc_dich: "item_ngoc_dich", bi_tich: "item_bi_tich", phi_kiem: "item_phi_kiem", long_chau: "item_long_chau", linh_thu_dan: "trung" };
+      if ((b || inKiep) && itemSounds[raw.item]) playSound(itemSounds[raw.item]);
       if (!b) {
         // Người đang độ kiếp không ngồi ở hàng dưới: pháp trận của món hiện quanh người đó trên mây giông.
-        if (last && last.kiep && last.kiep.targetId === raw.userId && def.fx !== "egg") {
+        if (inKiep && def.fx !== "egg") {
           var kt = TIER_MS[def.tier || 1] || TIER_MS[1];
           kiepIhalo.className = "nm-ihalo nm-kiep-ihalo";
           kiepIhalo.src = base + "ban3/circle/circle_" + raw.item + ".webp";
@@ -786,6 +915,12 @@
       var minSize = { 3: 140, 4: 190 }[tier] || 0, minH = { 3: 150, 4: 210 }[tier] || 0;
       if (b.size < minSize) { b.size = minSize; b.box.style.setProperty("--s", minSize + "px"); }
       if (b.h < minH) { b.h = minH; b.box.style.setProperty("--h", minH + "px"); }
+      // Long Châu lớn hơn nhân vật: giữ phần ngọc trong khung khi người tặng ngồi sát mép.
+      // Tâm của đòn và số kết quả vẫn dùng b.c thực tế của người tặng.
+      if (def.fx === "orb") {
+        var orbMargin = Math.min(W / 2, b.size * 0.95);
+        b.box.style.left = Math.max(orbMargin, Math.min(W - orbMargin, b.c.x)).toFixed(0) + "px";
+      }
       b.box.classList.add("nm-tier" + tier);
       flash(b.n, "nm-level-up");
       if (raw.count > 1) { var cnt = el("div", "nm-item-count", b.box); cnt.textContent = "x" + raw.count; }
@@ -815,14 +950,11 @@
           }, dur * 0.58 + i * 110);
         });
       } else if (def.fx === "orb") {
-        // Long Châu: tia sáng xoay, 3 vòng sóng, chớp sáng toàn màn, ngọc lớn tỏa hào quang.
+        // Long Châu: tia sáng xoay và vòng sóng cục bộ, không lóe sáng toàn màn.
         el("div", "nm-orb-rays", b.box);
         el("div", "nm-orb-aura", b.box);
         itemImg(b.box, def.img, "");
         [0, 1, 2].forEach(function (i) { var r = el("div", "nm-orb-wave", b.box); r.style.animationDelay = "calc(var(--t) * " + (0.3 + i * 0.18).toFixed(2) + ")"; });
-        [0, 1, 2].forEach(function (i) {
-          setTimeout(function () { var f = el("div", "nm-screen-flash", fxLayer); setTimeout(function () { f.remove(); }, 380); }, dur * (0.3 + i * 0.18));
-        });
       } else if (def.fx === "egg") {
         // Trứng rơi xuống, rung, nứt (egg_crack.png), lóe sáng; linh thú hiện ra khi game báo nở (renderHatches).
         var egg = itemImg(b.box, "egg", "nm-egg");
@@ -836,11 +968,19 @@
       }
       el("div", "nm-item-burst", b.box);
       if (tier >= 3) { var b2 = el("div", "nm-item-burst nm-burst2", b.box); b2.style.animationDelay = "calc(var(--t) * .62)"; }
-      setTimeout(function () {
+      scheduleVfx(function () {
         popNumber(b.c.x, b.c.y - b.h * 0.65, "+" + raw.amount.toLocaleString("vi-VN"), "nm-pop-gold " + (tier >= 4 ? "nm-pop-big" : "nm-pop-item"));
       }, dur * 0.45);
       // Lần dùng này có tạo đòn thật tới một mục tiêu không (theo kết quả game đã tính)? Không thì thi triển tại chỗ.
-      var shot = (raw.effects || []).some(function (e) { return (e.kind === "duel" && e.to != null) || e.kind === "boss" || e.kind === "rescue"; });
+      var shot = (raw.effects || []).some(function (e) { return (e.kind === "duel" && e.to != null) || e.kind === "boss" || e.kind === "rescue" || (e.kind === "possess" && e.to != null) || (e.kind === "shield" && last && last.kiep && e.to === last.kiep.targetId); });
+      (raw.effects || []).forEach(function (effect) {
+        // Chỉ dựng đòn hộ pháp khi chính kết quả thực sự có thêm kết giới cho người đang độ kiếp.
+        if (effect.kind !== "shield" || !last || !last.kiep || last.kiep.phase !== "strike" || effect.to !== last.kiep.targetId) return;
+        flyHit(raw.act, b.c, KIEP_BODY, "gold", function () {
+          kiepDome.classList.remove("nm-dome-hit"); void kiepDome.offsetWidth; kiepDome.classList.add("nm-dome-hit");
+          if (effect.amount > 0) popNumber(KIEP_BODY.x, KIEP_BODY.y - 80, "+" + effect.amount.toLocaleString("vi-VN") + " kết giới", "nm-pop-gold nm-pop-self");
+        });
+      });
       if (!shot) itemFlourish(raw, b, dur);
       setTimeout(function () { b.box.remove(); delete eggFx[raw.id]; }, life);
     }
@@ -886,6 +1026,7 @@
         lastHatchId = h.id;
         var c = discipleCenter(h.userId), n = nodes[h.userId], t = PETS[h.pet];
         if (!c || !n || !t) return;
+        playSound("trung");
         var e = eggFx[h.fxId];
         if (e) e.egg.classList.add("nm-egg-open");
         // Linh Thú Đản: vỏ trứng và sao nhỏ văng ra lúc nở (7 mảnh vỏ + 3 sao); kết quả linh thú vẫn do game báo.
@@ -1139,12 +1280,14 @@
 
     // Live đông thì thứ hạng đổi liên tục: chỉ xếp lại chỗ tối đa mỗi REORDER_MS.
     // Có người vào/rời chỗ hoặc đổi người ở 3 ghế đài thì xếp lại NGAY.
-    var REORDER_MS = opts.reorderMs || 1500, lastReorder = 0, lastSig = "";
+    var REORDER_MS = opts.reorderMs || 1500, lastReorder = 0, lastSig = "", lastDuelSoundPhase = null;
     function render(state, force) {
       last = state;
       var seats = state.seats || [], now = Date.now();
       // Đang tỉ thí: xếp theo phe (phe 1 bên trái, phe 2 bên phải, ai chưa chọn ngồi dưới xem).
       var d = state.duel || {}, duelLayout = d.phase === "duel" || d.phase === "result";
+      if (lastDuelSoundPhase !== null && d.phase !== lastDuelSoundPhase && (d.phase === "duel" || d.phase === "result")) playSound("ti_thi");
+      lastDuelSoundPhase = d.phase || "idle";
       duelMode = duelLayout;
       var sig = (duelLayout ? "D" : "N") + seats.map(function (s) { return s.id + (duelLayout ? ":" + s.side : ""); }).sort().join("|") + "#" + seats.slice(0, 3).map(function (s) { return s.id; }).join("|");
       // Có người thăng cấp: xếp lại chỗ ngay để camera thu vào đúng chỗ MỚI của người đó.
@@ -1170,8 +1313,11 @@
       actItems = {};
       (state.items || []).forEach(function (fx) { if (fx.act) actItems[fx.act] = fx; });
       renderDuelHits(d);
+      renderDuelAmbient(d, seats, now);
       renderBoss(state.boss || null);
       renderPossession(state.possession || null);
+      // Cập nhật độ lùi sân trước khi định vị pháp bảo hộ kiếp trong cùng khung hình.
+      if (!!state.kiep !== kiepMode) { kiepMode = !!state.kiep; stage.classList.toggle("nm-kiep-mode", kiepMode); setCrowd(); }
       renderStatus(state.duel || { enabled: false, phase: "idle" });
       renderWheel(state.wheel || null);
       renderItems(state.items);
@@ -1195,7 +1341,7 @@
     fit();
 
     // vfxStats: số phần tử / chuỗi hiệu ứng mở rộng đang tồn tại (để đo ngân sách khi thử).
-    return { render: render, slots: slots, fit: fit, vfxStats: function () { return { elements: vfxCount, sequences: vfxSeq, fxLayer: fxLayer.children.length }; } };
+    return { render: render, slots: slots, fit: fit, resetEffects: resetEffects, vfxStats: function () { return { elements: vfxCount, sequences: vfxSeq, ambient: ambient.length, particles: vfxParticles, highlights: vfxHighlights, fxLayer: fxLayer.children.length }; } };
   }
 
   return { createRenderer: createRenderer, computeSlots: computeSlots, REALM_COLORS: REALM_COLORS };

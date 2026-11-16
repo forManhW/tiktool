@@ -12,11 +12,9 @@
     "Đại hội tỉ thí sắp mở, chỉ còn một phút để chuẩn bị."
   ],
   "duel_start": [
-    "Tỉ thí bắt đầu. Đã vào môn phái, bình luận một vào Thanh Liên, hai vào Hồng Liên.",
+    "Tỉ thí bắt đầu. Đồng môn nào đã vào môn phái, hãy bình luận một vào Thanh Liên, hai vào Hồng Liên.",
     "Đại hội đã mở. Đồng môn bình luận một chọn Thanh Liên hoặc hai chọn Hồng Liên.",
     "Hai phe đã sẵn sàng. Sau khi vào Nga Mi, hãy bình luận một hoặc hai để chọn phe.",
-    "Kèo tỉ thí đã mở! Vào môn trước, rồi bình luận một hoặc hai chọn phe nhé.",
-    "Sân Nga Mi lên kèo! Đồng môn đã có chỗ bình luận một hoặc hai để nhập hội."
   ],
   "duel_end_win": [
     "Phe {phe} chiến thắng. Công đầu là {ten}, được thêm {thuong} tu vi.",
@@ -24,7 +22,6 @@
     "Chúc mừng phe {phe}. {ten} dẫn đầu phần đóng góp trong trận này."
   ],
   "duel_end_win_no_mvp": [
-    "Phe {phe} chiến thắng. Các đồng môn phe thắng nhận phần thưởng theo luật trận.",
     "Trận tỉ thí đã khép lại với chiến thắng thuộc về phe {phe}.",
     "Xin chúc mừng phe {phe} đã giành chiến thắng trong cuộc tỉ thí."
   ],
@@ -60,7 +57,6 @@
     "Chúc mừng đồng môn đã hạ rồng. {ten} đứng đầu với {sat_thuong} sát thương.",
     "Thanh thế rồng đã tan. Công đầu thuộc về {ten}, với {sat_thuong} sát thương.",
     "{ten} đánh rồng quá đẳng cấp, bá khí! Công đầu với {sat_thuong} sát thương.",
-    "Nga Mi hạ rồng thành công! {ten} gánh đội cực cháy với {sat_thuong} sát thương."
   ],
   "boss_killed_no_top": [
     "Quái rồng đã bị tiêu diệt. Cảm tạ các đạo hữu!",
@@ -86,8 +82,7 @@
   ],
   "possess_freed": [
     "{ten} đã được giải cứu. Cảm tạ {so_nguoi} đồng môn góp sức!",
-    "Khí tức của {ten} đã ổn định. Cảm ơn các đạo hữu giúp giải cứu.",
-    "Đồng môn đã giải cứu {ten}. Những người góp sức nhận phần thưởng theo luật."
+    "Khí tức của {ten} đã ổn định. Cảm ơn các đạo hữu giúp giải cứu."
   ],
   "kiep_start": [
     "Lôi kiếp giáng xuống {ten}. Đồng môn tu luyện để giúp dựng kết giới.",
@@ -101,7 +96,6 @@
     "Kết giới đã vững, {ten} vượt kiếp thành công!",
     "Lôi kiếp đã qua. Chúc mừng {ten} đột phá thành công.",
     "{ten} vượt kiếp quá đẳng cấp, bá khí! Xin chúc mừng đạo hữu.",
-    "Kết giới vững vàng, {ten} qua kiếp thành công. Màn này đúng là quá cháy!"
   ],
   "kiep_failed": [
     "{ten} độ kiếp chưa thành công. Tu vi vẫn được giữ, lần sau thử lại nhé.",
@@ -142,14 +136,12 @@
     "Chúc mừng {ten} bước lên vị trí {ghe}.",
     "Vị trí {ghe} nay thuộc về {ten}.",
     "{ten} lên ghế {ghe}, quá đẳng cấp, bá khí!",
-    "Chúc mừng {ten} chiếm vị trí {ghe}. Màn lên ghế này quá cháy!"
   ],
   "realm_up": [
     "Chúc mừng {ten} bước vào cảnh giới {canh_gioi}!",
     "{ten} vừa đột phá tới {canh_gioi}. Đồng môn cùng chúc mừng!",
     "Tu vi tinh tiến, {ten} đã đạt đại cảnh giới {canh_gioi}.",
     "{ten} đột phá {canh_gioi}, quá đẳng cấp, bá khí!",
-    "Đồng môn nhìn xem, {ten} vừa lên {canh_gioi}, thật sự rất cháy!",
     "Chúc mừng {ten} tiến vào {canh_gioi}. Trình độ này không phải dạng vừa đâu!"
   ],
   "stage_up": [
@@ -351,37 +343,37 @@
   ],
   "idle_nhap_mon": [
     {
-      "t": "Muốn vào Nga Mi, đạo hữu hãy tap tay hoặc sử dụng pháp bảo khi môn phái còn chỗ.",
+      "t": "Muốn vào Nga Mi, đạo hữu hãy táp tim hoặc sử dụng pháp bảo khi môn phái còn chỗ.",
       "when": "any"
     },
     {
-      "t": "Nga Mi đang đón đồng môn. Tap tay hoặc sử dụng pháp bảo để xin một chỗ khi còn chỗ nhé.",
+      "t": "Nga Mi đang đón đồng môn. táp tim hoặc sử dụng pháp bảo để xin một chỗ khi còn chỗ nhé.",
       "when": "any"
     },
     {
-      "t": "Đạo hữu mới có thể tap tay hoặc sử dụng pháp bảo để tham gia môn phái nếu còn chỗ.",
+      "t": "Đạo hữu mới có thể táp tim hoặc sử dụng pháp bảo để tham gia môn phái nếu còn chỗ.",
       "when": "any"
     },
     {
-      "t": "Khi Nga Mi còn chỗ, tap tay hoặc sử dụng pháp bảo sẽ giúp đạo hữu nhập môn.",
+      "t": "Khi Nga Mi còn chỗ, táp tim hoặc sử dụng pháp bảo sẽ giúp đạo hữu nhập môn.",
       "when": "any"
     },
     {
-      "t": "Muốn có mặt trên sân môn phái, hãy tap tay hoặc sử dụng pháp bảo khi còn chỗ.",
+      "t": "Muốn có mặt trên sân môn phái, hãy táp tim hoặc sử dụng pháp bảo khi còn chỗ.",
       "when": "any"
     },
     {
-      "t": "Đạo hữu ghé thăm có thể tap tay hoặc sử dụng pháp bảo để vào Nga Mi khi còn chỗ.",
+      "t": "Đạo hữu ghé thăm có thể táp tim hoặc sử dụng pháp bảo để vào Nga Mi khi còn chỗ.",
       "when": "any"
     }
   ],
   "idle_nhap_mon_duel": [
     {
-      "t": "Trước tiên tap tay hoặc sử dụng pháp bảo để vào môn phái khi còn chỗ; sau đó bình luận một hoặc hai để chọn phe.",
+      "t": "Trước tiên táp tim hoặc sử dụng pháp bảo để vào môn phái khi còn chỗ; sau đó bình luận một hoặc hai để chọn phe.",
       "when": "any"
     },
     {
-      "t": "Đạo hữu mới hãy tap tay hoặc sử dụng pháp bảo để vào Nga Mi trước. Có chỗ rồi, bình luận một hoặc hai để vào phe.",
+      "t": "Đạo hữu mới hãy táp tim hoặc sử dụng pháp bảo để vào Nga Mi trước. Có chỗ rồi, bình luận một hoặc hai để vào phe.",
       "when": "any"
     },
     {
@@ -389,7 +381,7 @@
       "when": "any"
     },
     {
-      "t": "Tap tay hoặc sử dụng pháp bảo để vào môn khi còn chỗ, sau đó chọn phe bằng bình luận một hoặc hai.",
+      "t": "táp tim hoặc sử dụng pháp bảo để vào môn khi còn chỗ, sau đó chọn phe bằng cách bình luận một hoặc hai.",
       "when": "any"
     }
   ],
@@ -405,19 +397,19 @@
   ],
   "idle_loi_moi_free": [
     {
-      "t": "Đạo hữu có thể tap tay để xin vào Nga Mi khi còn chỗ.",
+      "t": "Đạo hữu có thể táp tim để xin vào Nga Mi khi còn chỗ.",
       "when": "any"
     },
     {
-      "t": "Muốn gia nhập môn phái, hãy tap tay nếu sân còn chỗ nhé.",
+      "t": "Muốn gia nhập môn phái, hãy táp tim nếu sân còn chỗ nhé.",
       "when": "any"
     },
     {
-      "t": "Khi còn chỗ, một lượt tap tay giúp đạo hữu xin vào Nga Mi.",
+      "t": "Khi còn chỗ, một lượt tim giúp đạo hữu gia nhập Nga Mi.",
       "when": "any"
     },
     {
-      "t": "Đồng môn có thể tap tay để cùng tham gia môn phái.",
+      "t": "Đồng môn có thể tim để cùng tham gia môn phái.",
       "when": "any"
     },
     {
@@ -463,13 +455,23 @@
       "when": "any"
     },
     {
-      "t": "Đạo hữu có thể dùng pháp bảo phù hợp nếu muốn góp thêm tu vi theo luật phòng.",
-      "when": "any"
-    },
-    {
       "t": "Nếu muốn, đồng môn hãy chọn cách tham gia phù hợp; pháp bảo là một trong các lựa chọn.",
       "when": "any"
     }
+  ],
+  "idle_tien_duyen_canh_gioi": [
+    "Đạo hữu {ten} đang ở cảnh giới {canh_gioi}. Đường tu còn dài, đồng môn cứ thong thả mà tiến!",
+    "Nhìn sang sân Nga Mi, đạo hữu {ten} hiện đã tới {canh_gioi}. Chư vị cùng giữ vững đạo tâm nhé!",
+    "{ten} đang tu hành ở cảnh giới {canh_gioi}. Mây núi làm chứng, mỗi bước tiến đều đáng nhớ!",
+    "Khí tức trên sân hôm nay có đạo hữu {ten} ở {canh_gioi}. Đồng môn cùng tiếp tục tu luyện nào!"
+  ],
+  "idle_tien_duyen_chuong_mon": [
+    "Chưởng môn hiện tại là đạo hữu {ten}. Ghế cao thì gió lớn, mong đạo hữu giữ vững đạo tâm!",
+    "Đạo hữu {ten} đang ngồi ghế Chưởng môn. Cả Nga Mi cùng chăm chỉ, biết đâu bảng thứ hạng lại đổi!"
+  ],
+  "idle_tien_duyen_linh_thu": [
+    "Đạo hữu {ten} đang có {linh_thu} đồng hành. Đường tu đông vui hơn rồi!",
+    "Bên cạnh đạo hữu {ten} có {linh_thu}. Một người một thú, cùng góp thêm không khí cho Nga Mi!"
   ],
   "idle_luat_wait": [
     {

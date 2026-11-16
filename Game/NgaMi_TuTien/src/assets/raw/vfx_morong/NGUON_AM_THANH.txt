@@ -1,0 +1,8 @@
+Âm thanh mẫu mở rộng Nga Mi
+Ngày tạo: 15/11/2026
+
+Các file sfx_*.wav trong src/assets/raw/ được tổng hợp bằng thuật toán trong tools/create-vfx-sounds.py: sóng sin, nhiễu giả ngẫu nhiên và đường bao; không sử dụng bản ghi, mẫu âm hoặc thư viện hiệu ứng âm bên ngoài. Mã nguồn và các file sinh ra thuộc bộ dự án này, dùng được trong game và phiên live thương mại của dự án.
+
+Mỗi nhóm có hai biến thể: kiem, va_cham, tu_khi, ngoc, lua, nuoc, phu_van, rong, trung, ti_thi. Đây là âm tổng hợp ngắn để thử; âm rồng và nước là âm gợi ý, không phải tiếng gầm hoặc nước thu tự nhiên. Cần nghe so sánh, cân âm qua đầu ra live trước khi coi chất lượng là chốt.
+
+magic-fairy.mp3 là tài nguyên thăng cấp cũ, không được tạo bởi công cụ này; giữ nguyên nguồn và trạng thái quyền sử dụng cũ của dự án, chưa xác minh lại tại đây.

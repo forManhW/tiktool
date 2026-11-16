@@ -99,6 +99,106 @@ test("lời mời pháp bảo khi rảnh không lặp trước 3 phút", () => {
   inviteAfter(180000); assert.match(spoken.at(-1), /pháp bảo/i);
 });
 
+test("Tiên duyên chỉ chạy khi thực sự rảnh và bỏ qua khi không có tên đọc được", () => {
+  const { game, clock } = setup();
+  const lines = [];
+  game.announcer.say = (line) => lines.push(line);
+  join(game, "a", "🌸 An");
+  game.idleTurn = 3;
+  game.idleSince = clock() - 15000;
+  game.announcer.speaking = true;
+  game.tickIdle(clock());
+  assert.equal(lines.length, 0);
+  game.announcer.speaking = false;
+  game.announcer.queue.push({ priority: 4 });
+  game.idleSince = clock() - 15000;
+  game.tickIdle(clock());
+  assert.equal(lines.length, 0);
+  game.announcer.queue = [];
+  game.itemBatches.push({});
+  game.idleSince = clock() - 15000;
+  game.tickIdle(clock());
+  assert.equal(lines.length, 0);
+  game.itemBatches = [];
+  game.idleSince = clock() - 15000;
+  game.tickIdle(clock());
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].priority, 0);
+  assert.match(lines[0].text, /🌸 An/);
+  assert.doesNotMatch(lines[0].speech, /🌸/);
+  assert.match(lines[0].speech, /An/);
+  assert.equal(lines[0].valid(), true);
+  game.sect.seated.delete("a");
+  assert.equal(lines[0].valid(), false);
+
+  const empty = setup().game;
+  join(empty, "emoji", "🌸");
+  assert.equal(empty.idleSocialLine(empty.now()), null);
+});
+
+test("Tiên duyên dùng đúng cảnh giới bị chặn, ghế hiện tại và linh thú thật", () => {
+  const { game, clock } = setup({ kiep: true });
+  join(game, "a", "An"); join(game, "b", "Bình");
+  const an = game.sect.members.get("a"), binh = game.sect.members.get("b");
+  an.tuvi = 13000; // Chưa vượt lôi kiếp: cảnh giới hiển thị vẫn là Kết Đan Đại viên mãn.
+  an.pets.ngoc_tho = 1;
+  game.socialTurn = 0; game.socialCursor = 0;
+  const realm = game.idleSocialLine(clock());
+  assert.match(realm.text, /An/);
+  assert.match(realm.text, /Kết Đan Đại viên mãn/);
+  assert.equal(realm.valid(), true);
+  game.sect.passKiep("a", 3);
+  assert.equal(realm.valid(), false, "không đọc cảnh giới đã thay đổi");
+
+  game.lastSocial = null; game.socialTurn = 1; game.socialCursor = 0;
+  const leader = game.idleSocialLine(clock());
+  assert.match(leader.text, /Chưởng môn/);
+  assert.match(leader.text, /An/);
+  assert.equal(leader.valid(), true);
+  binh.tuvi = 20000;
+  assert.equal(leader.valid(), false, "không gọi nhầm Chưởng môn sau khi đổi hạng");
+
+  game.lastSocial = null; game.socialTurn = 2; game.socialCursor = 0;
+  const pet = game.idleSocialLine(clock());
+  assert.match(pet.text, /An/);
+  assert.match(pet.text, /Ngọc Thố/);
+  assert.equal(pet.valid(), true);
+  delete an.pets.ngoc_tho;
+  assert.equal(pet.valid(), false, "không kể linh thú không còn trong dữ liệu");
+});
+
+test("Tiên duyên đổi người, không lặp người duy nhất trước 3 phút", () => {
+  const { game, clock } = setup();
+  join(game, "a", "An");
+  game.socialTurn = 0; game.socialCursor = 0;
+  const first = game.idleSocialLine(clock());
+  assert.match(first.text, /An/);
+  assert.equal(game.idleSocialLine(clock() + 179999), null);
+  join(game, "b", "Bình");
+  const second = game.idleSocialLine(clock() + 1000);
+  assert.match(second.text, /Bình/);
+  assert.notEqual(first.text, second.text);
+  game.sect.seated.delete("a");
+  assert.equal(game.idleSocialLine(clock() + 180999), null);
+  assert.match(game.idleSocialLine(clock() + 181000).text, /Bình/);
+});
+
+test("Tiên duyên đi qua hàng giọng P0 và không chặn câu pháp bảo tiếp theo", async () => {
+  const { game, clock, spoken } = setup();
+  join(game, "a", "🌸 An");
+  game.idleTurn = 3;
+  game.idleSince = clock() - 15000;
+  game.tickIdle(clock());
+  assert.equal(spoken.length, 1);
+  assert.match(spoken[0], /An/);
+  assert.doesNotMatch(spoken[0], /🌸|\{[a-z_]+\}/i);
+  game.announcer.say({ kind: "item", priority: 4, text: "Pháp bảo thật" });
+  assert.equal(spoken.length, 1, "không cắt ngang câu đang đọc");
+  assert.equal(game.announcer.queue[0].priority, 4);
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  assert.equal(spoken[1], "Pháp bảo thật");
+});
+
 test("manifest khai báo đúng các action game xử lý", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "manifest.json"), "utf8"));
   assert.deepEqual(manifest.actions.map((a) => a.id).sort(), [...ACTION_IDS].sort());
@@ -821,42 +921,51 @@ test("gom pháp bảo: quá 8 lô thì chốt lô cũ nhất sớm; tắt giọn
   assert.equal(spoken.length, 1);
 });
 
-test("giọng: pháp bảo trước mức 3; sau 3 câu pháp bảo đã đọc thì nhường đúng 1 câu mức 3 còn hiệu lực", async () => {
-  const { game, spoken, advance, next } = slowVoice();
+test("giọng: mọi pháp bảo đang chờ được đọc trước sự kiện khác", async () => {
+  const { game, spoken, next } = slowVoice();
   const ann = game.announcer;
-  const p4 = (n) => ann.say({ kind: "item", voiceOnly: true, priority: 4, text: "pháp bảo " + n });
-  let valid = true;
   ann.say({ text: "đang đọc", priority: 1 });
-  ann.say({ text: "mức 2", priority: 2 });
-  ann.say({ text: "mức 3 A", priority: 3, valid: () => valid });
-  p4(1); p4(2);
-  await next(); assert.equal(spoken.at(-1), "pháp bảo 1");
-  p4(3); await next(); assert.equal(spoken.at(-1), "pháp bảo 2");
-  p4(4); await next(); assert.equal(spoken.at(-1), "pháp bảo 3");
-  p4(5);
-  assert.deepEqual(ann.queue.map((q) => q.text), ["pháp bảo 4", "pháp bảo 5", "mức 3 A", "mức 2"]);
-  ann.say({ text: "mức 3 B", priority: 3 });             // hàng đầy: bỏ mức 2, câu mức 3 cũ nhất được giữ chỗ
-  p4(6);                                                 // đầy tiếp: bỏ câu mức 3 không được giữ chỗ, không bỏ câu được giữ
-  assert.deepEqual(ann.queue.map((q) => q.text), ["pháp bảo 4", "pháp bảo 5", "pháp bảo 6", "mức 3 A"]);
-  await next(); assert.equal(spoken.at(-1), "mức 3 A", "đủ 3 câu pháp bảo: tới lượt mức 3");
-  await next(); assert.equal(spoken.at(-1), "pháp bảo 4", "chỉ 1 câu mức 3 rồi quay lại pháp bảo");
-  assert.equal(ann.itemStreak, 0, "đọc xong câu mức 3 thì đặt lại bộ đếm");
-
-  // Câu lỗi không tính là đã đọc; chưa có mức 3 thì bộ đếm dừng ở 3 và mức 3 đến muộn được chọn ở lượt kế tiếp.
-  await next();        assert.equal(ann.itemStreak, 1, "pháp bảo 4 đọc xong, tính 1");
-  await next("error"); assert.equal(ann.itemStreak, 1, "pháp bảo 5 lỗi (reject) không tính");
-  p4(7); p4(8); p4(9); p4(10);
-  await next(false);   assert.equal(ann.itemStreak, 1, "pháp bảo 6 lỗi (false) không tính");
-  await next(); await next(); await next();
-  assert.equal(ann.itemStreak, 3, "chưa có mức 3: bộ đếm dừng ở 3");
-  assert.equal(spoken.at(-1), "pháp bảo 10");
-  valid = false;
-  ann.say({ text: "mức 3 hết hiệu lực", priority: 3, valid: () => valid });
-  ann.say({ text: "mức 3 đến muộn", priority: 3 });
+  ann.say({ text: "mức 3", priority: 3 });
+  for (let i = 1; i <= 4; i++) ann.say({ kind: "item", priority: 4, text: "pháp bảo " + i });
+  assert.deepEqual(ann.queue.map(q => q.text), ["pháp bảo 1", "pháp bảo 2", "pháp bảo 3", "pháp bảo 4"], "hàng đầy giữ pháp bảo thay vì dành chỗ cho mức 3");
+  ann.say({ text: "mức 3 mới", priority: 3 });
+  for (let i = 1; i <= 4; i++) { await next(); assert.equal(spoken.at(-1), "pháp bảo " + i); }
   await next();
-  assert.equal(spoken.at(-1), "mức 3 đến muộn", "bỏ câu đã sai trạng thái, đọc câu mức 3 còn đúng");
-  assert.equal(ann.stats.expired, 1);
-  advance(0);
+  assert.equal(spoken.includes("mức 3 mới"), false, "câu ưu tiên thấp hơn không đẩy pháp bảo ra khỏi hàng");
+  ann.say({ text: "mức 3 sau", priority: 3 });
+  assert.equal(spoken.at(-1), "mức 3 sau");
+  await next();
+});
+
+test("một món làm lên cấp: chờ gom rồi đọc pháp bảo trước lời lên cấp", async () => {
+  const { game, shown, spoken, advance } = setup();
+  join(game, "a");
+  await flush(); await flush();
+  const start = spoken.length;
+  item(game, "a", "chu_qua", 1000);
+  const level = shown.find(i => i.kind === "realm_up" || i.kind === "level_up");
+  assert.ok(level, "pháp bảo phải tạo sự kiện lên cấp");
+  assert.equal(spoken.length, start, "không đọc lên cấp trong lúc lô pháp bảo chưa chốt");
+  advance(3999); await flush();
+  assert.equal(spoken.length, start);
+  advance(1); await flush(); await flush();
+  assert.match(spoken[start], /vừa sử dụng pháp bảo Chu Quả/);
+  assert.ok(spoken.slice(start + 1).length, "sự kiện lên cấp được đọc sau pháp bảo");
+});
+
+test("câu đang đọc kết thúc khi pháp bảo còn gom: sự kiện khác tiếp tục chờ", async () => {
+  const { game, spoken, next, advance } = slowVoice();
+  join(game, "a"); advance(0); await flush();
+  game.announcer.say({ text: "đang đọc", priority: 1 });
+  item(game, "a", "chu_qua", 100);
+  game.announcer.say({ text: "mức 3", priority: 3 });
+  await next();
+  assert.deepEqual(spoken, ["đang đọc"]);
+  advance(4000);
+  assert.match(spoken[1], /vừa sử dụng pháp bảo Chu Quả/);
+  await next();
+  assert.equal(spoken[2], "mức 3");
+  await next();
 });
 
 test("cài đặt cũ: lời nền 30 giây chuyển sang 15 đúng một lần, giữ 0 và giá trị khác, không xóa lại chu kỳ tỉ thí", () => {
