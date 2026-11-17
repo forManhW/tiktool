@@ -1191,7 +1191,7 @@
       seats: this.sect.seating().filter(function (s) { return (!possessedId || s.member.id !== possessedId) && (!k || s.member.id !== k.targetId); }).map(function (s, i) {
         var b = bubbles.get(s.member.id);
         return { rank: i + 1, seat: C.TOP_SEATS[i] || null, id: s.member.id, name: shown(s.member.nickname), tuvi: s.member.tuvi,
-          realm: s.level.realmIdx, level: s.level.index, label: s.level.label, progress: s.level.progress, sectRank: s.sectRank.id,
+          realm: s.level.realmIdx, level: s.level.index, label: s.level.label, progress: s.level.progress, blocked: s.level.blocked != null, sectRank: s.sectRank.id,
           fading: s.fading, bubble: b ? { id: b.id, text: b.text } : null,
           side: showSides && duel.players.has(s.member.id) ? duel.players.get(s.member.id).side : 0,
           duelPoints: showSides && duel.players.has(s.member.id) ? duel.players.get(s.member.id).points : 0,

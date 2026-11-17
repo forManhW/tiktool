@@ -322,6 +322,7 @@ test("thanh tiến độ: % tới tiểu cảnh tiếp theo", () => {
   const { game } = setup();
   join(game, "a"); tu(game, "a", 50); // tầng 2 (30) -> tầng 3 (70)
   assert.equal(game.getState().seats[0].progress, 0.5);
+  assert.equal(game.getState().seats[0].blocked, false);
 });
 
 test("tỉ thí: người vào phe được đọc tên theo phe (gom lại 1 câu), kết quả đọc kèm tỉ số và tu vi thưởng", async () => {

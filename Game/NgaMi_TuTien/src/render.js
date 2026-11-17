@@ -166,9 +166,12 @@
       var realmEl = el("div", "nm-tag-realm", plate);   // chữ trên ruy băng: tên đại cảnh giới (chỉ hiện ở khung lớn)
       var nameEl = el("div", "nm-tag-name", plate);
       if (topName) nameEl = topName;                    // bản A: tên ghi trên đầu, bảng dưới chân chỉ còn cảnh giới
+      // Thanh tu vi ngay dưới tên (trên đỉnh đầu): % tu vi tới tiểu cảnh kế tiếp. Chờ độ kiếp và Chân Tiên: đầy, màu vàng, không nhấp nháy.
+      var xp = el("div", "nm-xp", top || head);
+      var xpFill = el("i", "", xp);
       var gemsEl = el("div", "nm-gems", plate);         // ngọc ở cạnh dưới: số viên sáng = tiểu cảnh
       n = nodes[seat.id] = { root: rootEl, body: body, grow: 1, img: img, haloImg: haloImg, haloSrc: "", itemHalo: itemHalo, petsEl: petsEl, petSig: "", tag: tag, bubble: bubble, titleEl: titleEl, nameEl: nameEl, realmEl: realmEl, realmIdx: -1,
-        plate: plate, gemsEl: gemsEl, tagW: 0, plateSrc: "", gemSig: "", maxChars: 8, top: top,
+        plate: plate, gemsEl: gemsEl, xp: xp, xpFill: xpFill, xpSig: "", tagW: 0, plateSrc: "", gemSig: "", maxChars: 8, top: top,
         sprite: null, key: null, pos: null, level: seat.level, name: null, bubbleId: 0 };
       // setTimeout thay vì requestAnimationFrame: cửa sổ bị che / chạy nền thì rAF dừng, nhân vật mới sẽ tàng hình.
       setTimeout(function () { rootEl.classList.remove("nm-enter"); }, 40);
@@ -375,6 +378,15 @@
       var label = shortName(seat.name, n.maxChars);
       if (n.name !== label) { n.name = label; n.nameEl.textContent = label; }
       n.tag.style.setProperty("--realm", REALM_COLORS[seat.realm] || REALM_COLORS[0]);
+      var xpState = seat.blocked ? "kiep" : seat.progress >= 1 && seat.realm >= realms.length - 1 ? "max" : "";
+      var xpPct = xpState ? 100 : Math.max(0, Math.min(100, (seat.progress || 0) * 100));
+      var xpSig = xpPct.toFixed(1) + xpState;
+      if (n.xpSig !== xpSig) {
+        n.xpSig = xpSig;
+        n.xpFill.style.width = xpPct.toFixed(1) + "%";
+        n.xp.classList.toggle("nm-xp-kiep", xpState === "kiep");
+        n.xp.classList.toggle("nm-xp-max", xpState === "max");
+      }
       // Hào quang: màu chủ đạo của cảnh giới, sáng khi vừa được cộng tu vi (game tắt sau 1 phút 30 giây).
       n.body.style.setProperty("--aura", AURA_COLORS[seat.realm] || AURA_COLORS[0]);
       if (n.realmIdx !== seat.realm) {

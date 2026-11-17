@@ -36,10 +36,13 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font-f
 .nm-tag[data-side="1"] .nm-tag-name { border-color: var(--side1); }
 .nm-tag[data-side="2"] .nm-tag-name { border-color: var(--side2); }
 .nm-tag-title:empty { display: none; }
-/* Thanh tiến độ siêu mảnh ngay dưới tên: % tu vi tới tiểu cảnh tiếp theo. */
-.nm-bar { width: 78%; height: 4px; margin: 3px auto 0; border-radius: 2px; background: rgba(0,0,0,.55); overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,.12); }
-.nm-bar i { display: block; height: 100%; background: var(--realm, #fff); transition: width .4s; }
-.nm-podium .nm-bar { height: 5px; }
+/* Thanh tu vi trên đầu (ngay dưới tên): viền vàng, ruột xanh ngọc sáng dần về cuối. Dài cố định (không theo độ dài tên),
+   to nhỏ theo cỡ chữ của chỗ ngồi (ghế đài to hơn hàng dưới). */
+.nm-xp { width: 4.6em; height: .38em; min-height: 5px; margin: 3px auto 0; border-radius: 99px; background: rgba(24,12,48,.7); overflow: hidden;
+  box-shadow: 0 0 0 1.5px #f3d27a, 0 1px 4px rgba(0,0,0,.6); }
+.nm-xp i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3fe0b0, #b8ffd9 70%, #fffbe0);
+  box-shadow: 0 0 8px #b8ffd9; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+.nm-xp.nm-xp-max i, .nm-xp.nm-xp-kiep i { background: linear-gradient(90deg, #f0b93a, #ffe27a 60%, #fff8d6); box-shadow: 0 0 8px #ffd25a; }
 /* Bóng thoại khi đệ tử đang ngồi comment. */
 .nm-bubble { position: absolute; left: 50%; bottom: 100%; width: max-content; max-width: 260px; margin-bottom: 8px; padding: 6px 12px; border-radius: 14px;
   background: #fffaf0; color: #2a1f0e; font-size: max(16px, .82em); font-weight: 600; line-height: 1.25; white-space: normal; text-align: center;
