@@ -22,7 +22,14 @@ files:
   - "!Game/**/raw/**"
   - "!Game/**/*.md"
   - "!Game/**/package*.json"
+  # Game Unity: chỉ đóng gói bản build (.exe), không kéo theo source project Unity.
+  - "!Game/**/UnityProject/**"
+  - "!Game/**/Build/*_BurstDebugInformation_DoNotShip/**"
+  - "!Game/**/Build/*_BackUpThisFolder_ButDontShipItWithYourGame/**"
   - package.json
+# Windows không chạy được .exe nằm trong app.asar, nên bản build game native để ngoài asar.
+asarUnpack:
+  - "Game/**/Build/**"
 # Adapter TikTok (PyInstaller) nằm ngoài asar vì phải chạy được như file .exe thật.
 extraResources:
   - from: vendor/tiktok-adapter

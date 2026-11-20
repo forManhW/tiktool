@@ -182,6 +182,12 @@ async function startGame() {
     const g = selected();
     const s = await api("/api/sessions", { method: "POST", body: JSON.stringify({ gameId: g.id, username: state.username || "local-demo" }) });
     if (window.tiktoolDesktop) await window.tiktoolDesktop.launchGame({ gameId: g.id, url: s.gameUrl, window: g.window });
+    else if (g.launch?.type === "native") {
+      const q = new URL(s.gameUrl).searchParams;
+      notice(`Game này là file .exe, hãy mở bằng TikTool Desktop. Hoặc tự chạy: ${g.folder}/${g.launch.exe} --session ${q.get("session")} --token ${q.get("token")}`, "error");
+      await refresh();
+      return;
+    }
     else window.open(s.gameUrl, "_blank");
     notice("Đã khởi động game. Chờ game kết nối.");
     await refresh();

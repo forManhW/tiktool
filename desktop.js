@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog, screen, shell } = require("electron");
 const fs = require("fs");
 const path = require("path");
+const { spawn } = require("child_process");
+const { resolveNativeLaunch } = require("./core/native-launch");
 
 const HUB = `http://127.0.0.1:${Number(process.env.PORT || 3090)}`;
 const windows = new Map();
@@ -62,8 +64,29 @@ function gameWindowSize(size) {
   const area = screen.getPrimaryDisplay().workAreaSize, scale = Math.min(1, (area.width * 0.95) / w, (area.height * 0.95) / h);
   return { width: Math.round(w * scale), height: Math.round(h * scale), minWidth: Math.min(360, Math.round(w * scale)), minHeight: Math.min(360, Math.round(h * scale)), useContentSize: true };
 }
-ipcMain.handle("launch-game", (_, { gameId, url, window: size }) => {
+// Game dạng .exe (manifest.launch.type = "native", vd. game Unity): chạy file exe với --session/--token/--ws.
+// Bản cài: Game/**/Build/** nằm ngoài asar (asarUnpack) vì Windows không chạy được exe trong app.asar.
+const GAME_ROOT = path.join(__dirname, "Game").replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
+const nativeGames = new Map();
+async function launchNative(gameId, url) {
+  const games = await fetch(`${HUB}/api/games`).then((r) => r.json());
+  const game = (Array.isArray(games) ? games : games.games || []).find((g) => g.id === gameId);
+  const plan = game && resolveNativeLaunch({ gameRoot: GAME_ROOT, folder: game.folder, launch: game.launch, url, gamePort: Number(process.env.GAME_PORT || 8765) });
+  if (!plan) return false;
+  if (!fs.existsSync(plan.exe)) throw new Error(`Chưa có bản build của game: ${plan.exe}`);
+  const old = nativeGames.get(gameId);
+  if (old && old.exitCode === null) old.kill(); /* Start Game lại: tắt bản cũ, mở bản mới với session mới */
+  const child = spawn(plan.exe, plan.args, { cwd: plan.cwd, stdio: "ignore", windowsHide: false });
+  child.on("error", (e) => console.error(`Không chạy được game ${gameId}:`, e));
+  child.on("exit", () => { if (nativeGames.get(gameId) === child) nativeGames.delete(gameId); });
+  nativeGames.set(gameId, child);
+  return true;
+}
+app.on("will-quit", () => { for (const child of nativeGames.values()) try { child.kill(); } catch {} });
+
+ipcMain.handle("launch-game", async (_, { gameId, url, window: size }) => {
   if (!String(url).startsWith(HUB)) throw new Error("Game URL phải nằm trên hub local");
+  if (await launchNative(gameId, url)) return;
   if (windows.has(gameId)) { const open = windows.get(gameId); open.loadURL(url); open.focus(); return; } /* Start Game lại: nạp session mới + code game mới */
   const game = new BrowserWindow({ ...gameWindowSize(size), title: "TikTool Game", autoHideMenuBar: true, webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
   lockNavigation(game);
