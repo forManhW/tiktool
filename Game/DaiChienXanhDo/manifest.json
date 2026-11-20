@@ -1,0 +1,348 @@
+{
+  "id": "red-blue-brawl",
+  "name": "Đại Chiến Xanh Đỏ",
+  "version": "0.1.0",
+  "launch": {
+    "type": "native",
+    "exe": "Build/DaiChienXanhDo.exe"
+  },
+  "connection": {
+    "transport": "websocket",
+    "port": 8765
+  },
+  "window": {
+    "width": 1080,
+    "height": 1080
+  },
+  "triggers": [
+    "gift",
+    "like",
+    "comment",
+    "follow",
+    "share"
+  ],
+  "liveEvents": [],
+  "actions": [
+    {
+      "id": "blue_join",
+      "name": "XANH: Vào phe",
+      "parameters": {}
+    },
+    {
+      "id": "blue_spawn",
+      "name": "XANH: Thêm lính",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20,
+          "step": 1,
+          "label": "Số lính"
+        }
+      }
+    },
+    {
+      "id": "blue_like_power",
+      "name": "XANH: Tim tiếp sức",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "step": 1,
+          "label": "Mức tiếp sức"
+        }
+      }
+    },
+    {
+      "id": "blue_punch",
+      "name": "XANH: Đấm thường (bậc 1)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50,
+          "step": 1,
+          "label": "Số cú đấm mạnh"
+        }
+      }
+    },
+    {
+      "id": "blue_combo_punch",
+      "name": "XANH: Đấm liên hoàn (bậc 2)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20,
+          "step": 1,
+          "label": "Số combo (mỗi combo 5 cú)"
+        }
+      }
+    },
+    {
+      "id": "blue_superhero",
+      "name": "XANH: Siêu Chiến Binh (bậc 3)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4,
+          "step": 1,
+          "label": "Số lần x15 giây"
+        }
+      }
+    },
+    {
+      "id": "blue_lightning",
+      "name": "XANH: Sấm sét (bậc 4)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "step": 1,
+          "label": "Số đợt sấm"
+        }
+      }
+    },
+    {
+      "id": "blue_tank",
+      "name": "XANH: Xe tăng (bậc 5)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "step": 1,
+          "label": "Số xe"
+        }
+      }
+    },
+    {
+      "id": "blue_meteor",
+      "name": "XANH: Mưa thiên thạch (bậc 6)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "step": 1,
+          "label": "Số đợt"
+        }
+      }
+    },
+    {
+      "id": "blue_giant_robot",
+      "name": "XANH: Robot khổng lồ (bậc 7)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1,
+          "step": 1,
+          "label": "Số robot",
+          "scale": false
+        }
+      }
+    },
+    {
+      "id": "red_join",
+      "name": "ĐỎ: Vào phe",
+      "parameters": {}
+    },
+    {
+      "id": "red_spawn",
+      "name": "ĐỎ: Thêm lính",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20,
+          "step": 1,
+          "label": "Số lính"
+        }
+      }
+    },
+    {
+      "id": "red_like_power",
+      "name": "ĐỎ: Tim tiếp sức",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "step": 1,
+          "label": "Mức tiếp sức"
+        }
+      }
+    },
+    {
+      "id": "red_punch",
+      "name": "ĐỎ: Đấm thường (bậc 1)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 50,
+          "step": 1,
+          "label": "Số cú đấm mạnh"
+        }
+      }
+    },
+    {
+      "id": "red_combo_punch",
+      "name": "ĐỎ: Đấm liên hoàn (bậc 2)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20,
+          "step": 1,
+          "label": "Số combo (mỗi combo 5 cú)"
+        }
+      }
+    },
+    {
+      "id": "red_superhero",
+      "name": "ĐỎ: Siêu Chiến Binh (bậc 3)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4,
+          "step": 1,
+          "label": "Số lần x15 giây"
+        }
+      }
+    },
+    {
+      "id": "red_lightning",
+      "name": "ĐỎ: Sấm sét (bậc 4)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "step": 1,
+          "label": "Số đợt sấm"
+        }
+      }
+    },
+    {
+      "id": "red_tank",
+      "name": "ĐỎ: Xe tăng (bậc 5)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "step": 1,
+          "label": "Số xe"
+        }
+      }
+    },
+    {
+      "id": "red_meteor",
+      "name": "ĐỎ: Mưa thiên thạch (bậc 6)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "step": 1,
+          "label": "Số đợt"
+        }
+      }
+    },
+    {
+      "id": "red_giant_robot",
+      "name": "ĐỎ: Robot khổng lồ (bậc 7)",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1,
+          "step": 1,
+          "label": "Số robot",
+          "scale": false
+        }
+      }
+    },
+    {
+      "id": "ally_like_power",
+      "name": "PHE ĐÃ VÀO: Tim tiếp sức",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 100,
+          "step": 1,
+          "label": "Mức tiếp sức"
+        }
+      }
+    },
+    {
+      "id": "ally_spawn",
+      "name": "PHE ĐÃ VÀO: Thêm lính",
+      "parameters": {
+        "amount": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 20,
+          "step": 1,
+          "label": "Số lính"
+        }
+      }
+    },
+    {
+      "id": "event_x2",
+      "name": "SỰ KIỆN: X2 sức mạnh ngay",
+      "parameters": {}
+    },
+    {
+      "id": "event_disaster",
+      "name": "SỰ KIỆN: Thảm họa ngay",
+      "parameters": {}
+    },
+    {
+      "id": "admin_reset_round",
+      "name": "QUẢN TRỊ: Reset ván (không tính điểm)",
+      "parameters": {}
+    },
+    {
+      "id": "admin_reset_score",
+      "name": "QUẢN TRỊ: Reset tỉ số hôm nay",
+      "parameters": {}
+    }
+  ],
+  "defaultMappings": [
+    {
+      "eventType": "comment",
+      "matchMode": "exact",
+      "keywords": [
+        "xanh",
+        "blue",
+        "1"
+      ],
+      "action": "blue_join",
+      "params": {},
+      "priority": 20,
+      "userCooldownMs": 5000
+    },
+    {
+      "eventType": "comment",
+      "matchMode": "exact",
+      "keywords": [
+        "đỏ",
+        "do",
+        "red",
+        "2"
+      ],
+      "action": "red_join",
+      "params": {},
+      "priority": 20,
+      "userCooldownMs": 5000
+    }
+  ]
+}

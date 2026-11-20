@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 671f082182c598c46bc87fbd482c6f63, type: 3}
+  m_Name: GameAssets
+  m_EditorClassIdentifier: Assembly-CSharp::DaiChienXanhDo.GameAssets
+  blueFighterPrefab: {fileID: 0}
+  redFighterPrefab: {fileID: 0}
+  tankPrefab: {fileID: 0}
+  robotPrefab: {fileID: 0}
+  meteorPrefab: {fileID: 0}
+  blueMaterial: {fileID: 2100000, guid: 551ad31a0a32e38428f5abc897b6e50c, type: 2}
+  redMaterial: {fileID: 2100000, guid: 465b48c0edd335a47bfa946c92af5c1e, type: 2}
+  superMaterial: {fileID: 2100000, guid: aa2066dd68fa11b41911dfbb7d21ce9b, type: 2}
+  boltMaterial: {fileID: 2100000, guid: 48b6ae8a829234045b1c46af5babe57f, type: 2}
+  meteorMaterial: {fileID: 2100000, guid: 1f8c516706e2b6d41ac52f14043601fb, type: 2}
+  groundMaterial: {fileID: 2100000, guid: b2fb571c6a7db114fa0850fd386d31e7, type: 2}

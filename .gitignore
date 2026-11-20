@@ -13,3 +13,16 @@ data/logs/
 data/tiktool.db
 data/tiktool.db-*
 Game/*/data_*/
+
+# Game Unity (Game/<tên>/UnityProject): chỉ commit Assets, Packages, ProjectSettings
+Game/*/UnityProject/[Ll]ibrary/
+Game/*/UnityProject/[Tt]emp/
+Game/*/UnityProject/[Oo]bj/
+Game/*/UnityProject/[Ll]ogs/
+Game/*/UnityProject/[Uu]ser[Ss]ettings/
+Game/*/UnityProject/.vs/
+Game/*/UnityProject/*.csproj
+Game/*/UnityProject/*.sln
+Game/*/UnityProject/*.slnx
+# Bản build .exe tạo lại được bằng BuildScript, không commit
+Game/*/Build/
