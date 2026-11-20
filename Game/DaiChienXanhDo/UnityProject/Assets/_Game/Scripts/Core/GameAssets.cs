@@ -3,17 +3,29 @@ using UnityEngine;
 namespace DaiChienXanhDo
 {
     /// <summary>
-    /// Nơi gắn model/vật liệu. Nằm ở Assets/_Game/Resources/GameAssets.asset.
-    /// Prefab để trống thì game dùng khối hình cơ bản (greybox), nên thay model thật chỉ cần kéo prefab vào đây.
+    /// Nơi gắn model, hoạt ảnh, vật liệu, âm thanh. Nằm ở Assets/_Game/Resources/GameAssets.asset.
+    /// ProjectSetup tự điền các ô này từ thư mục Art/Audio. Ô nào trống thì game dùng khối hình cơ bản / im lặng.
     /// </summary>
     [CreateAssetMenu(menuName = "Dai Chien Xanh Do/Game Assets")]
     public class GameAssets : ScriptableObject
     {
-        [Header("Prefab (để trống = greybox)")]
+        [Header("Nhân vật (chọn ngẫu nhiên mỗi người)")]
+        public GameObject[] fighterModels;
+        public RuntimeAnimatorController fighterController;
+        public float fighterHeight = 1.9f;
+
+        [Header("Prefab cũ (để trống = greybox)")]
         public GameObject blueFighterPrefab;
         public GameObject redFighterPrefab;
+
+        [Header("Xe tăng, robot, thiên thạch")]
         public GameObject tankPrefab;
+        public float tankLength = 4.2f;
+        public float tankYawOffset = 180f;
         public GameObject robotPrefab;
+        public Texture2D robotTexture;
+        public RuntimeAnimatorController robotController;
+        public float robotHeight = 8f;
         public GameObject meteorPrefab;
 
         [Header("Vật liệu")]
@@ -23,6 +35,21 @@ namespace DaiChienXanhDo
         public Material boltMaterial;
         public Material meteorMaterial;
         public Material groundMaterial;
+        public Material fxAdditiveMaterial;   // hạt cộng sáng: tia lửa, chớp, lửa
+        public Material fxSmokeMaterial;      // hạt pha trộn: khói, bụi
+
+        [Header("Âm thanh")]
+        public AudioClip[] sfxPunch;
+        public AudioClip[] sfxPunchHeavy;
+        public AudioClip[] sfxExplosion;
+        public AudioClip[] sfxThunder;
+        public AudioClip[] sfxTankShot;
+        public AudioClip[] sfxRobotStomp;
+        public AudioClip sfxVictory;
+        public AudioClip sfxWarning;
+        public AudioClip sfxSiren;
+        public AudioClip sfxGift;
+        public AudioClip music;
 
         static GameAssets instance;
         public static GameAssets I
@@ -37,5 +64,6 @@ namespace DaiChienXanhDo
 
         public Material TeamMaterial(Team team) => team == Team.Blue ? blueMaterial : redMaterial;
         public GameObject FighterPrefab(Team team) => team == Team.Blue ? blueFighterPrefab : redFighterPrefab;
+        public bool HasFighterModels => fighterModels != null && fighterModels.Length > 0 && fighterController != null;
     }
 }

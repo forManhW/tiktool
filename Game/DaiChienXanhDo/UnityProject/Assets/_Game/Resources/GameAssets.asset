@@ -12,14 +12,61 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 671f082182c598c46bc87fbd482c6f63, type: 3}
   m_Name: GameAssets
   m_EditorClassIdentifier: Assembly-CSharp::DaiChienXanhDo.GameAssets
+  fighterModels:
+  - {fileID: 919132149155446097, guid: 6d6ee622707ccdc46bdfbf423cd45f89, type: 3}
+  - {fileID: 919132149155446097, guid: 64cc4e0b95928b648b4ec9b21cf79797, type: 3}
+  - {fileID: 919132149155446097, guid: 7cc3895b68cc7cd49b5fd6f4d2bd4181, type: 3}
+  - {fileID: 919132149155446097, guid: 7d4de0cb4662594479c5d3f647a3b2d3, type: 3}
+  - {fileID: 919132149155446097, guid: 153a26aa08157a14ab42e387d93e2b98, type: 3}
+  - {fileID: 919132149155446097, guid: 532539a92f718164aa2aab6b677471f2, type: 3}
+  - {fileID: 919132149155446097, guid: caec81b0964b4a44bbac6f7b7a122dff, type: 3}
+  - {fileID: 919132149155446097, guid: a184c7e7374ccbe4bade7a6bc611cdcc, type: 3}
+  - {fileID: 919132149155446097, guid: 7c4eb475b8b2d034fa59ea27f4f85b03, type: 3}
+  - {fileID: 919132149155446097, guid: 03d76ecabc2757e47a4078821f1c8254, type: 3}
+  - {fileID: 919132149155446097, guid: 47d000780d06d42489a182cdb9112972, type: 3}
+  - {fileID: 919132149155446097, guid: 8863cd37649e10845bdd7597bded4e62, type: 3}
+  fighterController: {fileID: 9100000, guid: 7be317229dbf6d44bb982ab147afa38e, type: 2}
+  fighterHeight: 1.9
   blueFighterPrefab: {fileID: 0}
   redFighterPrefab: {fileID: 0}
-  tankPrefab: {fileID: 0}
-  robotPrefab: {fileID: 0}
-  meteorPrefab: {fileID: 0}
+  tankPrefab: {fileID: 919132149155446097, guid: 9a7d6a76816aab84b92478cc06542fa1, type: 3}
+  tankLength: 4.2
+  tankYawOffset: 180
+  robotPrefab: {fileID: 919132149155446097, guid: 2f434fec0236dbd4c8a288b7d6628216, type: 3}
+  robotTexture: {fileID: 2800000, guid: 197f60de0206c7e45be25a2776e5941b, type: 3}
+  robotController: {fileID: 9100000, guid: 6265b74fb03f602498ba8dd827028a02, type: 2}
+  robotHeight: 8
+  meteorPrefab: {fileID: 919132149155446097, guid: 4e6da046dbba3dd419ad9e53bdad86e5, type: 3}
   blueMaterial: {fileID: 2100000, guid: 551ad31a0a32e38428f5abc897b6e50c, type: 2}
   redMaterial: {fileID: 2100000, guid: 465b48c0edd335a47bfa946c92af5c1e, type: 2}
   superMaterial: {fileID: 2100000, guid: aa2066dd68fa11b41911dfbb7d21ce9b, type: 2}
   boltMaterial: {fileID: 2100000, guid: 48b6ae8a829234045b1c46af5babe57f, type: 2}
   meteorMaterial: {fileID: 2100000, guid: 1f8c516706e2b6d41ac52f14043601fb, type: 2}
   groundMaterial: {fileID: 2100000, guid: b2fb571c6a7db114fa0850fd386d31e7, type: 2}
+  fxAdditiveMaterial: {fileID: 2100000, guid: 5b45a1a9f15772d48b62bfbf56b216b6, type: 2}
+  fxSmokeMaterial: {fileID: 2100000, guid: aedf79c6f6652854e9fbd35697ed438e, type: 2}
+  sfxPunch:
+  - {fileID: 8300000, guid: c7167155892149b46bc00bb3126314cb, type: 3}
+  - {fileID: 8300000, guid: 2abe8d81558055d4dab8ddb32bc5bddd, type: 3}
+  sfxPunchHeavy:
+  - {fileID: 8300000, guid: b60551e138dc5ab44a4f8baaabc5695b, type: 3}
+  - {fileID: 8300000, guid: 78e43d99adc27e5458fbf037a5707d81, type: 3}
+  sfxExplosion:
+  - {fileID: 8300000, guid: b540b0ae1e204d94ab1708da93bc95f2, type: 3}
+  - {fileID: 8300000, guid: b1919215499cbda45a3a7f3db4a0b34f, type: 3}
+  - {fileID: 8300000, guid: bb695ddc6a046a34ba1194a27e0e17b9, type: 3}
+  sfxThunder:
+  - {fileID: 8300000, guid: fc12289886fe30442bab17aad2e4f2bb, type: 3}
+  - {fileID: 8300000, guid: 296fc6d93bc0cc547933da1d28e196bc, type: 3}
+  - {fileID: 8300000, guid: ab7d2caf1e4929e498b8c2087e4e3d63, type: 3}
+  sfxTankShot:
+  - {fileID: 8300000, guid: 9b028e2b472b32a4883546f9569e26fa, type: 3}
+  - {fileID: 8300000, guid: 62de629d9d2975444b50df2563e733e9, type: 3}
+  sfxRobotStomp:
+  - {fileID: 8300000, guid: 61e74f44a6fd0f741884ecc9d4ffeeb6, type: 3}
+  - {fileID: 8300000, guid: 069be8488aa0c68468225f75ebb3f437, type: 3}
+  sfxVictory: {fileID: 8300000, guid: b2ca269141457a8458d309dd9701b2f2, type: 3}
+  sfxWarning: {fileID: 8300000, guid: 888caba0e64555c4bb950967be82c00c, type: 3}
+  sfxSiren: {fileID: 8300000, guid: bd7a7de682abca941a654c7af306f17c, type: 3}
+  sfxGift: {fileID: 8300000, guid: f9c731243e443d64481d9437649165a2, type: 3}
+  music: {fileID: 8300000, guid: 778f5e5edc6364245bbfdfaf4215cc88, type: 3}

@@ -63,6 +63,7 @@ namespace DaiChienXanhDo
             string a = (c.Action ?? "").Trim().ToLowerInvariant();
             if (a.StartsWith("admin_")) return Admin(a);
             if (a.StartsWith("event_")) return MatchEvent(a);
+            if (a.StartsWith("debug_")) return DebugHooks.Handle(a);
             if (MatchManager.I == null) return (false, "Game chưa sẵn sàng");
 
             if (!TryParse(c, a, out Team team, out EffectDef def, out string error)) return (false, error);
@@ -137,6 +138,8 @@ namespace DaiChienXanhDo
             viewer.Fighter = f;
             return f;
         }
+
+        public static int PendingCount => pending.Count;
 
         public static void FlushPending()
         {

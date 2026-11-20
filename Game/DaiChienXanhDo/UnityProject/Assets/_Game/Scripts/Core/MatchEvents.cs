@@ -111,6 +111,7 @@ namespace DaiChienXanhDo
             disasterName = DisasterNames[Random.Range(0, DisasterNames.Length)];
             GameEvents.RaiseMatchEventStarted(new MatchEventNotice { Id = "disaster_warning", DisplayName = $"CẢNH BÁO {disasterName}!", Duration = 3f });
             GameEvents.RaiseNotice($"CẢNH BÁO: {disasterName} sắp ập tới!", NoticeKind.Warning);
+            Sfx.Warning();
         }
 
         void RunDisaster()
@@ -125,6 +126,7 @@ namespace DaiChienXanhDo
             GameEvents.RaiseMatchEventEnded(new MatchEventNotice { Id = "disaster_warning", DisplayName = disasterName });
             GameEvents.RaiseMatchEventStarted(new MatchEventNotice { Id = "disaster", DisplayName = disasterName, Duration = 0f });
             GameEvents.RaiseNotice($"{disasterName}! Xanh mất {blue}, Đỏ mất {red} chiến binh", NoticeKind.Warning);
+            Debug.Log($"[Match] Thảm họa {disasterName}: Xanh mất {blue}, Đỏ mất {red}. Còn {FighterManager.I.Count(Team.Blue)}/{FighterManager.I.Count(Team.Red)}");
         }
 
         public void ResetRound()

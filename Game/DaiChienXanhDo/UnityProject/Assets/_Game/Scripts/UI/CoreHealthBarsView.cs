@@ -245,7 +245,7 @@ namespace DaiChienXanhDo.UI
                 if (minX <= maxX) localPt.x = Mathf.Clamp(localPt.x, minX, maxX);
 
                 float minY = bounds.yMin + height * pivot.y + 12f;
-                float maxY = bounds.yMax - height * (1f - pivot.y) - 28f;
+                float maxY = bounds.yMax - height * (1f - pivot.y) - 48f; // chừa chỗ cho nhãn "LÕI ĐỎ" phía trên thanh máu
                 if (minY <= maxY) localPt.y = Mathf.Clamp(localPt.y, minY, maxY);
 
                 w.root.anchoredPosition = localPt;

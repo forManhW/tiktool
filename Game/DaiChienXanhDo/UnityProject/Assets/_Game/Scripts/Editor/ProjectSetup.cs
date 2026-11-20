@@ -99,6 +99,7 @@ namespace DaiChienXanhDo.EditorTools
             if (a.boltMaterial == null) a.boltMaterial = Mat("Bolt", new Color(0.75f, 0.9f, 1f), unlit: true);
             if (a.meteorMaterial == null) a.meteorMaterial = Mat("Meteor", new Color(1f, 0.45f, 0.1f), emissive: true);
             if (a.groundMaterial == null) a.groundMaterial = Mat("Ground", new Color(0.36f, 0.52f, 0.34f));
+            ModelSetup.Apply(a);
             EditorUtility.SetDirty(a);
             return a;
         }
@@ -120,6 +121,14 @@ namespace DaiChienXanhDo.EditorTools
             ground.name = "Ground";
             ground.transform.localScale = new Vector3(Arena.HalfSize * 0.2f + 0.2f, 1f, Arena.HalfSize * 0.2f + 0.2f);
             ground.GetComponent<Renderer>().sharedMaterial = assets.groundMaterial;
+
+            // Nền ngoài sân rộng 200x200, màu sẫm hơn: camera zoom gần lõi không lộ khoảng trống.
+            var outfield = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            outfield.name = "Outfield";
+            Object.DestroyImmediate(outfield.GetComponent<Collider>());
+            outfield.transform.position = new Vector3(0f, -0.02f, 0f);
+            outfield.transform.localScale = new Vector3(20f, 1f, 20f);
+            outfield.GetComponent<Renderer>().sharedMaterial = Mat("Outfield", new Color(0.24f, 0.36f, 0.25f));
 
             var line = GameObject.CreatePrimitive(PrimitiveType.Cube);
             line.name = "FrontLine";
@@ -143,6 +152,7 @@ namespace DaiChienXanhDo.EditorTools
             camGo.AddComponent<AudioListener>();
             rig.cam = cam;
             camGo.transform.SetPositionAndRotation(new Vector3(0f, 37.7f, -26.4f), Quaternion.Euler(55f, 0f, 0f));
+            MakePostFx(cam);
 
             // Camera nền tô đen phần viền khi cửa sổ không vuông.
             var bgGo = new GameObject("LetterboxCamera");
@@ -176,20 +186,96 @@ namespace DaiChienXanhDo.EditorTools
             core.team = team;
             core.radius = 1.8f;
 
-            var baseCyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            baseCyl.name = "Base";
-            baseCyl.transform.SetParent(root.transform, false);
-            baseCyl.transform.localScale = new Vector3(3.4f, 1.2f, 3.4f);
-            baseCyl.transform.localPosition = new Vector3(0f, 1.2f, 0f);
-            baseCyl.GetComponent<Renderer>().sharedMaterial = mat;
+            // Tháp pha lê: bệ đá 2 tầng + vành sáng màu phe + viên pha lê lớn xoay + đèn màu phe.
+            var stone = Mat("Core_Stone", new Color(0.22f, 0.24f, 0.3f));
+            var glowMat = Mat($"Core_{team}_Crystal", team.TeamColor(), emissive: true);
+            Part(root, "Pedestal", PrimitiveType.Cylinder, new Vector3(4.2f, 0.35f, 4.2f), 0.35f, stone, keepCollider: true);
+            var band = Part(root, "Band", PrimitiveType.Cylinder, new Vector3(4.5f, 0.06f, 4.5f), 0.72f, glowMat);
+            Part(root, "Tier", PrimitiveType.Cylinder, new Vector3(3f, 0.35f, 3f), 1.05f, stone);
 
-            var gem = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            gem.name = "Gem";
-            Object.DestroyImmediate(gem.GetComponent<Collider>());
-            gem.transform.SetParent(root.transform, false);
-            gem.transform.localScale = Vector3.one * 1.8f;
-            gem.transform.localPosition = new Vector3(0f, 3.2f, 0f);
-            gem.GetComponent<Renderer>().sharedMaterial = Mat($"Core_{team}_Glow", team.TeamColor(), emissive: true);
+            var crystalRoot = new GameObject("Crystal").transform;
+            crystalRoot.SetParent(root.transform, false);
+            crystalRoot.localPosition = new Vector3(0f, 1.4f, 0f);
+            var crystalFbx = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Art/Environment/Kenney_SpaceKit/rock_crystalsLargeA.fbx");
+            GameObject crystal;
+            if (crystalFbx != null)
+            {
+                crystal = (GameObject)PrefabUtility.InstantiatePrefab(crystalFbx);
+                crystal.transform.SetParent(crystalRoot, false);
+                var b = new Bounds(); bool has = false;
+                foreach (var r in crystal.GetComponentsInChildren<Renderer>()) { if (!has) { b = r.bounds; has = true; } else b.Encapsulate(r.bounds); }
+                float s = has && b.size.y > 0.01f ? 3.4f / b.size.y : 1f;
+                crystal.transform.localScale *= s;
+            }
+            else
+            {
+                crystal = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Object.DestroyImmediate(crystal.GetComponent<Collider>());
+                crystal.transform.SetParent(crystalRoot, false);
+                crystal.transform.localScale = new Vector3(1.4f, 3f, 1.4f);
+                crystal.transform.localPosition = new Vector3(0f, 1.5f, 0f);
+                crystal.transform.localRotation = Quaternion.Euler(0f, 45f, 45f);
+            }
+            var crystalRenderers = crystal.GetComponentsInChildren<Renderer>();
+            foreach (var r in crystalRenderers)
+            {
+                var mats = new Material[r.sharedMaterials.Length];
+                for (int i = 0; i < mats.Length; i++) mats[i] = glowMat;
+                r.sharedMaterials = mats;
+            }
+            foreach (var c in crystal.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+
+            var lightGo = new GameObject("Glow");
+            lightGo.transform.SetParent(root.transform, false);
+            lightGo.transform.localPosition = new Vector3(0f, 3.5f, 0f);
+            var light = lightGo.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = team.TeamColor();
+            light.range = 14f;
+            light.intensity = 6f;
+            light.shadows = LightShadows.None;
+
+            var visual = root.AddComponent<CoreVisual>();
+            visual.crystal = crystalRoot;
+            visual.glow = light;
+            var glowList = new System.Collections.Generic.List<Renderer>(crystalRenderers) { band.GetComponent<Renderer>() };
+            visual.glowRenderers = glowList.ToArray();
+        }
+
+        static GameObject Part(GameObject root, string name, PrimitiveType type, Vector3 scale, float y, Material mat, bool keepCollider = false)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            if (!keepCollider) Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.transform.SetParent(root.transform, false);
+            go.transform.localScale = scale;
+            go.transform.localPosition = new Vector3(0f, y, 0f);
+            go.GetComponent<Renderer>().sharedMaterial = mat;
+            return go;
+        }
+
+        /// <summary>Hậu kỳ: bloom cho ánh sáng tỏa, tăng độ đậm màu, viền tối nhẹ.</summary>
+        static void MakePostFx(Camera cam)
+        {
+            const string path = Root + "/Settings/PostFX.asset";
+            if (File.Exists(path)) AssetDatabase.DeleteAsset(path);
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            AssetDatabase.CreateAsset(profile, path);
+            var bloom = profile.Add<Bloom>(true);
+            bloom.intensity.Override(1.1f); bloom.threshold.Override(0.95f); bloom.scatter.Override(0.7f);
+            var color = profile.Add<ColorAdjustments>(true);
+            color.saturation.Override(22f); color.contrast.Override(10f); color.postExposure.Override(0.15f);
+            var vignette = profile.Add<Vignette>(true);
+            vignette.intensity.Override(0.22f);
+            foreach (var c in profile.components) AssetDatabase.AddObjectToAsset(c, profile);
+            EditorUtility.SetDirty(profile);
+
+            var vol = new GameObject("PostFX").AddComponent<Volume>();
+            vol.isGlobal = true;
+            vol.sharedProfile = profile;
+            var data = cam.GetUniversalAdditionalCameraData();
+            data.renderPostProcessing = true;
+            data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
         }
     }
 }

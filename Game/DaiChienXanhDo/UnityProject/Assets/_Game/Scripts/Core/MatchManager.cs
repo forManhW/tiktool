@@ -49,12 +49,17 @@ namespace DaiChienXanhDo
             state = State.Celebrating;
             Team winner = loser.Other();
             LastWinner = winner;
+            if (MatchEvents.I != null) MatchEvents.I.ResetRound(); // tắt X2 / cảnh báo thảm họa, không còn ý nghĩa khi đã có phe thắng
             DailyStore.AddWin(winner);
             var mvp = PlayerRegistry.Mvp(winner);
             GameEvents.RaiseScoreChanged(ScoreBlue, ScoreRed);
             GameEvents.RaiseRoundWon(winner, mvp);
             GameEvents.RaiseNotice($"PHE {winner.DisplayName()} THẮNG!" + (mvp != null ? $" MVP: {mvp.Nickname}" : ""), NoticeKind.Info);
+            Debug.Log($"[Match] Phe {winner} thắng ván. Tỉ số {ScoreBlue}:{ScoreRed}. MVP: {mvp?.Nickname ?? "-"}");
             if (CameraRig.I != null) CameraRig.I.Shake(1.2f, 1.5f);
+            var lost = Core(loser);
+            if (lost != null) { Fx.I.Explosion(lost.transform.position + Vector3.up * 2f, 2.5f); Sfx.Explosion(1f); }
+            Sfx.Victory();
             StartCoroutine(ResetAfter(GameSettings.Current.celebrateSeconds));
         }
 
@@ -76,7 +81,9 @@ namespace DaiChienXanhDo
             foreach (var c in cores) if (c != null) c.ResetHp();
             state = State.Fighting;
             GameEvents.RaiseRoundReset();
+            int pending = CommandRouter.PendingCount;
             CommandRouter.FlushPending();
+            Debug.Log($"[Match] Ván mới. Chạy {pending} lệnh đã giữ lại trong lúc ăn mừng.");
         }
 
         public void ResetScore()

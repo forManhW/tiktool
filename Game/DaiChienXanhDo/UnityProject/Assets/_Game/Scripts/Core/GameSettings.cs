@@ -35,6 +35,8 @@ namespace DaiChienXanhDo
         public float weakX2Duration = 20f;
 
         public float celebrateSeconds = 7f;
+        public float musicVolume = 0.35f;
+        public float sfxVolume = 0.8f;
         public int fullNameLimit = 40;            // sân đông hơn thì chỉ hiện tên đầy đủ cho người nổi bật
 
         public string[] guideLines =

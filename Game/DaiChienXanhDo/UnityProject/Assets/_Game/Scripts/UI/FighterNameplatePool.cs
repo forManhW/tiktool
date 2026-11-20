@@ -182,61 +182,130 @@ namespace DaiChienXanhDo.UI
                 ? parentCanvas.worldCamera
                 : null;
 
+            // 1) Gom ứng viên, 2) xếp theo độ ưu tiên, 3) đặt lần lượt, nhãn nào chồng lên nhãn đã đặt
+            //    (hoặc đè thanh máu lõi) thì bỏ. Không cấp phát bộ nhớ mỗi frame.
+            candCount = 0;
+            CollectTeam(fm.List(Team.Blue), crowded, followed, now, cam, camPx);
+            CollectTeam(fm.List(Team.Red), crowded, followed, now, cam, camPx);
+            Array.Sort(cands, 0, candCount, CandComparer.Instance);
+
+            float uiScale = parentCanvas != null ? parentCanvas.scaleFactor : 1f;
+            placedCount = 0;
+            ReserveCoreBar(Team.Blue, cam, uiScale);
+            ReserveCoreBar(Team.Red, cam, uiScale);
+            labeledOwners.Clear();
+
             int used = 0;
-            used = RenderTeam(fm.List(Team.Blue), used, crowded, followed, now, cam, camPx, uiCam);
-            used = RenderTeam(fm.List(Team.Red), used, crowded, followed, now, cam, camPx, uiCam);
+            for (int c = 0; c < candCount && used < slots.Length; c++)
+            {
+                ref Cand cd = ref cands[c];
+                // Lính phụ chỉ hiện tên khi chủ của nó chưa có nhãn nào trên màn hình.
+                if (!cd.isMain && labeledOwners.Contains(cd.ownerId)) continue;
+
+                float fontSize = cd.isMain ? (cd.isSuper ? superFontSize : mainFontSize) : subFontSize;
+                float w = (cd.display.Length * 0.56f * fontSize + 8f) * uiScale;
+                float h = fontSize * 1.25f * uiScale;
+                // Vướng nhãn khác / thanh máu lõi thì đẩy nhãn lên từng nấc (tối đa 3), vẫn vướng mới bỏ.
+                // Nhân vật chính có ưu tiên cao thì được thử nhiều nấc hơn lính phụ.
+                int maxSteps = cd.priority >= 2 ? 3 : 1;
+                float y = cd.sy;
+                var r = new Rect(cd.sx - w * 0.5f, y, w, h);
+                bool ok = cd.priority >= PriorityFollowed || !Overlaps(r);
+                for (int step = 1; !ok && step <= maxSteps; step++)
+                {
+                    y = cd.sy + step * h * 1.05f;
+                    r = new Rect(cd.sx - w * 0.5f, y, w, h);
+                    ok = !Overlaps(r);
+                }
+                if (!ok) continue;
+                if (placedCount < placed.Length) placed[placedCount++] = r;
+                if (!string.IsNullOrEmpty(cd.ownerId)) labeledOwners.Add(cd.ownerId);
+
+                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(containerRect, new Vector2(cd.sx, y), uiCam, out Vector2 localPt))
+                    continue;
+                ApplySlot(used, cd.display, cd.isMain, cd.isSuper, cd.highlight, localPt);
+                used++;
+            }
 
             HideUnused(used);
         }
 
-        int RenderTeam(
-            IReadOnlyList<Fighter> list,
-            int used,
-            bool crowded,
-            Transform followed,
-            float now,
-            Camera cam,
-            Rect camPx,
-            Camera uiCam)
-        {
-            if (list == null) return used;
-            int listCount = list.Count;
-            int maxSlots = slots.Length;
+        const int PriorityFollowed = 4;
 
-            for (int i = 0; i < listCount && used < maxSlots; i++)
+        struct Cand
+        {
+            public int priority;
+            public float sx, sy;
+            public string display, ownerId;
+            public bool isMain, isSuper, highlight;
+        }
+
+        sealed class CandComparer : IComparer<Cand>
+        {
+            public static readonly CandComparer Instance = new CandComparer();
+            public int Compare(Cand a, Cand b) => b.priority != a.priority ? b.priority.CompareTo(a.priority) : b.sy.CompareTo(a.sy);
+        }
+
+        readonly Cand[] cands = new Cand[400];
+        int candCount;
+        readonly Rect[] placed = new Rect[402];
+        int placedCount;
+        readonly HashSet<string> labeledOwners = new HashSet<string>();
+
+        void CollectTeam(IReadOnlyList<Fighter> list, bool crowded, Transform followed, float now, Camera cam, Rect camPx)
+        {
+            if (list == null) return;
+            for (int i = 0; i < list.Count && candCount < cands.Length; i++)
             {
                 Fighter f = list[i];
                 if (f == null || !f.IsAlive) continue;
-
                 Viewer owner = f.Owner;
                 if (owner == null) continue;
 
                 bool isMain = f.IsMain;
-                if (crowded && !isMain) continue;
-
-                bool highlight = f.transform == followed
+                bool isFollowed = f.transform == followed;
+                bool highlight = isFollowed
                     || (!string.IsNullOrEmpty(owner.Id) && topViewerIds.Contains(owner.Id))
                     || (now - owner.LastActionTime < recentActionSeconds);
+                if (crowded && !isMain && !highlight) continue;
 
-                string nickname = owner.Nickname;
-                string display = (crowded && !highlight) ? GetInitials(nickname) : nickname;
+                string display = (crowded && !highlight) ? GetInitials(owner.Nickname) : owner.Nickname;
                 if (string.IsNullOrEmpty(display)) continue;
 
-                bool isSuper = f.IsSuper;
                 Vector3 worldPos = f.transform.position;
-                worldPos.y += isSuper ? superWorldHeight : normalWorldHeight;
-
+                worldPos.y += f.IsSuper ? superWorldHeight : normalWorldHeight;
                 Vector3 sp = cam.WorldToScreenPoint(worldPos);
-                if (sp.z <= 0f || sp.x < camPx.xMin || sp.x > camPx.xMax || sp.y < camPx.yMin || sp.y > camPx.yMax)
-                {
-                    continue;
-                }
+                if (sp.z <= 0f || sp.x < camPx.xMin || sp.x > camPx.xMax || sp.y < camPx.yMin || sp.y > camPx.yMax) continue;
 
-                if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(containerRect, new Vector2(sp.x, sp.y), uiCam, out Vector2 localPt))
+                cands[candCount++] = new Cand
                 {
-                    continue;
-                }
+                    priority = isFollowed ? PriorityFollowed : isMain ? (highlight ? 3 : 2) : (highlight ? 1 : 0),
+                    sx = sp.x, sy = sp.y,
+                    display = display, ownerId = owner.Id,
+                    isMain = isMain, isSuper = f.IsSuper, highlight = highlight,
+                };
+            }
+        }
 
+        /// <summary>Chừa vùng thanh máu + nhãn "LÕI XANH/ĐỎ" để tên lính không đè lên.</summary>
+        void ReserveCoreBar(Team team, Camera cam, float uiScale)
+        {
+            var core = MatchManager.I != null ? MatchManager.I.Core(team) : null;
+            if (core == null) return;
+            Vector3 sp = cam.WorldToScreenPoint(core.transform.position + new Vector3(0f, 4.5f, 0f));
+            if (sp.z <= 0f) return;
+            float w = 250f * uiScale, h = 80f * uiScale;
+            placed[placedCount++] = new Rect(sp.x - w * 0.5f, sp.y - 24f * uiScale, w, h);
+        }
+
+        bool Overlaps(Rect r)
+        {
+            for (int i = 0; i < placedCount; i++) if (placed[i].Overlaps(r)) return true;
+            return false;
+        }
+
+        void ApplySlot(int used, string display, bool isMain, bool isSuper, bool highlight, Vector2 localPt)
+        {
                 ref PoolSlot slot = ref slots[used];
                 if (!slot.active)
                 {
@@ -284,10 +353,6 @@ namespace DaiChienXanhDo.UI
                 }
 
                 slot.rect.anchoredPosition = localPt;
-                used++;
-            }
-
-            return used;
         }
 
         void HideUnused(int used)

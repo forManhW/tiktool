@@ -144,9 +144,29 @@ namespace DaiChienXanhDo
                 }
                 else if (CameraRig.I.Following != null || now - currentStart > 0.5f)
                 {
-                    CameraRig.I.Overview();
+                    ActionCam();
                 }
             }
+        }
+
+        /// <summary>
+        /// Không có cảnh nào cần quay: nhìn vào chỗ đang có người, zoom vừa đủ thấy hết họ
+        /// (ít người thì zoom gần, đông thì lùi ra toàn cảnh). Sân trống thì toàn cảnh.
+        /// </summary>
+        void ActionCam()
+        {
+            var fm = FighterManager.I;
+            if (fm == null || fm.Total == 0) { CameraRig.I.Overview(); return; }
+            Vector3 sum = Vector3.zero; int n = 0;
+            foreach (Team t in new[] { Team.Blue, Team.Red })
+                foreach (var f in fm.List(t)) { sum += f.transform.position; n++; }
+            Vector3 center = sum / n;
+            float spread = 0f;
+            foreach (Team t in new[] { Team.Blue, Team.Red })
+                foreach (var f in fm.List(t)) spread = Mathf.Max(spread, (f.transform.position - center).magnitude);
+            float dist = Mathf.Clamp(spread * 2.2f + 14f, 18f, CameraRig.OverviewDistance);
+            center = Vector3.Lerp(center, Vector3.zero, Mathf.InverseLerp(18f, CameraRig.OverviewDistance, dist)); // càng xa càng về giữa sân
+            CameraRig.I.Focus(null, center, dist);
         }
 
         Shot Best()
