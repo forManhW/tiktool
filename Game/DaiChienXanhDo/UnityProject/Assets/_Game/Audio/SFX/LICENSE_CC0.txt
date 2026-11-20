@@ -1,0 +1,6 @@
+﻿All SFX in this folder are strictly CC0 1.0 Universal (Public Domain):
+- Kenney Impact Sounds, Interface Sounds, Sci-Fi Sounds, Digital Audio (Kenney.nl) - CC0
+- 100 CC0 SFX #2 (rubberduck, OpenGameArt) - CC0: sfx_thunder_01.ogg
+- Hyper-Ultra-Fanfare (Zane Little Music, OpenGameArt) - CC0: sfx_victory_fanfare.wav
+- Storm & Siren (TinyWorlds, OpenGameArt) - CC0: sfx_disaster_siren.ogg
+See Game/DaiChienXanhDo/CREDITS.md for full URLs and mapping.

@@ -1,0 +1,3 @@
+﻿All music tracks in this folder are strictly CC0 1.0 Universal (Public Domain):
+- bgm_battle_fast_loop.ogg: Fast fight / battle music (looped) by XCVG (https://opengameart.org/content/fast-fight-battle-music-looped) - CC0
+- bgm_battle_arcade_loop.ogg: 8-Bit Battle Loop by Wolfgang_ (https://opengameart.org/content/8-bit-battle-loop) - CC0
