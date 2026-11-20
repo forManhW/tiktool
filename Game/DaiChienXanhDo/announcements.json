@@ -1,0 +1,66 @@
+{
+  "join": [
+    "{ten} đã vào phe {phe}!",
+    "Phe {phe} có thêm {ten}!",
+    "{ten} ra sân cùng phe {phe}!",
+    "Phe {phe} đón {ten} nhập trận!",
+    "{ten} khoác màu phe {phe}!",
+    "{ten} tới tiếp sức phe {phe}!"
+  ],
+  "lightning": [
+    "{ten} gọi sét cho phe {phe}!",
+    "Sét phe {phe} do {ten} gọi!",
+    "{ten} kéo mây giông về phe {phe}!",
+    "{ten} thả chớp giúp phe {phe}!",
+    "Phe {phe} có sét nhờ {ten}!",
+    "{ten} cho phe {phe} một tràng sét!"
+  ],
+  "tank": [
+    "{ten} gọi xe tăng cho phe {phe}!",
+    "Xe tăng của {ten} tới phe {phe}!",
+    "{ten} đưa xe tăng phe {phe} ra sân!",
+    "Phe {phe} có xe tăng nhờ {ten}!",
+    "Xe tăng phe {phe} do {ten} gọi!",
+    "{ten} cho xe tăng phe {phe} lăn bánh!"
+  ],
+  "meteor": [
+    "{ten} gọi mưa sao cho phe {phe}!",
+    "{ten} thả thiên thạch giúp phe {phe}!",
+    "Thiên thạch phe {phe} do {ten} gọi!",
+    "Phe {phe} có mưa đá trời nhờ {ten}!",
+    "{ten} gọi mưa thiên thạch phe {phe}!",
+    "{ten} tiếp viện phe {phe} từ vũ trụ!"
+  ],
+  "giant_robot": [
+    "{ten} gọi robot cho phe {phe}!",
+    "Robot phe {phe} của {ten} ra sân!",
+    "{ten} gửi robot khổng lồ phe {phe}!",
+    "Phe {phe} có người máy nhờ {ten}!",
+    "{ten} cho robot phe {phe} xuất trận!",
+    "Robot phe {phe} nghe lệnh {ten}!"
+  ],
+  "win": [
+    "Phe {phe} thắng ván này!",
+    "Phe {phe} ghi thêm một điểm!",
+    "Lõi đối thủ vỡ, phe {phe} thắng!",
+    "Phe {phe} ăn mừng nào!",
+    "Ván này thuộc về phe {phe}!",
+    "Phe {phe} chốt ván quá gọn!"
+  ],
+  "core_warning": [
+    "Lõi phe {phe} sắp vỡ, cứu ngay!",
+    "Ai cứu lõi phe {phe} nào?",
+    "Phe {phe} ơi, lõi sắp gục!",
+    "Tiếp viện cho lõi phe {phe} ngay!",
+    "Phe {phe} mau về giữ lõi!",
+    "Lõi phe {phe} cần người cứu gấp!"
+  ],
+  "disaster": [
+    "Thảm họa sắp tới, cả sân coi chừng!",
+    "Sân đông quá, sắp có thảm họa!",
+    "Cả hai phe chuẩn bị đón thảm họa!",
+    "Sắp có biến lớn trên đấu trường!",
+    "Báo động, thảm họa sắp xảy ra!",
+    "Thảm họa sắp giáng xuống sân!"
+  ]
+}
