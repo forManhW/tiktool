@@ -28,9 +28,54 @@ namespace DaiChienXanhDo
 
         void LateUpdate()
         {
+            Separate();
             if (!countDirty) return;
             countDirty = false;
             GameEvents.RaiseFighterCountChanged(Count(Team.Blue), Count(Team.Red));
+        }
+
+        // ---------- Đẩy nhẹ để lính không chồng lên nhau (lưới chia ô, chạy nhẹ với 200 lính) ----------
+        const float Cell = 1.2f, MinGap = 0.85f;
+        readonly Dictionary<long, List<Fighter>> grid = new Dictionary<long, List<Fighter>>();
+        readonly Stack<List<Fighter>> listPool = new Stack<List<Fighter>>();
+
+        static long Key(int x, int z) => ((long)x << 32) ^ (uint)z;
+
+        void Separate()
+        {
+            foreach (var l in grid.Values) { l.Clear(); listPool.Push(l); }
+            grid.Clear();
+            for (int t = 0; t < 2; t++)
+                foreach (var f in alive[t])
+                {
+                    var p = f.transform.position;
+                    long k = Key(Mathf.FloorToInt(p.x / Cell), Mathf.FloorToInt(p.z / Cell));
+                    if (!grid.TryGetValue(k, out var list)) { list = listPool.Count > 0 ? listPool.Pop() : new List<Fighter>(); grid[k] = list; }
+                    list.Add(f);
+                }
+            float max = 2.5f * Time.deltaTime;
+            for (int t = 0; t < 2; t++)
+                foreach (var f in alive[t])
+                {
+                    Vector3 p = f.transform.position, push = Vector3.zero;
+                    int cx = Mathf.FloorToInt(p.x / Cell), cz = Mathf.FloorToInt(p.z / Cell);
+                    for (int dx = -1; dx <= 1; dx++)
+                        for (int dz = -1; dz <= 1; dz++)
+                        {
+                            if (!grid.TryGetValue(Key(cx + dx, cz + dz), out var list)) continue;
+                            foreach (var o in list)
+                            {
+                                if (o == f) continue;
+                                Vector3 d = p - o.transform.position; d.y = 0f;
+                                float m2 = d.sqrMagnitude;
+                                if (m2 >= MinGap * MinGap) continue;
+                                if (m2 < 1e-6f) { d = new Vector3(Random.value - 0.5f, 0f, Random.value - 0.5f); m2 = d.sqrMagnitude + 1e-6f; }
+                                float m = Mathf.Sqrt(m2);
+                                push += d / m * (MinGap - m);
+                            }
+                        }
+                    if (push.sqrMagnitude > 1e-6f) f.Nudge(Vector3.ClampMagnitude(push * 0.5f, max));
+                }
         }
 
         /// <summary>Sinh lính cạnh lõi phe mình. Trả null nếu sân đã chạm giới hạn cứng.</summary>
@@ -102,7 +147,7 @@ namespace DaiChienXanhDo
             model.name = "Model";
             float h = MeasureHeight(model);
             if (h > 0.01f) model.transform.localScale *= assets.fighterHeight / h;
-            TeamMaterials.MakeTeam(model, team, 0.85f); // lính Xanh mặc xanh, lính Đỏ mặc đỏ
+            TeamMaterials.DressFighter(model, team); // áo màu phe, da người, chi tiết vàng
             foreach (var r in model.GetComponentsInChildren<Renderer>())
             {
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
@@ -120,19 +165,32 @@ namespace DaiChienXanhDo
             col.height = assets.fighterHeight;
             col.radius = 0.45f;
 
-            var ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            ring.name = "TeamRing";
-            Destroy(ring.GetComponent<Collider>());
-            ring.transform.SetParent(root.transform, false);
-            ring.transform.localPosition = new Vector3(0f, 0.03f, 0f);
-            ring.transform.localScale = new Vector3(1.25f, 0.015f, 1.25f);
-            var rr = ring.GetComponent<Renderer>();
-            rr.sharedMaterial = TeamMaterials.Ring(team);
-            rr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            // Thanh máu trên đầu: nền tối + phần máu màu phe, luôn quay về phía camera
+            var bar = new GameObject("HpBar").transform;
+            bar.SetParent(root.transform, false);
+            bar.localPosition = new Vector3(0f, assets.fighterHeight + 0.35f, 0f);
+            MakeQuad(bar, "Back", TeamMaterials.HpBack(), new Vector3(0.85f, 0.11f, 1f), 0.001f);
+            var fill = MakeQuad(bar, "Fill", TeamMaterials.HpFill(team), new Vector3(0.8f, 0.07f, 1f), 0f);
 
             var f = root.AddComponent<Fighter>();
             f.SetBody(body, anim);
+            f.SetHpBar(bar, fill);
             return f;
+        }
+
+        public static Transform MakeQuad(Transform parent, string name, Material mat, Vector3 scale, float z)
+        {
+            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            q.name = name;
+            Destroy(q.GetComponent<Collider>());
+            q.transform.SetParent(parent, false);
+            q.transform.localScale = scale;
+            q.transform.localPosition = new Vector3(0f, 0f, z);
+            var r = q.GetComponent<Renderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            return q.transform;
         }
 
         public static float MeasureHeight(GameObject go)
@@ -193,6 +251,15 @@ namespace DaiChienXanhDo
             int kill = Mathf.Clamp(Mathf.RoundToInt(n * percent), 0, Mathf.Max(0, n - keepMin));
             foreach (var f in RandomAlive(team, kill)) f.Die();
             return kill;
+        }
+
+        public int CountInRadius(Team team, Vector3 center, float radius)
+        {
+            var list = alive[(int)team];
+            float r2 = radius * radius;
+            int n = 0;
+            for (int i = 0; i < list.Count; i++) { Vector3 d = list[i].transform.position - center; d.y = 0f; if (d.sqrMagnitude <= r2) n++; }
+            return n;
         }
 
         public int KillInRadius(Team team, Vector3 center, float radius)

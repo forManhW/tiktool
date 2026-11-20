@@ -20,6 +20,9 @@ namespace DaiChienXanhDo.EditorTools
                 bool has = false;
                 foreach (var r in go.GetComponentsInChildren<Renderer>()) { if (!has) { b = r.bounds; has = true; } else b.Encapsulate(r.bounds); }
                 Debug.Log($"[Model] {path} | rig={importer?.animationType} | size={b.size.x:0.00}x{b.size.y:0.00}x{b.size.z:0.00} | clips={clips.Length}: {string.Join(", ", clips)}");
+                var mats = go.GetComponentsInChildren<Renderer>().SelectMany(r => r.sharedMaterials).Where(m => m != null).Distinct()
+                    .Select(m => $"{m.name}#{ColorUtility.ToHtmlStringRGB(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color)}{(m.HasProperty("_Metallic") ? $"/met{m.GetFloat("_Metallic"):0.0}" : "")}{(m.mainTexture != null ? "/tex" : "")}");
+                Debug.Log($"[Mats] {path} | {string.Join(", ", mats)}");
             }
         }
     }

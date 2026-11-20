@@ -86,6 +86,83 @@ namespace DaiChienXanhDo
             }
         }
 
+        // ---------- Phối màu nhân vật theo từng phần (tên vật liệu của bộ Quaternius) ----------
+
+        static readonly Color[] SkinTones = { Hex("F1C9A5"), Hex("E3B08C"), Hex("C98D66"), Hex("9E6B4A") };
+        static readonly Color Gold = Hex("E8B84A");
+        static readonly Color Cream = Hex("E9DCC4");
+
+        static Color Hex(string h) { ColorUtility.TryParseHtmlString("#" + h, out var c); return c; }
+
+        /// <summary>Màu phe: chính / đậm / nhạt.</summary>
+        public static Color TeamMain(Team t) => t == Team.Blue ? Hex("2F6FE8") : Hex("E23B36");
+        public static Color TeamDark(Team t) => t == Team.Blue ? Hex("1C3D8C") : Hex("8E1E1E");
+        public static Color TeamLight(Team t) => t == Team.Blue ? Hex("78A8FF") : Hex("FF8A7E");
+
+        static readonly System.Collections.Generic.Dictionary<(Material, Team, int), Material> dressed = new System.Collections.Generic.Dictionary<(Material, Team, int), Material>();
+
+        /// <summary>
+        /// Áo/mũ/giáp chính = màu phe; viền/chi tiết = vàng hoặc màu phe đậm; da = màu da người (4 tông);
+        /// quần/thắt lưng/tóc giữ màu gốc nhưng sáng lên (màu gốc nhập vào bị tối).
+        /// </summary>
+        public static void DressFighter(GameObject model, Team team)
+        {
+            int tone = Random.Range(0, SkinTones.Length);
+            foreach (var r in model.GetComponentsInChildren<Renderer>())
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    var src = mats[i];
+                    if (src == null) continue;
+                    var key = (src, team, tone);
+                    if (!dressed.TryGetValue(key, out var c))
+                    {
+                        c = Matte(src);
+                        c = new Material(c) { name = $"{src.name}_{team}_{tone}" };
+                        Color orig = c.HasProperty("_BaseColor") ? c.GetColor("_BaseColor") : Color.gray;
+                        c.SetColor("_BaseColor", PartColor(src.name, orig, team, tone));
+                        dressed[key] = c;
+                    }
+                    mats[i] = c;
+                }
+                r.sharedMaterials = mats;
+            }
+        }
+
+        static Color PartColor(string matName, Color orig, Team team, int tone)
+        {
+            string n = matName.Replace(" (Instance)", "");
+            switch (n)
+            {
+                case "Skin": return SkinTones[tone];
+                case "Face": return orig;
+                case "Main": case "Shirt": case "Vest": return TeamMain(team);
+                case "Helmet": case "Armor": case "Hat": return TeamDark(team);
+                case "DarkGreen": return TeamDark(team);
+                case "Detail": case "Details": case "Red": return Gold;
+                case "Light": return Cream;
+                default: return Brighten(orig, 1.8f); // Pants, Belt, Black, Grey, Armor_Dark, Hair...
+            }
+        }
+
+        static Color Brighten(Color c, float k) => new Color(Mathf.Clamp01(c.r * k + 0.04f), Mathf.Clamp01(c.g * k + 0.04f), Mathf.Clamp01(c.b * k + 0.04f), 1f);
+
+        static Material unlitBase;
+        static readonly Material[] hpFill = new Material[2];
+        static Material hpBack;
+
+        static Material Unlit(Color c, string name)
+        {
+            if (unlitBase == null) unlitBase = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            var m = new Material(unlitBase) { name = name };
+            m.SetColor("_BaseColor", c);
+            return m;
+        }
+
+        public static Material HpFill(Team team) => hpFill[(int)team] ??= Unlit(team == Team.Blue ? Hex("4FA3FF") : Hex("FF5A4F"), $"HpFill_{team}");
+        public static Material HpBack() => hpBack ??= Unlit(new Color(0.08f, 0.08f, 0.1f), "HpBack");
+
         public static void MakeMatte(GameObject go, Texture2D texture = null)
         {
             foreach (var r in go.GetComponentsInChildren<Renderer>())
@@ -97,6 +174,6 @@ namespace DaiChienXanhDo
         }
 
         /// <summary>Siêu Chiến Binh: cả người phát sáng màu phe.</summary>
-        public static Material Super(Team team) => super[(int)team] ??= Emissive(team, 0.05f, 0.9f, $"Super_{team}");
+        public static Material Super(Team team) => super[(int)team] ??= Emissive(team, 0f, 0.35f, $"Super_{team}");
     }
 }

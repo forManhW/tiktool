@@ -45,6 +45,18 @@ MonoBehaviour:
   groundMaterial: {fileID: 2100000, guid: b2fb571c6a7db114fa0850fd386d31e7, type: 2}
   fxAdditiveMaterial: {fileID: 2100000, guid: 5b45a1a9f15772d48b62bfbf56b216b6, type: 2}
   fxSmokeMaterial: {fileID: 2100000, guid: aedf79c6f6652854e9fbd35697ed438e, type: 2}
+  effectIcons:
+  - {fileID: 21300000, guid: dc04efcc7f3734a4da077779038af647, type: 3}
+  - {fileID: 21300000, guid: f8cb22b50f5c04a4cad91b279dddd8c9, type: 3}
+  - {fileID: 21300000, guid: ba8973d483ffe5d46badf69491a117c6, type: 3}
+  - {fileID: 21300000, guid: d28940c952067bc4fb0206ee4214c8e7, type: 3}
+  - {fileID: 21300000, guid: 2dd55a62ad9994046b64f2f65c91fe9e, type: 3}
+  - {fileID: 21300000, guid: 383ad1f117bf7124e9fb7e8607406d0f, type: 3}
+  - {fileID: 21300000, guid: fab5091c2d1b87a40b658bcc1792be87, type: 3}
+  - {fileID: 21300000, guid: bf4d8526761c7c94d8308beb81c2f4c4, type: 3}
+  - {fileID: 21300000, guid: 9930096d972def54baba4302db87fa89, type: 3}
+  - {fileID: 21300000, guid: 5006d9a25bbc45240b96d0dbd526fd24, type: 3}
+  nameFont: {fileID: 11400000, guid: b8cdc18109f5e134988a0291fd93abab, type: 2}
   sfxPunch:
   - {fileID: 8300000, guid: c7167155892149b46bc00bb3126314cb, type: 3}
   - {fileID: 8300000, guid: 2abe8d81558055d4dab8ddb32bc5bddd, type: 3}

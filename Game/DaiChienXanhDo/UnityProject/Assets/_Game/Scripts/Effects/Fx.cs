@@ -144,6 +144,50 @@ namespace DaiChienXanhDo
             }
         }
 
+        // ---------- Icon hiệu ứng bật lên trong sân ----------
+
+        class Pop { public SpriteRenderer sr; public Vector3 start; public float t0, size; }
+        readonly System.Collections.Generic.List<Pop> pops = new System.Collections.Generic.List<Pop>();
+        const float PopLife = 1.6f;
+
+        /// <summary>Icon (ảnh do ChatGPT/Antigravity vẽ) bật to ra, bay lên rồi mờ dần ở vị trí hiệu ứng.</summary>
+        public void IconPop(Sprite icon, Vector3 pos, float size)
+        {
+            if (icon == null) return;
+            Pop p = null;
+            foreach (var x in pops) if (!x.sr.gameObject.activeSelf) { p = x; break; }
+            if (p == null)
+            {
+                if (pops.Count >= 24) return;
+                var go = new GameObject("IconPop");
+                go.transform.SetParent(transform, false);
+                p = new Pop { sr = go.AddComponent<SpriteRenderer>() };
+                p.sr.sortingOrder = 100;
+                pops.Add(p);
+            }
+            p.sr.sprite = icon;
+            p.start = pos; p.t0 = Time.time; p.size = size;
+            p.sr.gameObject.SetActive(true);
+        }
+
+        void LateUpdate()
+        {
+            var cam = CameraRig.I != null ? CameraRig.I.cam : Camera.main;
+            foreach (var p in pops)
+            {
+                if (!p.sr.gameObject.activeSelf) continue;
+                float t = (Time.time - p.t0) / PopLife;
+                if (t >= 1f) { p.sr.gameObject.SetActive(false); continue; }
+                float pop = t < 0.15f ? Mathf.SmoothStep(0f, 1.25f, t / 0.15f) : Mathf.Lerp(1.25f, 1f, Mathf.Clamp01((t - 0.15f) / 0.15f));
+                var tr = p.sr.transform;
+                tr.position = p.start + Vector3.up * (t * 1.8f);
+                if (cam != null) tr.rotation = cam.transform.rotation;
+                float px = p.sr.sprite.rect.width / p.sr.sprite.pixelsPerUnit;
+                tr.localScale = Vector3.one * (p.size * pop / Mathf.Max(0.01f, px));
+                p.sr.color = new Color(1f, 1f, 1f, t < 0.7f ? 1f : 1f - (t - 0.7f) / 0.3f);
+            }
+        }
+
         /// <summary>Hào quang Siêu Chiến Binh (gọi vài lần mỗi giây).</summary>
         public void Aura(Vector3 pos, Color teamColor)
         {

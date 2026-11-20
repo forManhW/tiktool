@@ -219,11 +219,9 @@ namespace DaiChienXanhDo.UI
             }
 
             // World-to-screen -> Canvas local position
-            Vector3 sp = cam.WorldToScreenPoint(core.transform.position + worldOffset);
+            Vector3 sp = cam.WorldToScreenPoint(core.transform.position + Vector3.up * CoreHealth.BarHeight);
             Rect px = cam.pixelRect;
-            bool visible = sp.z > 0f
-                && sp.x >= px.xMin - offscreenMargin && sp.x <= px.xMax + offscreenMargin
-                && sp.y >= px.yMin - offscreenMargin && sp.y <= px.yMax + offscreenMargin;
+            bool visible = sp.z > 0f; // lâu đài ra ngoài khung thì vẫn hiện, dính ở mép màn hình (đoạn kẹp vị trí bên dưới)
 
             if (!visible)
             {

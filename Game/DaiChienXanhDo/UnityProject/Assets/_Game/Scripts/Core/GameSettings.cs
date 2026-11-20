@@ -11,12 +11,13 @@ namespace DaiChienXanhDo
     [Serializable]
     public class GameSettings
     {
-        public int version = 1;
+        public const int CurrentVersion = 2;
+        public int version = CurrentVersion;
         public string mode = "live";              // live | manual
         public int windowSize = 1080;             // cửa sổ vuông
 
         public float coreMaxHp = 1000f;
-        public float fighterHp = 100f;
+        public float fighterHp = 300f;            // 100 thì bị vây đánh 2–3 nhịp đã chết, quá nhanh
         public float fighterDamage = 10f;
         public float fighterSpeed = 3.5f;
         public float punchInterval = 0.8f;
@@ -59,6 +60,9 @@ namespace DaiChienXanhDo
                 {
                     var loaded = JsonUtility.FromJson<GameSettings>(File.ReadAllText(FilePath));
                     if (loaded != null) Current = loaded;
+                    // Nâng cấp file cài đặt cũ: v1 có máu lính 100, quá thấp
+                    if (Current.version < 2 && Current.fighterHp <= 100f) Current.fighterHp = 300f;
+                    Current.version = CurrentVersion;
                 }
                 Save(); // ghi lại để file luôn có đủ trường mới
             }

@@ -22,6 +22,8 @@ Chỉ dùng tài nguyên miễn phí có giấy phép rõ ràng (CC0 1.0, SIL OF
 | Storm & Siren (`storm_3_siren.ogg`) | TinyWorlds | https://opengameart.org/content/storm-siren | CC0 1.0 | 2026-11-21 | SFX còi cảnh báo thảm họa (`sfx_disaster_siren.ogg`) (`Assets/_Game/Audio/SFX/`) |
 | Fast fight / battle music (looped) | XCVG | https://opengameart.org/content/fast-fight-battle-music-looped | CC0 1.0 | 2026-11-21 | Nhạc nền chiến đấu lặp (`bgm_battle_fast_loop.ogg`) (`Assets/_Game/Audio/Music/`) |
 | 8-Bit Battle Loop | Wolfgang_ | https://opengameart.org/content/8-bit-battle-loop | CC0 1.0 | 2026-11-21 | Nhạc nền chiến đấu lặp thứ 2 (`bgm_battle_arcade_loop.ogg`) (`Assets/_Game/Audio/Music/`) |
+| Castle Kit (2.0) | Kenney (Kenney.nl) | https://kenney.nl/assets/castle-kit | CC0 1.0 | 2026-11-21 | Lâu đài làm lõi, tường thành, cờ, cây quanh sân (`Assets/_Game/Art/Environment/Kenney_CastleKit/`) |
+| Grass004 | ambientCG | https://ambientcg.com/view?id=Grass004 | CC0 1.0 | 2026-11-21 | Texture cỏ mặt sân (`Assets/_Game/Art/Textures/Grass004/`) |
 
 ## Bản đồ file cho Claude gắn vào game
 

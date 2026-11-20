@@ -8,8 +8,8 @@ namespace DaiChienXanhDo
     /// </summary>
     public static class Arena
     {
-        public const float HalfSize = 18f;      // sân 36 x 36
-        public const float CoreOffset = 13f;
+        public const float HalfSize = 28f;      // sân 56 x 56 (đủ xa để 2 bên giao chiến giữa sân trước khi tới lâu đài)
+        public const float CoreOffset = 22f;
 
         public static Vector3 CorePosition(Team team) =>
             team == Team.Blue ? new Vector3(-CoreOffset, 0f, -CoreOffset) : new Vector3(CoreOffset, 0f, CoreOffset);

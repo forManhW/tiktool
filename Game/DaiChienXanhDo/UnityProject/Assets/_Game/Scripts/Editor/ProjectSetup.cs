@@ -111,32 +111,12 @@ namespace DaiChienXanhDo.EditorTools
             var lightGo = new GameObject("Directional Light");
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Directional;
-            light.intensity = 1.3f;
+            light.intensity = 1.35f;
+            light.color = new Color(1f, 0.95f, 0.86f);
             light.shadows = LightShadows.Soft;
-            lightGo.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
-            RenderSettings.ambientMode = AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.55f, 0.58f, 0.65f);
+            lightGo.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
 
-            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            ground.name = "Ground";
-            ground.transform.localScale = new Vector3(Arena.HalfSize * 0.2f + 0.2f, 1f, Arena.HalfSize * 0.2f + 0.2f);
-            ground.GetComponent<Renderer>().sharedMaterial = assets.groundMaterial;
-
-            // Nền ngoài sân rộng 200x200, màu sẫm hơn: camera zoom gần lõi không lộ khoảng trống.
-            var outfield = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            outfield.name = "Outfield";
-            Object.DestroyImmediate(outfield.GetComponent<Collider>());
-            outfield.transform.position = new Vector3(0f, -0.02f, 0f);
-            outfield.transform.localScale = new Vector3(20f, 1f, 20f);
-            outfield.GetComponent<Renderer>().sharedMaterial = Mat("Outfield", new Color(0.24f, 0.36f, 0.25f));
-
-            var line = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            line.name = "FrontLine";
-            Object.DestroyImmediate(line.GetComponent<Collider>());
-            line.transform.position = new Vector3(0f, 0.01f, 0f);
-            line.transform.rotation = Quaternion.Euler(0f, -45f, 0f);
-            line.transform.localScale = new Vector3(Arena.HalfSize * 2.6f, 0.02f, 0.25f);
-            line.GetComponent<Renderer>().sharedMaterial = Mat("FrontLine", new Color(0.9f, 0.9f, 0.85f));
+            BuildArena();
 
             MakeCore(Team.Blue, assets.blueMaterial);
             MakeCore(Team.Red, assets.redMaterial);
@@ -145,7 +125,7 @@ namespace DaiChienXanhDo.EditorTools
             var camGo = new GameObject("Main Camera") { tag = "MainCamera" };
             camGo.transform.SetParent(rig.transform);
             var cam = camGo.AddComponent<Camera>();
-            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.clearFlags = CameraClearFlags.Skybox;
             cam.backgroundColor = new Color(0.1f, 0.12f, 0.18f);
             cam.fieldOfView = 40f;
             cam.farClipPlane = 300f;
@@ -184,62 +164,229 @@ namespace DaiChienXanhDo.EditorTools
             root.transform.position = Arena.CorePosition(team);
             var core = root.AddComponent<CoreHealth>();
             core.team = team;
-            core.radius = 1.8f;
+            core.radius = 4f;
 
-            // Tháp pha lê: bệ đá 2 tầng + vành sáng màu phe + viên pha lê lớn xoay + đèn màu phe.
-            var stone = Mat("Core_Stone", new Color(0.22f, 0.24f, 0.3f));
-            var glowMat = Mat($"Core_{team}_Crystal", team.TeamColor(), emissive: true);
-            Part(root, "Pedestal", PrimitiveType.Cylinder, new Vector3(4.2f, 0.35f, 4.2f), 0.35f, stone, keepCollider: true);
-            var band = Part(root, "Band", PrimitiveType.Cylinder, new Vector3(4.5f, 0.06f, 4.5f), 0.72f, glowMat);
-            Part(root, "Tier", PrimitiveType.Cylinder, new Vector3(3f, 0.35f, 3f), 1.05f, stone);
+            // Lâu đài (Kenney Castle Kit, CC0) quay mặt vào giữa sân: tháp chính + 2 tháp phụ, cờ màu phe.
+            Vector3 toCenter = -root.transform.position; toCenter.y = 0f;
+            var castle = new GameObject("Castle").transform;
+            castle.SetParent(root.transform, false);
+            castle.rotation = Quaternion.LookRotation(toCenter.normalized);
 
-            var crystalRoot = new GameObject("Crystal").transform;
-            crystalRoot.SetParent(root.transform, false);
-            crystalRoot.localPosition = new Vector3(0f, 1.4f, 0f);
-            var crystalFbx = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Art/Environment/Kenney_SpaceKit/rock_crystalsLargeA.fbx");
-            GameObject crystal;
-            if (crystalFbx != null)
+            Color main = TeamUtil.TeamColor(team);
+            var stone = TintedCastleMat($"Castle_{team}_Stone", Color.Lerp(Color.white, main, 0.28f));
+            var roof = TintedCastleMat($"Castle_{team}_Roof", Color.Lerp(main, Color.white, 0.1f));
+            var glowMat = Mat($"Core_{team}_Crystal", main, emissive: true);
+
+            float topY = Stack(castle, Vector3.zero, 4.2f, stone, roof,
+                "tower-square-base-color", "tower-square-mid-windows", "tower-square-mid", "tower-square-top-roof-high");
+            Stack(castle, new Vector3(-3.7f, 0f, -1.2f), 2.6f, stone, roof, "tower-hexagon-base", "tower-hexagon-mid", "tower-hexagon-roof");
+            Stack(castle, new Vector3(3.7f, 0f, -1.2f), 2.6f, stone, roof, "tower-hexagon-base", "tower-hexagon-mid", "tower-hexagon-roof");
+
+            var flagRenderers = new System.Collections.Generic.List<Renderer>();
+            var flag = AssetDatabase.LoadAssetAtPath<GameObject>($"{Castle}/flag.fbx");
+            if (flag != null)
             {
-                crystal = (GameObject)PrefabUtility.InstantiatePrefab(crystalFbx);
-                crystal.transform.SetParent(crystalRoot, false);
-                var b = new Bounds(); bool has = false;
-                foreach (var r in crystal.GetComponentsInChildren<Renderer>()) { if (!has) { b = r.bounds; has = true; } else b.Encapsulate(r.bounds); }
-                float s = has && b.size.y > 0.01f ? 3.4f / b.size.y : 1f;
-                crystal.transform.localScale *= s;
+                var f = Place(flag, castle, castle.TransformPoint(new Vector3(0f, 0f, 0f)) + Vector3.up * (topY - 0.2f), castle.eulerAngles.y, height: 2.4f);
+                foreach (var r in f.GetComponentsInChildren<Renderer>())
+                {
+                    var arr = new Material[r.sharedMaterials.Length];
+                    for (int i = 0; i < arr.Length; i++) arr[i] = glowMat;
+                    r.sharedMaterials = arr;
+                    flagRenderers.Add(r);
+                }
             }
-            else
-            {
-                crystal = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                Object.DestroyImmediate(crystal.GetComponent<Collider>());
-                crystal.transform.SetParent(crystalRoot, false);
-                crystal.transform.localScale = new Vector3(1.4f, 3f, 1.4f);
-                crystal.transform.localPosition = new Vector3(0f, 1.5f, 0f);
-                crystal.transform.localRotation = Quaternion.Euler(0f, 45f, 45f);
-            }
-            var crystalRenderers = crystal.GetComponentsInChildren<Renderer>();
-            foreach (var r in crystalRenderers)
-            {
-                var mats = new Material[r.sharedMaterials.Length];
-                for (int i = 0; i < mats.Length; i++) mats[i] = glowMat;
-                r.sharedMaterials = mats;
-            }
-            foreach (var c in crystal.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+
+            // Khối va chạm để click / raycast
+            var hit = root.AddComponent<CapsuleCollider>();
+            hit.center = new Vector3(0f, 3f, 0f); hit.height = 6f; hit.radius = 2.5f;
 
             var lightGo = new GameObject("Glow");
             lightGo.transform.SetParent(root.transform, false);
-            lightGo.transform.localPosition = new Vector3(0f, 3.5f, 0f);
+            lightGo.transform.localPosition = new Vector3(0f, 6f, 0f);
             var light = lightGo.AddComponent<Light>();
             light.type = LightType.Point;
-            light.color = team.TeamColor();
-            light.range = 14f;
-            light.intensity = 6f;
+            light.color = main;
+            light.range = 16f;
+            light.intensity = 4f;
             light.shadows = LightShadows.None;
 
             var visual = root.AddComponent<CoreVisual>();
-            visual.crystal = crystalRoot;
             visual.glow = light;
-            var glowList = new System.Collections.Generic.List<Renderer>(crystalRenderers) { band.GetComponent<Renderer>() };
-            visual.glowRenderers = glowList.ToArray();
+            visual.glowRenderers = flagRenderers.ToArray();
+        }
+
+        /// <summary>Chồng các khối tháp lên nhau, cùng một tỉ lệ (theo chiều rộng khối đáy). Khối cuối (mái) tô màu phe. Trả về độ cao đỉnh.</summary>
+        static float Stack(Transform parent, Vector3 localPos, float width, Material stone, Material roof, params string[] pieces)
+        {
+            float y = 0f, scale = -1f;
+            Vector3 world = parent.TransformPoint(localPos);
+            for (int i = 0; i < pieces.Length; i++)
+            {
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{Castle}/{pieces[i]}.fbx");
+                if (prefab == null) continue;
+                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                go.transform.SetParent(parent, false);
+                go.transform.rotation = parent.rotation * go.transform.rotation;
+                var b = WorldBounds(go);
+                if (scale < 0f) scale = width / Mathf.Max(0.001f, Mathf.Max(b.size.x, b.size.z));
+                go.transform.localScale *= scale;
+                b = WorldBounds(go);
+                go.transform.position += new Vector3(world.x - b.center.x, y - b.min.y, world.z - b.center.z);
+                y += b.size.y;
+                bool isRoof = i == pieces.Length - 1;
+                foreach (var r in go.GetComponentsInChildren<Renderer>())
+                {
+                    var arr = new Material[r.sharedMaterials.Length];
+                    for (int k = 0; k < arr.Length; k++) arr[k] = isRoof ? roof : stone;
+                    r.sharedMaterials = arr;
+                }
+                foreach (var c in go.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+            }
+            return y;
+        }
+
+        /// <summary>Vật liệu lâu đài: ảnh màu gốc của Kenney (colormap) nhân với màu phe, không kim loại.</summary>
+        static Material TintedCastleMat(string name, Color tint)
+        {
+            var m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            var map = AssetDatabase.LoadAssetAtPath<Texture2D>($"{Castle}/Textures/colormap.png");
+            if (map != null) m.SetTexture("_BaseMap", map);
+            m.SetColor("_BaseColor", tint);
+            m.SetFloat("_Metallic", 0f);
+            m.SetFloat("_Smoothness", 0.1f);
+            SaveMat(m, name);
+            return m;
+        }
+
+        // ---------------- Sân đấu ----------------
+
+        const string Castle = "Assets/_Game/Art/Environment/Kenney_CastleKit";
+        const string Nature = "Assets/_Game/Art/Environment/Kenney_NatureKit";
+
+        /// <summary>Trời + sương mù + mặt cỏ rộng 200x200 + hàng rào quanh sân + cây đá bên ngoài.</summary>
+        static void BuildArena()
+        {
+            var sky = new Material(Shader.Find("Skybox/Procedural"));
+            sky.SetFloat("_SunSize", 0.035f);
+            sky.SetFloat("_AtmosphereThickness", 0.85f);
+            sky.SetColor("_SkyTint", new Color(0.42f, 0.62f, 0.95f));
+            sky.SetColor("_GroundColor", new Color(0.42f, 0.5f, 0.36f));
+            sky.SetFloat("_Exposure", 1.2f);
+            SaveMat(sky, "Sky");
+            RenderSettings.skybox = sky;
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.66f, 0.74f, 0.9f);
+            RenderSettings.ambientEquatorColor = new Color(0.58f, 0.6f, 0.55f);
+            RenderSettings.ambientGroundColor = new Color(0.36f, 0.33f, 0.27f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = new Color(0.66f, 0.77f, 0.9f);
+            RenderSettings.fogStartDistance = 95f;
+            RenderSettings.fogEndDistance = 210f;
+
+            // Mặt cỏ thật (ambientCG Grass004, CC0), lát lặp
+            const string tex = "Assets/_Game/Art/Textures/Grass004";
+            var normalImp = AssetImporter.GetAtPath($"{tex}/Grass004_1K-JPG_NormalGL.jpg") as TextureImporter;
+            if (normalImp != null && normalImp.textureType != TextureImporterType.NormalMap) { normalImp.textureType = TextureImporterType.NormalMap; normalImp.SaveAndReimport(); }
+            var grass = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            var color = AssetDatabase.LoadAssetAtPath<Texture2D>($"{tex}/Grass004_1K-JPG_Color.jpg");
+            var normal = AssetDatabase.LoadAssetAtPath<Texture2D>($"{tex}/Grass004_1K-JPG_NormalGL.jpg");
+            if (color != null) { grass.SetTexture("_BaseMap", color); grass.SetTextureScale("_BaseMap", new Vector2(70f, 70f)); }
+            if (normal != null) { grass.SetTexture("_BumpMap", normal); grass.EnableKeyword("_NORMALMAP"); grass.SetFloat("_BumpScale", 0.6f); }
+            grass.SetColor("_BaseColor", new Color(0.92f, 1f, 0.85f));
+            grass.SetFloat("_Smoothness", 0.05f);
+            SaveMat(grass, "Ground_Grass");
+
+            var ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            ground.name = "Ground";
+            ground.transform.localScale = new Vector3(30f, 1f, 30f);
+            ground.GetComponent<Renderer>().sharedMaterial = grass;
+
+            // Vạch giữa sân (mờ, như vôi kẻ)
+            var line = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            line.name = "FrontLine";
+            Object.DestroyImmediate(line.GetComponent<Collider>());
+            line.transform.position = new Vector3(0f, 0.01f, 0f);
+            line.transform.rotation = Quaternion.Euler(0f, -45f, 0f);
+            line.transform.localScale = new Vector3(Arena.HalfSize * 2.7f, 0.02f, 0.18f);
+            line.GetComponent<Renderer>().sharedMaterial = Mat("FrontLine", new Color(0.95f, 0.93f, 0.85f));
+
+            var deco = new GameObject("Decor").transform;
+
+            // Hàng rào gỗ quanh sân
+            float edge = Arena.HalfSize + 1.6f;
+            var fence = AssetDatabase.LoadAssetAtPath<GameObject>($"{Castle}/wall-narrow-wood-fence.fbx");
+            if (fence != null)
+            {
+                const float seg = 3f;
+                int n = Mathf.CeilToInt(edge * 2f / seg);
+                for (int side = 0; side < 4; side++)
+                    for (int i = 0; i < n; i++)
+                    {
+                        float along = -edge + seg * (i + 0.5f);
+                        Vector3 p; float yaw;
+                        switch (side)
+                        {
+                            case 0: p = new Vector3(along, 0f, -edge); yaw = 0f; break;
+                            case 1: p = new Vector3(along, 0f, edge); yaw = 0f; break;
+                            case 2: p = new Vector3(-edge, 0f, along); yaw = 90f; break;
+                            default: p = new Vector3(edge, 0f, along); yaw = 90f; break;
+                        }
+                        var fp = Place(fence, deco, p, yaw, width: seg);
+                        var fb = WorldBounds(fp);
+                        if (fb.size.y > 1.1f) { var s0 = fp.transform.localScale; fp.transform.localScale = new Vector3(s0.x, s0.y * 1.1f / fb.size.y, s0.z); } // rào thấp ngang hông, không che sân
+                    }
+            }
+
+            // Cây, đá bên ngoài sân (cố định để lần nào dựng cũng giống nhau)
+            string[] trees = { $"{Nature}/tree_oak.fbx", $"{Nature}/tree_default.fbx", $"{Nature}/tree_detailed.fbx", $"{Nature}/tree_pineTallA.fbx", $"{Nature}/tree_pineDefaultA.fbx", $"{Castle}/tree-large.fbx" };
+            string[] rocks = { $"{Nature}/rock_largeA.fbx", $"{Nature}/rock_largeB.fbx", $"{Nature}/rock_largeC.fbx", $"{Nature}/rock_tallA.fbx", $"{Nature}/plant_bushLarge.fbx" };
+            var rng = new System.Random(7);
+            int placed = 0;
+            for (int i = 0; i < 600 && placed < 200; i++)
+            {
+                float x = (float)(rng.NextDouble() * 170 - 85), z = (float)(rng.NextDouble() * 170 - 85);
+                float d = Mathf.Max(Mathf.Abs(x), Mathf.Abs(z));
+                if (d < edge + 2.5f) continue;                       // không đặt trong sân
+                bool tree = rng.NextDouble() < 0.7;
+                var path = tree ? trees[rng.Next(trees.Length)] : rocks[rng.Next(rocks.Length)];
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+                if (prefab == null) continue;
+                float h = tree ? (float)(5 + rng.NextDouble() * 4) : (float)(1.2 + rng.NextDouble() * 2);
+                Place(prefab, deco, new Vector3(x, 0f, z), (float)(rng.NextDouble() * 360), height: h);
+                placed++;
+            }
+        }
+
+        /// <summary>Đặt model, tự co giãn theo chiều cao hoặc chiều rộng mong muốn, đáy chạm đất.</summary>
+        static GameObject Place(GameObject prefab, Transform parent, Vector3 pos, float yaw, float height = 0f, float width = 0f)
+        {
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            go.transform.SetParent(parent, false);
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * go.transform.rotation;
+            var b = WorldBounds(go);
+            float s = 1f;
+            if (height > 0f && b.size.y > 0.001f) s = height / b.size.y;
+            else if (width > 0f) { float w = Mathf.Max(b.size.x, b.size.z); if (w > 0.001f) s = width / w; }
+            go.transform.localScale *= s;
+            b = WorldBounds(go);
+            go.transform.position += pos - new Vector3(b.center.x, b.min.y, b.center.z);
+            foreach (var c in go.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+            return go;
+        }
+
+        static Bounds WorldBounds(GameObject go)
+        {
+            bool has = false; Bounds b = new Bounds(go.transform.position, Vector3.zero);
+            foreach (var r in go.GetComponentsInChildren<Renderer>()) { if (!has) { b = r.bounds; has = true; } else b.Encapsulate(r.bounds); }
+            return b;
+        }
+
+        static void SaveMat(Material m, string name)
+        {
+            string path = $"{Root}/Materials/{name}.mat";
+            if (File.Exists(path)) AssetDatabase.DeleteAsset(path);
+            AssetDatabase.CreateAsset(m, path);
         }
 
         static GameObject Part(GameObject root, string name, PrimitiveType type, Vector3 scale, float y, Material mat, bool keepCollider = false)

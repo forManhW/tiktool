@@ -12,8 +12,8 @@ namespace DaiChienXanhDo
     {
         public static CameraRig I { get; private set; }
 
-        public const float OverviewDistance = 46f;
-        const float MinDistance = 8f, MaxDistance = 75f, MinPitch = 25f, MaxPitch = 85f;
+        public const float OverviewDistance = 70f;
+        const float MinDistance = 8f, MaxDistance = 85f, MinPitch = 25f, MaxPitch = 85f;
 
         public Camera cam;
 

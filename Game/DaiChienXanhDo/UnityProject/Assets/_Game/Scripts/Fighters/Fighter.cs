@@ -37,6 +37,39 @@ namespace DaiChienXanhDo
         int chargedPunches, comboPunches;
         bool superVisual, dying;
 
+        Transform hpBar, hpFill;
+        static MaterialPropertyBlock flashBlock;
+        bool flashing;
+        float whiteUntil;
+
+        public void SetHpBar(Transform bar, Transform fill) { hpBar = bar; hpFill = fill; }
+
+        /// <summary>Thanh máu: chỉ hiện khi đã mất máu, luôn quay về camera.</summary>
+        void UpdateHpBar()
+        {
+            if (hpBar == null) return;
+            float ratio = MaxHp > 0f ? Mathf.Clamp01(Hp / MaxHp) : 0f;
+            bool show = IsAlive && IsMain && ratio < 0.999f; // chỉ nhân vật chính, lính phụ không cần
+            if (hpBar.gameObject.activeSelf != show) hpBar.gameObject.SetActive(show);
+            if (!show) return;
+            var cam = CameraRig.I != null ? CameraRig.I.cam : null;
+            if (cam != null) hpBar.rotation = cam.transform.rotation;
+            float h = GameAssets.I.fighterHeight;
+            hpBar.localPosition = new Vector3(0f, IsSuper ? h * 1.6f + 1.5f : h + 0.35f, 0f); // Siêu Chiến Binh to x1,6 và bay cao 1,2
+            hpFill.localScale = new Vector3(ratio, hpFill.localScale.y, 1f);
+            hpFill.localPosition = new Vector3(-(1f - ratio) * 0.5f, 0f, 0f);
+        }
+
+        /// <summary>Trúng đòn: cả người chớp trắng một thoáng.</summary>
+        void UpdateHitFlash()
+        {
+            bool want = Time.time < whiteUntil;
+            if (want == flashing || renderers == null) return;
+            flashing = want;
+            if (flashBlock == null) { flashBlock = new MaterialPropertyBlock(); flashBlock.SetColor("_BaseColor", new Color(1f, 1f, 1f, 1f)); }
+            foreach (var r in renderers) if (r != null) r.SetPropertyBlock(want ? flashBlock : null);
+        }
+
         public void SetBody(Transform bodyTransform, Animator animator = null)
         {
             body = bodyTransform;
@@ -95,6 +128,14 @@ namespace DaiChienXanhDo
             }
         }
 
+        /// <summary>Bị đẩy nhẹ (tránh chồng lên lính khác). Không tính là đi bộ.</summary>
+        public void Nudge(Vector3 offset)
+        {
+            var p = Arena.Clamp(transform.position + offset);
+            lastPos += p - transform.position;
+            transform.position = p;
+        }
+
         public void Celebrate()
         {
             if (anim != null && IsAlive) anim.SetBool(WinId, true);
@@ -107,6 +148,7 @@ namespace DaiChienXanhDo
             Hp -= damage;
             knock += knockback;
             flashUntil = Time.time + 0.08f;
+            whiteUntil = Time.time + 0.07f;
             // Bị đấm thì giật người lại, trừ khi chính mình đang ra đòn (để 2 bên thấy rõ đấm qua đấm lại)
             if (anim != null && Time.time > lungeUntil + 0.25f) anim.SetTrigger(HitId);
             if (Hp <= 0f) Die();
@@ -131,6 +173,8 @@ namespace DaiChienXanhDo
         {
             if (dying)
             {
+                UpdateHpBar();
+                if (flashing) { whiteUntil = 0f; UpdateHitFlash(); }
                 if (Time.time >= deathAt) { dying = false; FighterManager.I.ReturnToPool(this); }
                 return;
             }
@@ -244,11 +288,12 @@ namespace DaiChienXanhDo
 
             Fx.I.Hit(hitPoint, Team.TeamColor(), strong);
             Sfx.Punch(strong);
-            if (strong && CameraRig.I != null) CameraRig.I.Shake(0.15f, 0.12f);
         }
 
         void Animate()
         {
+            UpdateHpBar();
+            UpdateHitFlash();
             if (body == null) return;
             bool super = IsSuper;
             if (super != superVisual) ApplySuperVisual(super);

@@ -116,7 +116,7 @@ namespace DaiChienXanhDo
                 }
                 foreach (var f in targets) { Strike(f.transform.position); f.Die(); }
                 Sfx.Thunder();
-                CameraRig.I?.Shake(0.6f, 0.35f);
+                if (s == 0) CameraRig.I?.Shake(0.6f, 0.35f); // chỉ rung ở cú sét đầu
                 yield return new WaitForSeconds(0.45f);
             }
         }
@@ -132,18 +132,20 @@ namespace DaiChienXanhDo
         {
             Team enemy = team.Other();
             var tank = MakeTank(team);
+            var tankHp = tank.AddComponent<Vehicle>();
+            tankHp.Init(team, by, 600f, 20f, 3.4f, 2.6f); // thanh máu + tên người triệu hồi
             Vector3 start = CorePos(team) + new Vector3(index * 2.5f - 2.5f, 0f, -(index * 2.5f - 2.5f));
             tank.transform.position = start;
             if (index == 0) Announce(CommandRouter.Effects["tank"], team, by, 1, tank.transform, start); // một lượt quà = một thông báo
             Fx.I.Dust(start, 2.5f);
 
             float end = Time.time + 20f, nextCrush = 0f, nextShot = Time.time + 1f, nextDust = 0f;
-            while (Time.time < end && tank != null)
+            while (tank != null && tankHp.Alive)
             {
                 Vector3 target = CorePos(enemy);
                 Vector3 to = target - tank.transform.position; to.y = 0f;
                 bool moving = to.magnitude > 6f;
-                if (moving) tank.transform.position += to.normalized * 3f * Time.deltaTime;
+                if (moving) tank.transform.position += to.normalized * 4f * Time.deltaTime;
                 if (to.sqrMagnitude > 0.01f) tank.transform.rotation = Quaternion.Slerp(tank.transform.rotation, Quaternion.LookRotation(to.normalized), 4f * Time.deltaTime);
                 if (moving && Time.time >= nextDust) { nextDust = Time.time + 0.15f; Fx.I.Dust(tank.transform.position - tank.transform.forward * 1.5f, 0.6f); }
                 if (Time.time >= nextCrush) { nextCrush = Time.time + 0.2f; FighterManager.I.KillInRadius(enemy, tank.transform.position, 2f); }
@@ -157,7 +159,7 @@ namespace DaiChienXanhDo
                 }
                 yield return null;
             }
-            if (tank != null) { Fx.I.Explosion(tank.transform.position + Vector3.up, 1f); Destroy(tank); }
+            if (tank != null) { Fx.I.Explosion(tank.transform.position + Vector3.up, 1.4f); Sfx.Explosion(0.9f); Destroy(tank); }
         }
 
         IEnumerator Shell(Vector3 from, Vector3 to, Team team, Viewer by, float coreDamage)
@@ -176,7 +178,6 @@ namespace DaiChienXanhDo
             Fx.I.Explosion(to, 1f);
             Sfx.Explosion(0.8f);
             Core(team.Other())?.TakeDamage(coreDamage * TeamPower.Of(team), by);
-            CameraRig.I?.Shake(0.3f, 0.2f);
         }
 
         IEnumerator Meteor(Team team, Viewer by, int waves)
@@ -217,13 +218,14 @@ namespace DaiChienXanhDo
             if (fiery) { Fx.I.Explosion(point, 0.9f); Sfx.Explosion(0.6f); }
             else Fx.I.Dust(point, size * 1.5f);
             if (victims.HasValue) FighterManager.I.KillInRadius(victims.Value, point, killRadius);
-            CameraRig.I?.Shake(0.2f, 0.15f);
         }
 
         IEnumerator Robot(Team team, Viewer by)
         {
             Team enemy = team.Other();
             var robot = MakeRobot(team, out Animator anim);
+            var robotHp = robot.AddComponent<Vehicle>();
+            robotHp.Init(team, by, 2500f, 25f, GameAssets.I.robotHeight + 1.2f, 4f);
             Vector3 land = CorePos(team) + (Vector3.zero - CorePos(team)).normalized * 4f;
             robot.transform.position = land + Vector3.up * 25f;
             Vector3 face = CorePos(enemy) - land; face.y = 0f;
@@ -243,12 +245,12 @@ namespace DaiChienXanhDo
             CameraRig.I?.Shake(1.5f, 0.8f);
 
             float end = Time.time + 25f, nextStomp = 0f;
-            while (Time.time < end && robot != null)
+            while (robot != null && robotHp.Alive)
             {
                 Vector3 to = CorePos(enemy) - robot.transform.position; to.y = 0f;
                 bool atCore = to.magnitude < 5f;
-                if (!atCore) robot.transform.position += to.normalized * 2.5f * Time.deltaTime;
-                if (anim != null) anim.SetFloat(SpeedId, atCore ? 0f : 2.5f);
+                if (!atCore) robot.transform.position += to.normalized * 3.5f * Time.deltaTime;
+                if (anim != null) anim.SetFloat(SpeedId, atCore ? 0f : 3.5f);
                 if (to.sqrMagnitude > 0.01f) robot.transform.rotation = Quaternion.Slerp(robot.transform.rotation, Quaternion.LookRotation(to.normalized), 3f * Time.deltaTime);
                 if (Time.time >= nextStomp)
                 {
@@ -261,13 +263,11 @@ namespace DaiChienXanhDo
                         Fx.I.Explosion(hit, 0.8f);
                         Sfx.Stomp();
                         Core(enemy)?.TakeDamage(50f * TeamPower.Of(team), by);
-                        CameraRig.I?.Shake(0.6f, 0.3f);
                     }
                     else
                     {
                         Fx.I.Dust(robot.transform.position, 2.5f);
                         Sfx.Stomp();
-                        CameraRig.I?.Shake(0.25f, 0.15f);
                     }
                 }
                 yield return null;
@@ -299,6 +299,11 @@ namespace DaiChienXanhDo
                 Amount = amount, By = by, Position = position, Target = target,
             });
             if (def.Tier >= 3) Sfx.Gift();
+            if (def.Tier >= 1)
+            {
+                Vector3 at = target != null ? target.position + Vector3.up * (def.Tier >= 5 ? 6f : 3.2f) : position + Vector3.up * 3f;
+                Fx.I.IconPop(GameAssets.I.EffectIcon(def.Id), at, def.Tier >= 4 ? 3.2f : 1.6f);
+            }
             if (def.Tier >= 3 && by != null)
                 GameEvents.RaiseNotice($"{by.Nickname}: {def.DisplayName} cho phe {team.DisplayName()}!", NoticeKind.Gift);
         }
@@ -350,7 +355,6 @@ namespace DaiChienXanhDo
             b = Bounds(model);
             model.transform.localPosition -= new Vector3(b.center.x, b.min.y, b.center.z); // tâm xe về gốc, bánh chạm đất
             foreach (var c in model.GetComponentsInChildren<Collider>()) Destroy(c);
-            AddTeamRing(root, team, a.tankLength * 0.6f);
             return Track(root);
         }
 
@@ -369,7 +373,6 @@ namespace DaiChienXanhDo
             if (anim == null) anim = model.AddComponent<Animator>();
             anim.runtimeAnimatorController = a.robotController;
             anim.applyRootMotion = false;
-            AddTeamRing(root, team, 3.2f);
             return Track(root);
         }
 

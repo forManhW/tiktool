@@ -72,6 +72,13 @@ namespace DaiChienXanhDo.EditorTools
             a.fxSmokeMaterial = ParticleMat("FX_Smoke", soft, additive: false);
             if (a.boltMaterial != null) { a.boltMaterial.SetColor("_BaseColor", new Color(0.85f, 0.93f, 1f)); EditorUtility.SetDirty(a.boltMaterial); }
 
+            // --- Icon hiệu ứng (do ChatGPT/Antigravity vẽ) ---
+            a.effectIcons = AssetDatabase.FindAssets("icon_ t:Sprite", new[] { "Assets/_Game/UI/Icons" })
+                .Select(g => AssetDatabase.LoadAssetAtPath<Sprite>(AssetDatabase.GUIDToAssetPath(g))).Where(s => s != null).ToArray();
+
+            // --- Font tên trên đầu xe tăng/robot ---
+            a.nameFont = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>("Assets/_Game/UI/Fonts/BeVietnamPro-ExtraBold SDF.asset");
+
             // --- Âm thanh ---
             const string sfx = "Assets/_Game/Audio/SFX";
             a.sfxPunch = Audio($"{sfx}/sfx_punch_01.ogg", $"{sfx}/sfx_punch_02.ogg");

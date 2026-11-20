@@ -38,6 +38,20 @@ namespace DaiChienXanhDo
         public Material fxAdditiveMaterial;   // hạt cộng sáng: tia lửa, chớp, lửa
         public Material fxSmokeMaterial;      // hạt pha trộn: khói, bụi
 
+        [Header("Icon hiệu ứng (UI/Icons/icon_<id>.png) — bật lên trong sân khi có quà")]
+        public Sprite[] effectIcons;
+
+        public Sprite EffectIcon(string effectId)
+        {
+            if (effectIcons == null) return null;
+            string name = "icon_" + effectId;
+            foreach (var s in effectIcons) if (s != null && s.name == name) return s;
+            return null;
+        }
+
+        [Header("Font tên trên đầu xe tăng/robot (TextMeshPro, có dấu tiếng Việt)")]
+        public TMPro.TMP_FontAsset nameFont;
+
         [Header("Âm thanh")]
         public AudioClip[] sfxPunch;
         public AudioClip[] sfxPunchHeavy;

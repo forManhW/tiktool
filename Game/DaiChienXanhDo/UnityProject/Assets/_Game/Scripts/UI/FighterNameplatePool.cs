@@ -292,7 +292,7 @@ namespace DaiChienXanhDo.UI
         {
             var core = MatchManager.I != null ? MatchManager.I.Core(team) : null;
             if (core == null) return;
-            Vector3 sp = cam.WorldToScreenPoint(core.transform.position + new Vector3(0f, 4.5f, 0f));
+            Vector3 sp = cam.WorldToScreenPoint(core.transform.position + Vector3.up * CoreHealth.BarHeight);
             if (sp.z <= 0f) return;
             float w = 250f * uiScale, h = 80f * uiScale;
             placed[placedCount++] = new Rect(sp.x - w * 0.5f, sp.y - 24f * uiScale, w, h);
