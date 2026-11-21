@@ -32,6 +32,7 @@ namespace DaiChienXanhDo
         Material[][] originalMaterials;
         float bodyBaseY;
         Fighter target;
+        Vehicle targetVehicle;   // xe tăng / robot địch đang vây đánh
         float retargetAt, nextPunchAt, superUntil, flashUntil, lungeUntil, deathAt, nextAuraAt;
         Vector3 knock, personalOffset, lastPos;
         int chargedPunches, comboPunches;
@@ -195,6 +196,7 @@ namespace DaiChienXanhDo
             if (target == null || !target.IsAlive || Time.time >= retargetAt)
             {
                 target = FighterManager.I.NearestEnemy(this);
+                targetVehicle = Vehicle.Nearest(Team.Other(), transform.position, out _);
                 retargetAt = Time.time + Random.Range(0.3f, 0.6f);
             }
 
@@ -202,7 +204,22 @@ namespace DaiChienXanhDo
             Vector3 aim;      // thứ bị đánh (để tính tầm đấm và hướng mặt)
             Vector3 dest;     // điểm đi tới
             float range;
-            if (target != null)
+            // Xe tăng / robot địch ở gần (không xa hơn lính địch gần nhất quá 6m) thì xông vào vây đánh nó trước
+            bool onVehicle = false;
+            if (targetVehicle != null && targetVehicle.Alive)
+            {
+                Vector3 dv = targetVehicle.transform.position - pos; dv.y = 0f;
+                float targetDist = target != null ? Vector3.Distance(target.transform.position, pos) : float.MaxValue;
+                onVehicle = dv.magnitude < targetDist + 6f;
+            }
+            if (onVehicle)
+            {
+                range = targetVehicle.HitRadius + 0.6f;   // đứng ngoài vùng bị cán / giẫm
+                aim = targetVehicle.transform.position;
+                Vector3 side = personalOffset.sqrMagnitude > 0.01f ? personalOffset.normalized : Vector3.forward;
+                dest = aim + side * (targetVehicle.HitRadius + 0.35f);
+            }
+            else if (target != null)
             {
                 range = IsSuper ? 1.9f : 1.3f;
                 aim = target.transform.position;
@@ -229,7 +246,7 @@ namespace DaiChienXanhDo
             if (aimDist <= range)
             {
                 // Đã áp sát: đứng tấn mà đấm. Chỉ nhích rất chậm vào chỗ vây, không tính là đi bộ.
-                if (Time.time >= nextPunchAt) Punch(target, enemyCore);
+                if (Time.time >= nextPunchAt) Punch(onVehicle ? null : target, onVehicle ? null : enemyCore, onVehicle ? targetVehicle : null);
                 if (destDist > 0.05f) pos += toDest / destDist * Mathf.Min(destDist, s.fighterSpeed * 0.15f * dt);
             }
             else if (destDist > 0.01f)
@@ -255,7 +272,7 @@ namespace DaiChienXanhDo
             if (anim != null) anim.SetFloat(SpeedId, speed);
         }
 
-        void Punch(Fighter enemy, CoreHealth core)
+        void Punch(Fighter enemy, CoreHealth core, Vehicle vehicle = null)
         {
             var s = GameSettings.Current;
             float power = TeamPower.Of(Team);
@@ -278,6 +295,11 @@ namespace DaiChienXanhDo
                 Vector3 dir = enemy.transform.position - transform.position; dir.y = 0f;
                 enemy.TakeHit(damage, dir.normalized * knockForce);
                 hitPoint = Vector3.Lerp(transform.position, enemy.transform.position, 0.6f) + Vector3.up * (IsSuper ? 2.2f : 1.25f);
+            }
+            else if (vehicle != null)
+            {
+                vehicle.TakeDamage(damage);
+                hitPoint = Vector3.Lerp(transform.position, vehicle.transform.position, 0.45f) + Vector3.up * 1.4f;
             }
             else if (core != null)
             {

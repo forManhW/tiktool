@@ -14,6 +14,28 @@ namespace DaiChienXanhDo
         public float Hp { get; private set; }
         public float MaxHp { get; private set; }
         public bool Alive => Hp > 0f;
+        public float HitRadius => hitRadius;
+
+        /// <summary>Xe tăng / robot đang có trên sân, để lính tìm mà vây đánh.</summary>
+        public static readonly System.Collections.Generic.List<Vehicle> Active = new System.Collections.Generic.List<Vehicle>();
+        void OnEnable() { Active.Add(this); }
+        void OnDisable() { Active.Remove(this); }
+
+        public static Vehicle Nearest(Team team, Vector3 from, out float dist)
+        {
+            Vehicle best = null; dist = float.MaxValue;
+            foreach (var v in Active)
+            {
+                if (v == null || v.Team != team || !v.Alive) continue;
+                Vector3 d = v.transform.position - from; d.y = 0f;
+                float m = d.magnitude;
+                if (m < dist) { dist = m; best = v; }
+            }
+            return best;
+        }
+
+        /// <summary>Bị lính địch đấm.</summary>
+        public void TakeDamage(float amount) { if (Alive) Hp = Mathf.Max(0f, Hp - amount); }
 
         float decayPerSecond, hitRadius, enemyDps, nextHitFx;
         Transform bar, fill;
@@ -62,13 +84,7 @@ namespace DaiChienXanhDo
             if (match != null && match.IsFighting && Alive)
             {
                 float dt = Time.deltaTime;
-                int enemies = FighterManager.I != null ? FighterManager.I.CountInRadius(Team.Other(), transform.position, hitRadius) : 0;
-                Hp = Mathf.Max(0f, Hp - (decayPerSecond + enemies * enemyDps) * dt);
-                if (enemies > 0 && Time.time >= nextHitFx)
-                {
-                    nextHitFx = Time.time + 0.25f;
-                    Fx.I.Hit(transform.position + Vector3.up * 1.5f + Random.insideUnitSphere * hitRadius * 0.4f, Team.Other().TeamColor(), false);
-                }
+                Hp = Mathf.Max(0f, Hp - decayPerSecond * dt); // tự cạn theo thời gian; lính địch vây đánh thì mất thêm (TakeDamage)
             }
 
             var cam = CameraRig.I != null ? CameraRig.I.cam : null;
