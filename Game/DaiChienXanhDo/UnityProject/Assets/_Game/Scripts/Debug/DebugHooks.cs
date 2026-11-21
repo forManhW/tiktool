@@ -42,6 +42,10 @@ namespace DaiChienXanhDo
                 case "debug_state":
                     LogState("state");
                     return (true, null);
+                case "debug_quake": case "debug_tornado": case "debug_volcano":
+                    if (MatchEvents.I == null) return (false, "Chưa sẵn sàng");
+                    MatchEvents.I.TriggerDisaster(action == "debug_quake" ? 0 : action == "debug_tornado" ? 1 : 2);
+                    return (true, null);
                 case "debug_toggle_mode":
                     GameState.ToggleMode();
                     LogState("mode");

@@ -34,9 +34,12 @@ MonoBehaviour:
   tankYawOffset: 180
   robotPrefab: {fileID: 919132149155446097, guid: 2f434fec0236dbd4c8a288b7d6628216, type: 3}
   robotTexture: {fileID: 2800000, guid: 197f60de0206c7e45be25a2776e5941b, type: 3}
+  robotTextureBlue: {fileID: 2800000, guid: ed18a303d5973064780a775350c2f3c3, type: 3}
+  robotTextureRed: {fileID: 2800000, guid: b01264b6e3178774884bcdd17828d943, type: 3}
   robotController: {fileID: 9100000, guid: 6265b74fb03f602498ba8dd827028a02, type: 2}
   robotHeight: 8
   meteorPrefab: {fileID: 919132149155446097, guid: 4e6da046dbba3dd419ad9e53bdad86e5, type: 3}
+  flagPrefab: {fileID: 919132149155446097, guid: 4af2b04a1b47f9c49a4d58a71d8e99ce, type: 3}
   blueMaterial: {fileID: 2100000, guid: 551ad31a0a32e38428f5abc897b6e50c, type: 2}
   redMaterial: {fileID: 2100000, guid: 465b48c0edd335a47bfa946c92af5c1e, type: 2}
   superMaterial: {fileID: 2100000, guid: aa2066dd68fa11b41911dfbb7d21ce9b, type: 2}

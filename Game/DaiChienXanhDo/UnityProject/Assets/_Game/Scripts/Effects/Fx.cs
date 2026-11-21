@@ -133,6 +133,12 @@ namespace DaiChienXanhDo
             if (Random.value < 0.3f) Emit(smoke, pos, Vector3.up * 0.5f, size * 1.5f, 0.9f, new Color(0.2f, 0.2f, 0.2f, 0.5f));
         }
 
+        /// <summary>Vệt khói đen sau thiên thạch (gọi mỗi frame).</summary>
+        public void SmokeTrail(Vector3 pos, float size)
+        {
+            Emit(smoke, pos + Random.insideUnitSphere * size * 0.3f, Random.insideUnitSphere * 0.4f, size * Random.Range(1.2f, 1.8f), Random.Range(0.8f, 1.3f), new Color(0.12f, 0.1f, 0.09f, 0.75f));
+        }
+
         /// <summary>Chớp sáng lớn (sét đánh).</summary>
         public void Flash(Vector3 pos, float size, Color color)
         {
@@ -185,6 +191,28 @@ namespace DaiChienXanhDo
                 float px = p.sr.sprite.rect.width / p.sr.sprite.pixelsPerUnit;
                 tr.localScale = Vector3.one * (p.size * pop / Mathf.Max(0.01f, px));
                 p.sr.color = new Color(1f, 1f, 1f, t < 0.7f ? 1f : 1f - (t - 0.7f) / 0.3f);
+            }
+        }
+
+        /// <summary>Cột lốc xoáy: khói xoắn ốc loe rộng dần lên trên + bụi, mảnh vụn quanh chân. Gọi mỗi frame.</summary>
+        public void Tornado(Vector3 basePos, float time)
+        {
+            for (int k = 0; k < 28; k++)
+            {
+                float h = Random.Range(0f, 15f);
+                float r = 0.5f + h * 0.38f;
+                float ang = time * 7f + h * 0.9f + Random.Range(0f, Mathf.PI * 2f);
+                Vector3 offset = new Vector3(Mathf.Cos(ang) * r, h, Mathf.Sin(ang) * r);
+                Vector3 tangent = new Vector3(-Mathf.Sin(ang), 0f, Mathf.Cos(ang)) * (4f + r * 2.5f);
+                float shade = Random.Range(0.45f, 0.7f);
+                Emit(smoke, basePos + offset, tangent + Vector3.up * 2.5f, Random.Range(0.9f, 1.6f) + h * 0.12f, Random.Range(0.35f, 0.6f), new Color(shade, shade * 0.95f, shade * 0.9f, 0.75f));
+            }
+            for (int k = 0; k < 4; k++)
+            {
+                float ang = Random.Range(0f, Mathf.PI * 2f);
+                Vector3 dir = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang));
+                Emit(smoke, basePos + dir * 1.5f, dir * 6f + Vector3.up, Random.Range(1.5f, 2.5f), 0.8f, new Color(0.7f, 0.62f, 0.5f, 0.6f));
+                Emit(sparks, basePos + dir * 2f + Vector3.up * Random.Range(0f, 6f), new Vector3(-dir.z, 0.6f, dir.x) * 10f, 0.25f, 0.6f, new Color(0.45f, 0.38f, 0.3f));
             }
         }
 

@@ -30,7 +30,7 @@
     },
     {
       "id": "blue_spawn",
-      "name": "XANH: Thêm lính",
+      "name": "XANH: Triệu hồi lính mang tên mình",
       "parameters": {
         "amount": {
           "type": "number",
@@ -55,41 +55,15 @@
       }
     },
     {
-      "id": "blue_punch",
-      "name": "XANH: Đấm thường (bậc 1)",
-      "parameters": {
-        "amount": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 50,
-          "step": 1,
-          "label": "Số cú đấm mạnh"
-        }
-      }
-    },
-    {
-      "id": "blue_combo_punch",
-      "name": "XANH: Đấm liên hoàn (bậc 2)",
-      "parameters": {
-        "amount": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 20,
-          "step": 1,
-          "label": "Số combo (mỗi combo 5 cú)"
-        }
-      }
-    },
-    {
       "id": "blue_superhero",
-      "name": "XANH: Siêu Chiến Binh (bậc 3)",
+      "name": "XANH: Triệu hồi Siêu Chiến Binh mang tên mình",
       "parameters": {
         "amount": {
           "type": "number",
           "minimum": 1,
-          "maximum": 4,
+          "maximum": 5,
           "step": 1,
-          "label": "Số lần x15 giây"
+          "label": "Số siêu nhân"
         }
       }
     },
@@ -153,7 +127,7 @@
     },
     {
       "id": "red_spawn",
-      "name": "ĐỎ: Thêm lính",
+      "name": "ĐỎ: Triệu hồi lính mang tên mình",
       "parameters": {
         "amount": {
           "type": "number",
@@ -178,41 +152,15 @@
       }
     },
     {
-      "id": "red_punch",
-      "name": "ĐỎ: Đấm thường (bậc 1)",
-      "parameters": {
-        "amount": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 50,
-          "step": 1,
-          "label": "Số cú đấm mạnh"
-        }
-      }
-    },
-    {
-      "id": "red_combo_punch",
-      "name": "ĐỎ: Đấm liên hoàn (bậc 2)",
-      "parameters": {
-        "amount": {
-          "type": "number",
-          "minimum": 1,
-          "maximum": 20,
-          "step": 1,
-          "label": "Số combo (mỗi combo 5 cú)"
-        }
-      }
-    },
-    {
       "id": "red_superhero",
-      "name": "ĐỎ: Siêu Chiến Binh (bậc 3)",
+      "name": "ĐỎ: Triệu hồi Siêu Chiến Binh mang tên mình",
       "parameters": {
         "amount": {
           "type": "number",
           "minimum": 1,
-          "maximum": 4,
+          "maximum": 5,
           "step": 1,
-          "label": "Số lần x15 giây"
+          "label": "Số siêu nhân"
         }
       }
     },

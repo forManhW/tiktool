@@ -23,6 +23,9 @@ namespace DaiChienXanhDo.EditorTools
                 var mats = go.GetComponentsInChildren<Renderer>().SelectMany(r => r.sharedMaterials).Where(m => m != null).Distinct()
                     .Select(m => $"{m.name}#{ColorUtility.ToHtmlStringRGB(m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color)}{(m.HasProperty("_Metallic") ? $"/met{m.GetFloat("_Metallic"):0.0}" : "")}{(m.mainTexture != null ? "/tex" : "")}");
                 Debug.Log($"[Mats] {path} | {string.Join(", ", mats)}");
+                if (path.Contains("Vehicles"))
+                    foreach (var r in go.GetComponentsInChildren<Renderer>())
+                        Debug.Log($"[Part] {path} | {r.name} | mats={string.Join("+", r.sharedMaterials.Select(m => m != null ? m.name : "-"))} | size={r.bounds.size.x:0.00}x{r.bounds.size.y:0.00}x{r.bounds.size.z:0.00}");
             }
         }
     }

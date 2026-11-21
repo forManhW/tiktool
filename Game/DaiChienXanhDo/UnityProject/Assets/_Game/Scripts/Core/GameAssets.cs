@@ -24,9 +24,13 @@ namespace DaiChienXanhDo
         public float tankYawOffset = 180f;
         public GameObject robotPrefab;
         public Texture2D robotTexture;
+        public Texture2D robotTextureBlue;     // họa tiết robot đã tô lại theo màu phe (ModelSetup tạo)
+        public Texture2D robotTextureRed;
+        public Texture2D RobotTexture(Team t) { var x = t == Team.Blue ? robotTextureBlue : robotTextureRed; return x != null ? x : robotTexture; }
         public RuntimeAnimatorController robotController;
         public float robotHeight = 8f;
         public GameObject meteorPrefab;
+        public GameObject flagPrefab;          // cờ cắm lên xe tăng/robot (tô màu phe)
 
         [Header("Vật liệu")]
         public Material blueMaterial;

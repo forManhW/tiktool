@@ -52,6 +52,10 @@ namespace DaiChienXanhDo.UI
         public TMP_Dropdown windowSizeDropdown;
         /// <summary>Options: Live tự động (0), Thường (1).</summary>
         public TMP_Dropdown modeDropdown;
+        /// <summary>Options: Bật (0), Tắt (1).</summary>
+        public TMP_Dropdown musicDropdown;
+        /// <summary>Options: Bật (0), Tắt (1).</summary>
+        public TMP_Dropdown sfxDropdown;
 
         [Header("Dynamic Guide Lines List")]
         public Transform guideLinesContainer;
@@ -236,6 +240,8 @@ namespace DaiChienXanhDo.UI
                 modeDropdown.SetValueWithoutNotify(GameState.Mode == GameMode.Manual ? 1 : 0);
                 modeDropdown.RefreshShownValue();
             }
+            if (musicDropdown != null) { musicDropdown.SetValueWithoutNotify(s.musicEnabled ? 0 : 1); musicDropdown.RefreshShownValue(); }
+            if (sfxDropdown != null) { sfxDropdown.SetValueWithoutNotify(s.sfxEnabled ? 0 : 1); sfxDropdown.RefreshShownValue(); }
 
             RebuildGuideLineRows(s.guideLines);
         }
@@ -380,6 +386,9 @@ namespace DaiChienXanhDo.UI
                 }
             }
             s.guideLines = collectedLines.ToArray();
+
+            if (musicDropdown != null) s.musicEnabled = musicDropdown.value == 0;
+            if (sfxDropdown != null) s.sfxEnabled = sfxDropdown.value == 0;
 
             GameMode targetMode = GameState.Mode;
             if (modeDropdown != null)

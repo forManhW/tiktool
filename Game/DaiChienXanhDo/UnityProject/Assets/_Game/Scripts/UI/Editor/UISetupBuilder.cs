@@ -1333,6 +1333,8 @@ namespace DaiChienXanhDo.UI.EditorTools
             // --- Các nhóm cài đặt bên trong Content ---
             CreateSettingsSectionHeader(contentGo.transform, "CHẾ ĐỘ & CỬA SỔ", fonts);
             view.modeDropdown = CreateSettingsDropdownRow(contentGo.transform, "Chế độ hoạt động", new[] { "Live tự động", "Thường" }, fonts, sprites);
+            view.musicDropdown = CreateSettingsDropdownRow(contentGo.transform, "Nhạc nền (phím M)", new[] { "Bật", "Tắt" }, fonts, sprites);
+            view.sfxDropdown = CreateSettingsDropdownRow(contentGo.transform, "Âm thanh hiệu ứng, đấm nhau (phím N)", new[] { "Bật", "Tắt" }, fonts, sprites);
             view.windowSizeDropdown = CreateSettingsDropdownRow(contentGo.transform, "Kích thước cửa sổ (vuông)", new[] { "720 x 720", "1080 x 1080", "1440 x 1440" }, fonts, sprites);
 
             CreateSettingsSectionHeader(contentGo.transform, "CHIẾN TRƯỜNG & HIỂN THỊ", fonts);
@@ -1346,7 +1348,6 @@ namespace DaiChienXanhDo.UI.EditorTools
             view.x2IntervalMinInput = CreateSettingsInputRow(contentGo.transform, "Chu kỳ X2 tối thiểu (giây)", "180", TMP_InputField.ContentType.DecimalNumber, fonts, sprites);
             view.x2IntervalMaxInput = CreateSettingsInputRow(contentGo.transform, "Chu kỳ X2 tối đa (giây)", "300", TMP_InputField.ContentType.DecimalNumber, fonts, sprites);
             view.x2DurationInput = CreateSettingsInputRow(contentGo.transform, "Thời lượng X2 toàn sân (giây)", "30", TMP_InputField.ContentType.DecimalNumber, fonts, sprites);
-            view.weakX2ThresholdInput = CreateSettingsInputRow(contentGo.transform, "Ngưỡng máu lõi kích hoạt X2 phe yếu (%)", "30", TMP_InputField.ContentType.DecimalNumber, fonts, sprites);
 
             // Nhóm GuideLines động
             var guideHeaderGo = new GameObject("GuideLinesHeader", typeof(RectTransform), typeof(LayoutElement));

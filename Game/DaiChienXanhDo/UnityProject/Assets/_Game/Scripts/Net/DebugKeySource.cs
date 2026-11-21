@@ -6,14 +6,14 @@ namespace DaiChienXanhDo
     /// <summary>
     /// Giả lập lệnh không cần TikTool:
     ///   F5 = người mới vào phe Xanh, F6 = người mới vào phe Đỏ,
-    ///   F7 = quà phe Xanh (lần lượt bậc 1 → 7), F8 = quà phe Đỏ (lần lượt bậc 1 → 7),
+    ///   F7 = quà phe Xanh (lần lượt: lính, siêu nhân, sét, xe tăng, thiên thạch, robot), F8 = tương tự phe Đỏ,
     ///   F9 = 30 người vào ngẫu nhiên (thử tải). Giữ Shift + F7/F8 = Robot khổng lồ ngay.
     /// </summary>
     public class DebugKeySource : MonoBehaviour
     {
         static readonly string[] Ho = { "Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Vũ", "Đặng", "Bùi", "Đỗ", "Ngô" };
         static readonly string[] Ten = { "An", "Bình", "Châu", "Dũng", "Giang", "Hà", "Khánh", "Linh", "Minh", "Ngọc", "Phúc", "Quân", "Sơn", "Thảo", "Uyên", "Vy", "Yến", "Tuấn", "Hùng", "Lan" };
-        static readonly string[] Gifts = { "punch", "combo_punch", "superhero", "lightning", "tank", "meteor", "giant_robot" };
+        static readonly string[] Gifts = { "spawn", "superhero", "lightning", "tank", "meteor", "giant_robot" };
 
         readonly int[] giftIndex = new int[2];
         int counter;

@@ -50,6 +50,13 @@ namespace DaiChienXanhDo
             }
         }
 
+        void Update()
+        {
+            // Nhạc nền theo cài đặt (phím M / menu F10), đổi là có tác dụng ngay
+            var s = GameSettings.Current;
+            if (music != null) { music.mute = !s.musicEnabled; music.volume = s.musicVolume; }
+        }
+
         /// <summary>Phát ngẫu nhiên một clip trong bộ. minInterval: khoảng cách tối thiểu giữa 2 lần cùng loại.</summary>
         public void Play(string key, AudioClip[] set, float volume, float minInterval, float pitchJitter = 0.08f)
         {
@@ -59,7 +66,7 @@ namespace DaiChienXanhDo
 
         public void Play(string key, AudioClip clip, float volume, float minInterval, float pitchJitter = 0f)
         {
-            if (clip == null) return;
+            if (clip == null || !GameSettings.Current.sfxEnabled) return; // tắt âm hiệu ứng trong cài đặt (phím N)
             float now = Time.unscaledTime;
             if (lastPlay.TryGetValue(key, out float t) && now - t < minInterval) return;
             lastPlay[key] = now;

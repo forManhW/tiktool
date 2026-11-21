@@ -36,6 +36,7 @@ namespace DaiChienXanhDo
             GameEvents.RoundWon += OnWon;
             GameEvents.RoundReset += OnReset;
             GameEvents.ModeChanged += OnMode;
+            GameEvents.MatchEventStarted += OnMatchEvent;
         }
 
         void OnDisable()
@@ -46,6 +47,7 @@ namespace DaiChienXanhDo
             GameEvents.RoundWon -= OnWon;
             GameEvents.RoundReset -= OnReset;
             GameEvents.ModeChanged -= OnMode;
+            GameEvents.MatchEventStarted -= OnMatchEvent;
         }
 
         void Request(Transform target, Vector3 pos, float priority, float hold, float distance)
@@ -98,6 +100,12 @@ namespace DaiChienXanhDo
             queue.Clear();
             current = null;
             if (GameState.Mode == GameMode.LiveAuto && CameraRig.I != null) CameraRig.I.Overview();
+        }
+
+        /// <summary>Thảm họa: lùi ra gần toàn cảnh để thấy lốc xoáy / vết nứt / mưa đá lửa.</summary>
+        void OnMatchEvent(MatchEventNotice n)
+        {
+            if (n.Id == "disaster") Request(null, Vector3.zero, 3.5f, 5f, CameraRig.OverviewDistance * 0.8f);
         }
 
         void OnMode(GameMode mode)

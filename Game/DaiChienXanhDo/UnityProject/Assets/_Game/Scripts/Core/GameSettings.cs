@@ -36,6 +36,8 @@ namespace DaiChienXanhDo
         public float weakX2Duration = 20f;
 
         public float celebrateSeconds = 7f;
+        public bool musicEnabled = true;          // tắt/bật nhạc nền (menu F10 hoặc phím M)
+        public bool sfxEnabled = true;            // tắt/bật âm thanh hiệu ứng, đấm nhau (menu F10 hoặc phím N)
         public float musicVolume = 0.35f;
         public float sfxVolume = 0.8f;
         public int fullNameLimit = 40;            // sân đông hơn thì chỉ hiện tên đầy đủ cho người nổi bật

@@ -24,6 +24,7 @@ Chỉ dùng tài nguyên miễn phí có giấy phép rõ ràng (CC0 1.0, SIL OF
 | 8-Bit Battle Loop | Wolfgang_ | https://opengameart.org/content/8-bit-battle-loop | CC0 1.0 | 2026-11-21 | Nhạc nền chiến đấu lặp thứ 2 (`bgm_battle_arcade_loop.ogg`) (`Assets/_Game/Audio/Music/`) |
 | Castle Kit (2.0) | Kenney (Kenney.nl) | https://kenney.nl/assets/castle-kit | CC0 1.0 | 2026-11-21 | Lâu đài làm lõi, tường thành, cờ, cây quanh sân (`Assets/_Game/Art/Environment/Kenney_CastleKit/`) |
 | Grass004 | ambientCG | https://ambientcg.com/view?id=Grass004 | CC0 1.0 | 2026-11-21 | Texture cỏ mặt sân (`Assets/_Game/Art/Textures/Grass004/`) |
+| Ground054 | ambientCG | https://ambientcg.com/view?id=Ground054 | CC0 1.0 | 2026-11-21 | Đường đất nối 2 lâu đài và bãi đất giữa sân (`Assets/_Game/Art/Textures/Ground054/`) |
 
 ## Bản đồ file cho Claude gắn vào game
 

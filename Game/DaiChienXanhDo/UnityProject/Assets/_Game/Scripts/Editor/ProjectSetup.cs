@@ -302,41 +302,16 @@ namespace DaiChienXanhDo.EditorTools
             ground.transform.localScale = new Vector3(30f, 1f, 30f);
             ground.GetComponent<Renderer>().sharedMaterial = grass;
 
-            // Vạch giữa sân (mờ, như vôi kẻ)
-            var line = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            line.name = "FrontLine";
-            Object.DestroyImmediate(line.GetComponent<Collider>());
-            line.transform.position = new Vector3(0f, 0.01f, 0f);
-            line.transform.rotation = Quaternion.Euler(0f, -45f, 0f);
-            line.transform.localScale = new Vector3(Arena.HalfSize * 2.7f, 0.02f, 0.18f);
-            line.GetComponent<Renderer>().sharedMaterial = Mat("FrontLine", new Color(0.95f, 0.93f, 0.85f));
+            // Đường đất nối 2 lâu đài + bãi đất giữa sân (mép mờ dần vào cỏ). Không chắn đường, chỉ là mặt đất.
+            BuildDirt();
 
             var deco = new GameObject("Decor").transform;
 
-            // Hàng rào gỗ quanh sân
+            // Tường thành quanh sân: cạnh xa camera (trên, phải) xây cao + tháp góc + băng rôn màu phe;
+            // cạnh gần camera (dưới, trái) tường thấp để không che trận đánh.
             float edge = Arena.HalfSize + 1.6f;
-            var fence = AssetDatabase.LoadAssetAtPath<GameObject>($"{Castle}/wall-narrow-wood-fence.fbx");
-            if (fence != null)
-            {
-                const float seg = 3f;
-                int n = Mathf.CeilToInt(edge * 2f / seg);
-                for (int side = 0; side < 4; side++)
-                    for (int i = 0; i < n; i++)
-                    {
-                        float along = -edge + seg * (i + 0.5f);
-                        Vector3 p; float yaw;
-                        switch (side)
-                        {
-                            case 0: p = new Vector3(along, 0f, -edge); yaw = 0f; break;
-                            case 1: p = new Vector3(along, 0f, edge); yaw = 0f; break;
-                            case 2: p = new Vector3(-edge, 0f, along); yaw = 90f; break;
-                            default: p = new Vector3(edge, 0f, along); yaw = 90f; break;
-                        }
-                        var fp = Place(fence, deco, p, yaw, width: seg);
-                        var fb = WorldBounds(fp);
-                        if (fb.size.y > 1.1f) { var s0 = fp.transform.localScale; fp.transform.localScale = new Vector3(s0.x, s0.y * 1.1f / fb.size.y, s0.z); } // rào thấp ngang hông, không che sân
-                    }
-            }
+            BuildWalls(deco, edge);
+            BuildCamps(deco);
 
             // Cây, đá bên ngoài sân (cố định để lần nào dựng cũng giống nhau)
             string[] trees = { $"{Nature}/tree_oak.fbx", $"{Nature}/tree_default.fbx", $"{Nature}/tree_detailed.fbx", $"{Nature}/tree_pineTallA.fbx", $"{Nature}/tree_pineDefaultA.fbx", $"{Castle}/tree-large.fbx" };
@@ -356,6 +331,210 @@ namespace DaiChienXanhDo.EditorTools
                 Place(prefab, deco, new Vector3(x, 0f, z), (float)(rng.NextDouble() * 360), height: h);
                 placed++;
             }
+        }
+
+        static GameObject CastlePiece(string name) => AssetDatabase.LoadAssetAtPath<GameObject>($"{Castle}/{name}.fbx");
+
+        static void SetAllMats(GameObject go, Material m)
+        {
+            foreach (var r in go.GetComponentsInChildren<Renderer>())
+            {
+                var arr = new Material[r.sharedMaterials.Length];
+                for (int i = 0; i < arr.Length; i++) arr[i] = m;
+                r.sharedMaterials = arr;
+            }
+        }
+
+        /// <summary>Co/giãn chiều cao một khối về đúng target mét, đáy vẫn chạm đất.</summary>
+        static void FitHeight(GameObject go, float target)
+        {
+            var b = WorldBounds(go);
+            if (b.size.y < 0.001f) return;
+            var s = go.transform.localScale;
+            go.transform.localScale = new Vector3(s.x, s.y * target / b.size.y, s.z);
+            b = WorldBounds(go);
+            go.transform.position += Vector3.up * -b.min.y;
+        }
+
+        static Material Banner(Team team) => Mat($"Banner_{team}", team.TeamColor());
+
+        /// <summary>Tường thành: cạnh trên + phải cao 4,5m (che phía ngoài), cạnh dưới + trái cao 1,3m (không che trận).</summary>
+        static void BuildWalls(Transform parent, float edge)
+        {
+            var stone = TintedCastleMat("Castle_Neutral", new Color(0.96f, 0.94f, 0.9f));
+            var roof = TintedCastleMat("Castle_Roof_Neutral", new Color(0.55f, 0.5f, 0.52f));
+            var high = CastlePiece("wall");
+            var low = CastlePiece("wall-half") ?? high;
+            var banner = CastlePiece("flag-banner-long");
+            if (high == null) return;
+
+            const float seg = 4f;
+            int n = Mathf.CeilToInt(edge * 2f / seg);
+            for (int side = 0; side < 4; side++)
+            {
+                bool tall = side == 1 || side == 3;              // 1 = cạnh trên (z+), 3 = cạnh phải (x+)
+                for (int i = 0; i < n; i++)
+                {
+                    float along = -edge + seg * (i + 0.5f);
+                    Vector3 p; float yaw; Vector3 inward;
+                    switch (side)
+                    {
+                        case 0: p = new Vector3(along, 0f, -edge); yaw = 0f; inward = Vector3.forward; break;
+                        case 1: p = new Vector3(along, 0f, edge); yaw = 180f; inward = Vector3.back; break;
+                        case 2: p = new Vector3(-edge, 0f, along); yaw = 90f; inward = Vector3.right; break;
+                        default: p = new Vector3(edge, 0f, along); yaw = 270f; inward = Vector3.left; break;
+                    }
+                    var w = Place(tall ? high : low, parent, p, yaw, width: seg);
+                    SetAllMats(w, stone);
+                    FitHeight(w, tall ? 4.5f : 1.3f);
+
+                    // Băng rôn màu phe trên tường cao: nửa sân Xanh (x+z<0) màu xanh, nửa sân Đỏ màu đỏ
+                    if (tall && banner != null && i % 3 == 1)
+                    {
+                        Team t = p.x + p.z < 0f ? Team.Blue : Team.Red;
+                        var b = Place(banner, parent, p + inward * 0.9f, yaw, height: 3.2f);
+                        b.transform.position += Vector3.up * 0.6f;
+                        SetAllMats(b, Banner(t));
+                    }
+                }
+            }
+
+            // Tháp canh 3 góc xa (góc dưới trái gần camera để trống)
+            foreach (var corner in new[] { new Vector3(-edge, 0f, edge), new Vector3(edge, 0f, edge), new Vector3(edge, 0f, -edge) })
+                Stack(parent, corner, 4.6f, stone, roof, "tower-square-base", "tower-square-mid", "tower-square-top-roof");
+        }
+
+        /// <summary>Căn cứ cạnh mỗi lâu đài: máy bắn đá / nỏ lớn + cờ màu phe, đặt lệch khỏi đường đất.</summary>
+        static void BuildCamps(Transform parent)
+        {
+            var wood = TintedCastleMat("Castle_Wood", new Color(1f, 0.97f, 0.92f));
+            var flagShort = CastlePiece("flag-banner-short");
+            foreach (Team team in new[] { Team.Blue, Team.Red })
+            {
+                Vector3 core = Arena.CorePosition(team);
+                Vector3 toCenter = (-core).normalized;
+                Vector3 perp = new Vector3(toCenter.z, 0f, -toCenter.x);
+                float yaw = Mathf.Atan2(toCenter.x, toCenter.z) * Mathf.Rad2Deg;
+                string[] engines = team == Team.Blue ? new[] { "siege-catapult", "siege-ballista" } : new[] { "siege-trebuchet", "siege-ballista" };
+                for (int k = 0; k < 2; k++)
+                {
+                    var prefab = CastlePiece(engines[k]);
+                    if (prefab == null) continue;
+                    Vector3 pos = core + perp * (k == 0 ? 8f : -8f) + toCenter * 3f;
+                    var e = Place(prefab, parent, pos, yaw, height: 3.2f);
+                    SetAllMats(e, wood);
+                    if (flagShort != null)
+                    {
+                        var f = Place(flagShort, parent, pos - toCenter * 2.2f + perp * (k == 0 ? 1.5f : -1.5f), yaw, height: 2.6f);
+                        SetAllMats(f, Banner(team));
+                    }
+                }
+            }
+        }
+
+        const string Dirt = "Assets/_Game/Art/Textures/Ground054";
+        const string Generated = "Assets/_Game/Art/Generated";
+
+        /// <summary>Đường đất chéo nối 2 lâu đài + bãi đất giữa sân: khối phẳng có viền lượn sóng, phủ texture đất lát lặp.</summary>
+        static void BuildDirt()
+        {
+            Directory.CreateDirectory(Generated);
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>($"{Dirt}/Ground054_1K-JPG_Color.jpg");
+            if (tex == null) return;
+            var normalImp = AssetImporter.GetAtPath($"{Dirt}/Ground054_1K-JPG_NormalGL.jpg") as TextureImporter;
+            if (normalImp != null && normalImp.textureType != TextureImporterType.NormalMap) { normalImp.textureType = TextureImporterType.NormalMap; normalImp.SaveAndReimport(); }
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            mat.SetTexture("_BaseMap", tex);
+            var normal = AssetDatabase.LoadAssetAtPath<Texture2D>($"{Dirt}/Ground054_1K-JPG_NormalGL.jpg");
+            if (normal != null) { mat.SetTexture("_BumpMap", normal); mat.EnableKeyword("_NORMALMAP"); mat.SetFloat("_BumpScale", 0.7f); }
+            mat.SetColor("_BaseColor", new Color(0.93f, 0.85f, 0.74f));
+            mat.SetFloat("_Smoothness", 0.04f);
+            SaveMat(mat, "Ground_Dirt");
+
+            Vector3 a = Arena.CorePosition(Team.Blue), b = Arena.CorePosition(Team.Red);
+            MeshObject("DirtRoad", RoadMesh(a, b, 3.6f), mat, 0.02f);
+            MeshObject("DirtCenter", BlobMesh(Vector3.zero, 11f), mat, 0.025f);
+            MeshObject("DirtBlueYard", BlobMesh(a + (Vector3.zero - a).normalized * 3f, 8f), mat, 0.022f);
+            MeshObject("DirtRedYard", BlobMesh(b + (Vector3.zero - b).normalized * 3f, 8f), mat, 0.022f);
+
+            // Gốc cây, khúc gỗ rải thưa ở rìa sân (tránh đường đất, bãi giữa, quanh lâu đài)
+            string[] small = { $"{Nature}/stump_round.fbx", $"{Nature}/log.fbx", $"{Nature}/log_stack.fbx", $"{Nature}/stump_round.fbx" };
+            var parent = new GameObject("FieldDecor").transform;
+            var rng = new System.Random(11);
+            int placed = 0;
+            for (int i = 0; i < 500 && placed < 22; i++)
+            {
+                float x = (float)(rng.NextDouble() * 2 - 1) * (Arena.HalfSize - 2f), z = (float)(rng.NextDouble() * 2 - 1) * (Arena.HalfSize - 2f);
+                if (Mathf.Abs(x - z) / 1.4142f < 7f) continue;
+                if (new Vector2(x, z).magnitude < 14f) continue;
+                if ((new Vector3(x, 0, z) - a).magnitude < 12f || (new Vector3(x, 0, z) - b).magnitude < 12f) continue;
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(small[rng.Next(small.Length)]);
+                if (prefab == null) continue;
+                Place(prefab, parent, new Vector3(x, 0f, z), (float)(rng.NextDouble() * 360), height: (float)(0.5 + rng.NextDouble() * 0.5));
+                placed++;
+            }
+        }
+
+        static void MeshObject(string name, Mesh mesh, Material mat, float y)
+        {
+            string path = $"{Generated}/{name}.asset";
+            if (File.Exists(path)) AssetDatabase.DeleteAsset(path);
+            AssetDatabase.CreateAsset(mesh, path);
+            var go = new GameObject(name);
+            go.transform.position = new Vector3(0f, y, 0f);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        static Vector2 DirtUv(Vector3 p) => new Vector2(p.x, p.z) / 7f;   // texture lát lặp theo toạ độ thế giới, các mảnh nối liền nhau
+
+        /// <summary>Mảng đất tròn, viền lượn sóng.</summary>
+        static Mesh BlobMesh(Vector3 center, float radius)
+        {
+            const int n = 64;
+            var verts = new Vector3[n + 1]; var uvs = new Vector2[n + 1]; var tris = new int[n * 3];
+            verts[0] = center; uvs[0] = DirtUv(center);
+            float seed = center.x * 0.37f + center.z * 0.11f;
+            for (int i = 0; i < n; i++)
+            {
+                float ang = i * Mathf.PI * 2f / n;
+                float r = radius * (1f + 0.12f * Mathf.Sin(ang * 3f + seed) + 0.07f * Mathf.Sin(ang * 7f + seed * 2f) + 0.04f * Mathf.Sin(ang * 13f));
+                var p = center + new Vector3(Mathf.Cos(ang) * r, 0f, Mathf.Sin(ang) * r);
+                verts[i + 1] = p; uvs[i + 1] = DirtUv(p);
+                tris[i * 3] = 0; tris[i * 3 + 1] = (i + 1) % n + 1; tris[i * 3 + 2] = i + 1;
+            }
+            var m = new Mesh { vertices = verts, uv = uvs, triangles = tris, name = "DirtBlob" };
+            m.RecalculateNormals(); m.RecalculateTangents(); m.RecalculateBounds();
+            return m;
+        }
+
+        /// <summary>Dải đường đất từ a tới b, hai mép lượn sóng.</summary>
+        static Mesh RoadMesh(Vector3 a, Vector3 b, float halfWidth)
+        {
+            const int n = 60;
+            Vector3 dir = (b - a).normalized, side = new Vector3(dir.z, 0f, -dir.x);
+            var verts = new Vector3[(n + 1) * 2]; var uvs = new Vector2[verts.Length]; var tris = new int[n * 6];
+            for (int i = 0; i <= n; i++)
+            {
+                float t = (float)i / n;
+                Vector3 c = Vector3.Lerp(a, b, t);
+                float w1 = halfWidth * (1f + 0.18f * Mathf.Sin(t * 23f) + 0.1f * Mathf.Sin(t * 57f + 1f));
+                float w2 = halfWidth * (1f + 0.18f * Mathf.Sin(t * 19f + 2f) + 0.1f * Mathf.Sin(t * 61f));
+                verts[i * 2] = c + side * w1; verts[i * 2 + 1] = c - side * w2;
+                uvs[i * 2] = DirtUv(verts[i * 2]); uvs[i * 2 + 1] = DirtUv(verts[i * 2 + 1]);
+                if (i < n)
+                {
+                    int k = i * 6, v = i * 2;
+                    tris[k] = v; tris[k + 1] = v + 2; tris[k + 2] = v + 1;
+                    tris[k + 3] = v + 1; tris[k + 4] = v + 2; tris[k + 5] = v + 3;
+                }
+            }
+            var m = new Mesh { vertices = verts, uv = uvs, triangles = tris, name = "DirtRoad" };
+            m.RecalculateNormals(); m.RecalculateTangents(); m.RecalculateBounds();
+            if (m.normals.Length > 0 && m.normals[0].y < 0f) { System.Array.Reverse(tris); m.triangles = tris; m.RecalculateNormals(); }
+            return m;
         }
 
         /// <summary>Đặt model, tự co giãn theo chiều cao hoặc chiều rộng mong muốn, đáy chạm đất.</summary>

@@ -137,14 +137,70 @@ namespace DaiChienXanhDo
             {
                 case "Skin": return SkinTones[tone];
                 case "Face": return orig;
-                case "Main": case "Shirt": case "Vest": return TeamMain(team);
-                case "Helmet": case "Armor": case "Hat": return TeamDark(team);
-                case "DarkGreen": return TeamDark(team);
-                case "Detail": case "Details": case "Red": return Gold;
+                // Áo chính màu phe; riêng đồ đen (ninja) giữ đen để nhìn ra loại nhân vật
+                case "Main": return Lum(orig) < 0.1f ? Color.Lerp(Brighten(orig, 1.4f), TeamDark(team), 0.65f) : TeamMain(team);
+                case "Shirt": case "Vest": return TeamMain(team);
+                case "Helmet": case "Hat": case "DarkGreen": return TeamDark(team);
+                // Hiệp sĩ giữ giáp thép/vàng, chỉ chi tiết đổi màu phe
+                case "Armor": return Color.Lerp(Brighten(orig, 1.6f), TeamMain(team), 0.4f);
+                case "Detail": case "Details": case "Red": return TeamMain(team);
                 case "Light": return Cream;
                 default: return Brighten(orig, 1.8f); // Pants, Belt, Black, Grey, Armor_Dark, Hair...
             }
         }
+
+        /// <summary>Xe tăng: thân màu phe tông quân sự, kim loại xám súng, xích đen.</summary>
+        public static void DressVehicle(GameObject model, Team team)
+        {
+            foreach (var r in model.GetComponentsInChildren<Renderer>())
+            {
+                var mats = r.sharedMaterials;
+                for (int i = 0; i < mats.Length; i++)
+                {
+                    if (mats[i] == null) continue;
+                    bool turret = r.name.ToUpperInvariant().Contains("TOWER");
+                    var key = (mats[i], team, turret ? 98 : 99);
+                    if (!dressed.TryGetValue(key, out var c))
+                    {
+                        c = new Material(Matte(mats[i])) { name = mats[i].name + "_" + team + (turret ? "_turret" : "") };
+                        string n = mats[i].name.ToLowerInvariant();
+                        // Phối như robot: tháp pháo màu phe, thân thép xám pha màu phe đậm, chi tiết vàng đồng, xích đen
+                        Color col = n.Contains("camo") ? (turret ? TeamMain(team) : Color.Lerp(TeamDark(team), Hex("5C6168"), 0.55f))
+                                  : n.Contains("brown") ? Hex("C9A23F")
+                                  : Hex("2A2C30");
+                        c.SetColor("_BaseColor", col);
+                        dressed[key] = c;
+                    }
+                    mats[i] = c;
+                }
+                r.sharedMaterials = mats;
+            }
+        }
+
+        static readonly System.Collections.Generic.Dictionary<Material, Material> hero = new System.Collections.Generic.Dictionary<Material, Material>();
+
+        /// <summary>
+        /// Bộ giáp Siêu Chiến Binh dựa trên bộ đồ đã phối của lính: da/mặt/tóc giữ nguyên, áo chính sáng màu phe và hơi phát sáng,
+        /// còn lại (giáp, mũ, quần, thắt lưng) đổi sang vàng kim.
+        /// </summary>
+        public static Material Hero(Material dressedMat, Team team)
+        {
+            if (dressedMat == null) return null;
+            if (hero.TryGetValue(dressedMat, out var h)) return h;
+            string n = dressedMat.name.ToLowerInvariant();
+            if (n.StartsWith("skin") || n.StartsWith("face") || n.StartsWith("hair")) { hero[dressedMat] = dressedMat; return dressedMat; }
+            h = new Material(dressedMat) { name = dressedMat.name + "_Hero" };
+            bool cloth = n.StartsWith("main") || n.StartsWith("shirt") || n.StartsWith("vest");
+            Color c = cloth ? TeamLight(team) : Hex("E8B84A");
+            h.SetColor("_BaseColor", c);
+            h.SetFloat("_Smoothness", cloth ? 0.2f : 0.45f);
+            h.EnableKeyword("_EMISSION");
+            h.SetColor("_EmissionColor", cloth ? TeamMain(team) * 0.45f : Hex("E8B84A") * 0.18f);
+            hero[dressedMat] = h;
+            return h;
+        }
+
+        static float Lum(Color c) => c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
 
         static Color Brighten(Color c, float k) => new Color(Mathf.Clamp01(c.r * k + 0.04f), Mathf.Clamp01(c.g * k + 0.04f), Mathf.Clamp01(c.b * k + 0.04f), 1f);
 
@@ -157,6 +213,17 @@ namespace DaiChienXanhDo
             if (unlitBase == null) unlitBase = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
             var m = new Material(unlitBase) { name = name };
             m.SetColor("_BaseColor", c);
+            return m;
+        }
+
+        static readonly Material[] flag = new Material[2];
+        /// <summary>Vải cờ màu phe (không phát sáng).</summary>
+        public static Material Flag(Team team) => flag[(int)team] ??= MakeFlag(team);
+        static Material MakeFlag(Team team)
+        {
+            var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = $"Flag_{team}" };
+            m.SetColor("_BaseColor", TeamMain(team));
+            m.SetFloat("_Smoothness", 0.1f);
             return m;
         }
 

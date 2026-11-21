@@ -200,7 +200,6 @@ namespace DaiChienXanhDo.UI
             {
                 ref Cand cd = ref cands[c];
                 // Lính phụ chỉ hiện tên khi chủ của nó chưa có nhãn nào trên màn hình.
-                if (!cd.isMain && labeledOwners.Contains(cd.ownerId)) continue;
 
                 float fontSize = cd.isMain ? (cd.isSuper ? superFontSize : mainFontSize) : subFontSize;
                 float w = (cd.display.Length * 0.56f * fontSize + 8f) * uiScale;
@@ -267,7 +266,6 @@ namespace DaiChienXanhDo.UI
                 bool highlight = isFollowed
                     || (!string.IsNullOrEmpty(owner.Id) && topViewerIds.Contains(owner.Id))
                     || (now - owner.LastActionTime < recentActionSeconds);
-                if (crowded && !isMain && !highlight) continue;
 
                 string display = (crowded && !highlight) ? GetInitials(owner.Nickname) : owner.Nickname;
                 if (string.IsNullOrEmpty(display)) continue;

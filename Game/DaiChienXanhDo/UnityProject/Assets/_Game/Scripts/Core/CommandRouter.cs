@@ -36,11 +36,9 @@ namespace DaiChienXanhDo
         public static readonly Dictionary<string, EffectDef> Effects = new Dictionary<string, EffectDef>
         {
             { "join",        new EffectDef("join", "Vào phe", 0) },
-            { "spawn",       new EffectDef("spawn", "Thêm lính", 0) },
             { "like_power",  new EffectDef("like_power", "Tim tiếp sức", 0) },
-            { "punch",       new EffectDef("punch", "Đấm thường", 1) },
-            { "combo_punch", new EffectDef("combo_punch", "Đấm liên hoàn", 2) },
-            { "superhero",   new EffectDef("superhero", "Siêu Chiến Binh", 3) },
+            { "spawn",       new EffectDef("spawn", "Triệu hồi lính", 1) },              // mỗi lính mang tên người tặng
+            { "superhero",   new EffectDef("superhero", "Triệu hồi Siêu Chiến Binh", 3) }, // mỗi siêu nhân mang tên người tặng
             { "lightning",   new EffectDef("lightning", "Sấm sét", 4) },
             { "tank",        new EffectDef("tank", "Xe tăng", 5) },
             { "meteor",      new EffectDef("meteor", "Mưa thiên thạch", 6) },
@@ -67,6 +65,8 @@ namespace DaiChienXanhDo
             if (MatchManager.I == null) return (false, "Game chưa sẵn sàng");
 
             if (!TryParse(c, a, out Team team, out EffectDef def, out string error)) return (false, error);
+            // Không có nhân vật vô danh: mọi thứ xuất hiện trên sân phải có người triệu hồi
+            if (!c.User.IsValid) return (false, "Lệnh không có người gửi: mọi nhân vật phải mang tên người triệu hồi");
 
             // Đang ăn mừng thắng ván: giữ lệnh lại, chạy khi ván mới bắt đầu (quà không bị mất).
             if (!MatchManager.I.IsFighting)
@@ -99,7 +99,6 @@ namespace DaiChienXanhDo
 
         static void Run(GameCommand c, Team team, EffectDef def)
         {
-            if (!c.User.IsValid) c.User = new ViewerInfo { Id = "test-" + team.Key(), Nickname = "Khán giả " + team.DisplayName() };
             var viewer = PlayerRegistry.GetOrCreate(c.User, team, out bool isNew);
             viewer.LastActionTime = Time.time;
 

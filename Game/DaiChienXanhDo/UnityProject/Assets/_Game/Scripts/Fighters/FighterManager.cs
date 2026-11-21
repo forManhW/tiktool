@@ -244,6 +244,13 @@ namespace DaiChienXanhDo
             return list;
         }
 
+        /// <summary>Số lính sẽ chết theo tỉ lệ (chừa ít nhất keepMin), không giết ngay.</summary>
+        public int KillQuota(Team team, float percent, int keepMin)
+        {
+            int n = Count(team);
+            return Mathf.Clamp(Mathf.RoundToInt(n * percent), 0, Mathf.Max(0, n - keepMin));
+        }
+
         /// <summary>Giết một tỉ lệ lính, luôn chừa lại ít nhất keepMin lính (dùng cho thảm họa).</summary>
         public int KillPercent(Team team, float percent, int keepMin)
         {

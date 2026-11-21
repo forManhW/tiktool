@@ -49,7 +49,7 @@ Một trận đấu **không bao giờ dừng** giữa hai phe **Xanh** và **Đ
 ### 2.1 Trận đấu vô hạn
 
 - **Không có lobby, không có đồng hồ.** Trận luôn diễn ra.
-- **Lõi Xanh ở góc dưới bên trái**, **Lõi Đỏ ở góc trên bên phải**. Mỗi lõi **1000 máu** (chỉnh trong cài đặt game).
+- Sân **56×56m**, mặt cỏ, đường đất nối 2 lâu đài, tường thành bao quanh. **Lâu đài Xanh ở góc dưới bên trái**, **lâu đài Đỏ ở góc trên bên phải**, cách nhau khoảng 62m. Mỗi lâu đài **1000 máu** (chỉnh trong cài đặt game).
 - **Không có cách hồi máu lõi.** Lõi về 0 là thua.
 - Lính hai phe tự tìm địch gần nhất và đấm nhau.
 - **Khi một phe chết hết lính**, lõi phe đó không còn ai bảo vệ: lính phe kia kéo thẳng tới đánh lõi. Phe bị đánh chỉ còn cách gọi người vào cứu.
@@ -81,11 +81,9 @@ Game chỉ viết **hàm**. Quà nào, comment gì, bao nhiêu tim ứng với h
 | Bậc | Hiệu ứng | Hàm Xanh | Hàm Đỏ | Tác dụng | Gợi ý cài trong TikTool |
 | --- | --- | --- | --- | --- | --- |
 | 0 | Vào phe | `blue_join` | `red_join` | Tạo nhân vật nếu chưa có | Comment `xanh` / `đỏ` (đã cài sẵn) |
-| 0 | Thêm lính | `blue_spawn` | `red_spawn` | +`amount` lính phụ mang tên người gọi. Sân đầy thì đổi thành tim tiếp sức | Follow, quà rẻ |
 | 0 | Tim tiếp sức | `blue_like_power` | `red_like_power` | +5%/đơn vị sát thương cả phe (tối đa +100%) trong 5 giây | Mỗi 50 tim |
-| 1 | Đấm thường | `blue_punch` | `red_punch` | `amount` cú đấm mạnh x4, đánh văng xa | Quà 1 xu (Hoa hồng) |
-| 2 | Đấm liên hoàn | `blue_combo_punch` | `red_combo_punch` | 5 cú nhanh x2 mỗi combo | Quà 5–10 xu |
-| 3 | Siêu Chiến Binh | `blue_superhero` | `red_superhero` | Biến hình 15 giây/đơn vị (tối đa 60 giây): to gấp 1,6, bay, mạnh x5, chịu đòn tốt | Quà 20–99 xu |
+| 1 | Triệu hồi lính | `blue_spawn` | `red_spawn` | Gọi ra `amount` lính, **mỗi lính mang tên người tặng**. Sân đầy (200) thì đổi thành tim tiếp sức | Quà 1 xu (Hoa hồng), follow |
+| 3 | Triệu hồi Siêu Chiến Binh | `blue_superhero` | `red_superhero` | Gọi ra `amount` siêu nhân **mang tên người tặng**: to gấp 1,6, bay, giáp vàng, mạnh x5, chịu đòn tốt, có thanh máu riêng, sống tới khi bị hạ | Quà 20–99 xu |
 | 4 | Sấm sét | `blue_lightning` | `red_lightning` | Mỗi đợt đánh chết 5 lính địch. Địch hết lính thì đánh lõi 30 | Quà 100–299 xu |
 | 5 | Xe tăng | `blue_tank` | `red_tank` | Lăn về lõi địch 20 giây, nghiền lính, 2 giây bắn lõi một phát 20 | Quà 300–999 xu |
 | 6 | Mưa thiên thạch | `blue_meteor` | `red_meteor` | Mỗi đợt 12 thiên thạch xuống nửa sân địch, trừ lõi địch 80 | Quà 1000–4999 xu |
@@ -99,6 +97,8 @@ Game chỉ viết **hàm**. Quà nào, comment gì, bao nhiêu tim ứng với h
 | `ally_spawn` | Thêm lính cho phe người đó đang ở |
 
 **Hàm sự kiện và quản trị:** `event_x2`, `event_disaster`, `admin_reset_round`, `admin_reset_score`.
+
+> **Không có nhân vật vô danh.** Mọi lính, siêu nhân, xe tăng, robot đều mang tên người triệu hồi. Lệnh không kèm người gửi (vd. bấm thử trong Test Lab) bị game từ chối.
 
 Quy tắc chung:
 
@@ -114,7 +114,6 @@ Quy tắc chung:
 | Sự kiện | Khi nào | Tác dụng |
 | --- | --- | --- |
 | **X2 Sức Mạnh** | Ngẫu nhiên mỗi 3–5 phút, báo trước 5 giây | 30 giây: cả hai phe mạnh gấp đôi |
-| **X2 Phe Yếu** | Lõi một phe dưới 30% máu (tối đa 1 lần/ván, không trùng X2 Sức Mạnh) | 20 giây: phe đang thua mạnh gấp đôi |
 | **Thảm họa** (động đất / lốc xoáy / núi lửa) | Tổng số lính vượt **120** | Cảnh báo 3 giây, sau đó giết **40% lính mỗi phe**, mỗi phe còn ít nhất 3 lính, không trừ máu lõi. Hồi chiêu 20 giây |
 
 Giới hạn cứng: **200** lính trên sân. Đầy thì `*_spawn` đổi thành tim tiếp sức.
@@ -178,7 +177,8 @@ Không hiện thông báo. Chỉ còn tỉ số, máu lõi, tên trên đầu nh
 | --- | --- |
 | `F1` | Đổi Live tự động ↔ Thường (game nhớ lựa chọn) |
 | `F2` | Ẩn / hiện toàn bộ giao diện |
-| `F10` | Menu cài đặt. Hiện tại mở file `settings.json`; Antigravity sẽ làm menu trong game |
+| `F10` | Menu cài đặt trong game (có bật/tắt nhạc nền, âm thanh hiệu ứng) |
+| `M` / `N` | Bật/tắt nhạc nền / âm thanh hiệu ứng (game nhớ cho lần sau) |
 | `Ctrl+R` | Reset ván (không tính điểm) |
 | `Ctrl+Shift+R` | Reset tỉ số hôm nay |
 | `F5` / `F6` | Test: người mới vào phe Xanh / Đỏ |
@@ -345,7 +345,7 @@ Nguyên tắc: **mỗi bên sở hữu một vùng file riêng**, không sửa f
 | --- | --- |
 | Thư viện đọc TikTok LIVE không chính thức | Game không phụ thuộc trực tiếp; luôn test được bằng F5–F9 |
 | Đông lính, lag | Thảm họa theo ngưỡng, giới hạn 200, object pool, rút gọn tên |
-| Một phe áp đảo | X2 Phe Yếu, khoảnh khắc "chết hết → lõi bị đánh" |
+| Một phe áp đảo | Khoảnh khắc "chết hết → lâu đài bị đánh" để kêu gọi vào cứu; lính địch đứng sát làm xe tăng/robot mất máu |
 | Hai AI sửa đè nhau | Vùng file riêng, clone riêng, PR, hợp đồng `GameEvents` |
 | Hai Unity cùng mở một project | Chỉ một Unity Editor/lúc; Antigravity dùng clone riêng |
 | Bản quyền | Chỉ CC0/miễn phí rõ ràng, `CREDITS.md`, tên "Siêu Chiến Binh" |

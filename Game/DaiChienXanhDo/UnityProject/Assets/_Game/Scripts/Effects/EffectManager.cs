@@ -13,8 +13,6 @@ namespace DaiChienXanhDo
         public static EffectManager I { get; private set; }
 
         const float BigEffectSpacing = 3f;
-        const float SuperSecondsPerUnit = 15f;
-        const float SuperMaxSeconds = 60f;
 
         static readonly int SpeedId = Animator.StringToHash("Speed");
         static readonly int PunchId = Animator.StringToHash("Punch");
@@ -52,24 +50,31 @@ namespace DaiChienXanhDo
             switch (def.Id)
             {
                 case "spawn":
+                    // Triệu hồi lính mang tên người tặng
                     int made = 0;
-                    for (int i = 0; i < amount; i++) if (FighterManager.I.Spawn(team, by, false) != null) made++;
+                    for (int i = 0; i < amount; i++)
+                    {
+                        var f = FighterManager.I.Spawn(team, by, false);
+                        if (f == null) continue;
+                        made++;
+                        if (actor == null) actor = f;
+                    }
                     if (made < amount) TeamPower.AddLikePower(team, amount - made); // sân đầy: đổi phần dư thành sức mạnh
                     break;
                 case "like_power":
                     TeamPower.AddLikePower(team, amount);
                     break;
-                case "punch":
-                    actor = actor != null ? actor : StandIn(team, by);
-                    if (actor != null) actor.AddChargedPunches(amount);
-                    break;
-                case "combo_punch":
-                    actor = actor != null ? actor : StandIn(team, by);
-                    if (actor != null) actor.AddCombo(5 * amount);
-                    break;
                 case "superhero":
-                    actor = actor != null ? actor : StandIn(team, by);
-                    if (actor != null) actor.MakeSuper(Mathf.Min(SuperMaxSeconds, SuperSecondsPerUnit * amount));
+                    // Triệu hồi siêu nhân mang tên người tặng: to, bay, mạnh x5, chịu đòn tốt, sống tới khi bị hạ
+                    Fighter first = null;
+                    for (int i = 0; i < Mathf.Clamp(amount, 1, 10); i++)
+                    {
+                        var hero = FighterManager.I.Spawn(team, by, false);
+                        if (hero == null) { TeamPower.AddLikePower(team, 5); continue; }
+                        hero.MakeSuper(100000f);
+                        if (first == null) first = hero;
+                    }
+                    if (first != null) actor = first;
                     break;
             }
             Announce(def, team, by, amount, actor != null ? actor.transform : null, actor != null ? actor.transform.position : CorePos(team));
@@ -183,18 +188,32 @@ namespace DaiChienXanhDo
         IEnumerator Meteor(Team team, Viewer by, int waves)
         {
             Team enemy = team.Other();
-            Announce(CommandRouter.Effects["meteor"], team, by, waves, null, Vector3.Lerp(CorePos(enemy), Vector3.zero, 0.4f));
+            // Dồn mưa vào chỗ quân địch đang đứng (không rải khắp nửa sân) để camera quay trọn cả trận mưa
+            Vector3 zone = EnemyCenter(enemy);
+            Announce(CommandRouter.Effects["meteor"], team, by, waves, null, zone);
             for (int w = 0; w < waves; w++)
             {
+                if (w > 0) zone = EnemyCenter(enemy);
                 for (int i = 0; i < 12; i++)
                 {
-                    StartCoroutine(FallingRock(Arena.RandomPointOnHalf(enemy), enemy, 2.4f, Random.Range(1.1f, 1.8f), true));
+                    Vector2 r = Random.insideUnitCircle * 9f;
+                    StartCoroutine(FallingRock(Arena.Clamp(zone + new Vector3(r.x, 0f, r.y)), enemy, 2.8f, Random.Range(2.2f, 3.4f), true)); // to, dễ thấy
                     yield return new WaitForSeconds(0.25f);
                 }
                 Core(enemy)?.TakeDamage(80f * TeamPower.Of(team), by);
                 CameraRig.I?.Shake(0.9f, 0.6f);
                 yield return new WaitForSeconds(0.5f);
             }
+        }
+
+        /// <summary>Tâm đám quân địch; không còn ai thì chỗ giữa lõi địch và giữa sân.</summary>
+        static Vector3 EnemyCenter(Team enemy)
+        {
+            var list = FighterManager.I.List(enemy);
+            if (list.Count == 0) return Vector3.Lerp(CorePos(enemy), Vector3.zero, 0.3f);
+            Vector3 sum = Vector3.zero;
+            foreach (var f in list) sum += f.transform.position;
+            return sum / list.Count;
         }
 
         IEnumerator FallingRock(Vector3 point, Team? victims, float killRadius, float size, bool fiery)
@@ -204,14 +223,14 @@ namespace DaiChienXanhDo
             foreach (var col in rock.GetComponentsInChildren<Collider>()) Destroy(col);
             float h = prefab != null ? FighterManager.MeasureHeight(rock) : 1f;
             rock.transform.localScale *= size / Mathf.Max(0.01f, h);
-            if (prefab == null) SetMat(rock, GameAssets.I.meteorMaterial);
-            Vector3 from = point + new Vector3(6f, 30f, 6f);
+            if (prefab == null || fiery) SetMat(rock, fiery ? MeteorGlow() : GameAssets.I.meteorMaterial); // thiên thạch: đá đỏ rực phát sáng
+            Vector3 from = point + new Vector3(10f, 34f, 10f); // rơi chéo để nhìn thấy cả đường bay
             Vector3 spin = Random.onUnitSphere * 360f;
-            for (float t = 0f; t < 1f && rock != null; t += Time.deltaTime / 0.6f)
+            for (float t = 0f; t < 1f && rock != null; t += Time.deltaTime / (fiery ? 1.1f : 0.6f))
             {
                 rock.transform.position = Vector3.Lerp(from, point, t * t);
                 rock.transform.Rotate(spin * Time.deltaTime);
-                if (fiery) Fx.I.FireTrail(rock.transform.position, size * 0.8f);
+                if (fiery) { Fx.I.FireTrail(rock.transform.position, size * 1.1f); Fx.I.FireTrail(rock.transform.position + Vector3.up * size * 0.5f, size * 0.9f); Fx.I.SmokeTrail(rock.transform.position, size); }
                 yield return null;
             }
             if (rock != null) Destroy(rock);
@@ -275,18 +294,183 @@ namespace DaiChienXanhDo
             if (robot != null) { Fx.I.Explosion(robot.transform.position + Vector3.up * 3f, 2f); Destroy(robot); }
         }
 
-        /// <summary>Hình ảnh thảm họa (đá rơi khắp sân). Số lính chết do MatchEvents quyết định.</summary>
-        public void PlayDisasterVisual() => StartCoroutine(DisasterRocks());
+        /// <summary>
+        /// Thảm họa: 0 = động đất (đất nứt, bụi tung, rung mạnh), 1 = lốc xoáy (cột gió quét ngang sân),
+        /// 2 = núi lửa (mưa đá lửa trúng từng người). Lính chết dần ngay chỗ thảm họa đi qua; hết 4,5 giây
+        /// mà chưa đủ số thì phần còn lại chết ngẫu nhiên, để tỉ lệ chết mỗi phe vẫn đúng như cài đặt.
+        /// </summary>
+        public void PlayDisaster(int kind, int blueKill, int redKill) => StartCoroutine(Disaster(kind, new[] { blueKill, redKill }));
 
-        IEnumerator DisasterRocks()
+        IEnumerator Disaster(int kind, int[] quota)
         {
             Sfx.Siren();
-            for (int i = 0; i < 25; i++)
+            const float duration = 4.5f;
+            if (kind == 1)
             {
-                var p = new Vector3(Random.Range(-Arena.HalfSize, Arena.HalfSize), 0f, Random.Range(-Arena.HalfSize, Arena.HalfSize));
-                StartCoroutine(FallingRock(p, null, 0f, Random.Range(0.8f, 1.8f), i % 3 == 0));
-                yield return new WaitForSeconds(0.06f);
+                // Lốc xoáy: đi từ mép này qua giữa sân sang mép kia, cuốn lính trong bán kính 5m
+                float ang = Random.Range(0f, Mathf.PI * 2f);
+                Vector3 a = new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * Arena.HalfSize * 0.95f;
+                Vector3 b = -a + new Vector3(Random.Range(-6f, 6f), 0f, Random.Range(-6f, 6f));
+                CameraRig.I?.Shake(0.5f, duration);
+                var funnel = Track(MakeTornado());
+                float nextKill = 0f;
+                for (float t = 0f; t < duration; t += Time.deltaTime)
+                {
+                    Vector3 p = Vector3.Lerp(a, b, t / duration) + new Vector3(Mathf.Sin(t * 3f), 0f, Mathf.Cos(t * 2.3f)) * 2f;
+                    float grow = Mathf.Clamp01(t / 0.6f) * Mathf.Clamp01((duration - t) / 0.6f); // mọc lên rồi tan dần
+                    if (funnel != null)
+                    {
+                        funnel.transform.position = p;
+                        funnel.transform.localScale = new Vector3(1f, Mathf.Max(0.05f, grow), 1f);
+                        funnel.transform.GetChild(0).Rotate(0f, 420f * Time.deltaTime, 0f);
+                        funnel.transform.GetChild(1).Rotate(0f, -260f * Time.deltaTime, 0f);
+                    }
+                    Fx.I.Tornado(p, Time.time);
+                    if (Time.time >= nextKill) { nextKill = Time.time + 0.12f; KillNear(p, 5f, quota, 1.6f); }
+                    yield return null;
+                }
+                if (funnel != null) Destroy(funnel);
             }
+            else if (kind == 0)
+            {
+                // Động đất: rung mạnh, bụi phụt lên từng đợt khắp sân
+                CameraRig.I?.Shake(1.6f, duration);
+                for (int wave = 0; wave < 6; wave++)
+                {
+                    for (int d = 0; d < 6; d++) Fx.I.Dust(new Vector3(Random.Range(-Arena.HalfSize, Arena.HalfSize), 0f, Random.Range(-Arena.HalfSize, Arena.HalfSize)), 3f);
+                    for (int t = 0; t < 2; t++)
+                    {
+                        int n = Mathf.CeilToInt(quota[t] / (float)(6 - wave));
+                        foreach (var f in FighterManager.I.RandomAlive((Team)t, n)) { Fx.I.Dust(f.transform.position, 1.5f); f.Die(); quota[t]--; }
+                    }
+                    yield return new WaitForSeconds(duration / 6f);
+                }
+            }
+            else
+            {
+                // Núi lửa: mỗi viên đá lửa rơi trúng đúng một người
+                CameraRig.I?.Shake(0.8f, 0.6f);
+                var victims = new List<Fighter>();
+                victims.AddRange(FighterManager.I.RandomAlive(Team.Blue, quota[0]));
+                victims.AddRange(FighterManager.I.RandomAlive(Team.Red, quota[1]));
+                for (int i = 0; i < victims.Count; i++) { int j = Random.Range(i, victims.Count); (victims[i], victims[j]) = (victims[j], victims[i]); }
+                quota[0] = quota[1] = 0;
+                float gap = duration / Mathf.Max(1, victims.Count);
+                foreach (var v in victims)
+                {
+                    if (v != null && v.IsAlive) StartCoroutine(LavaRock(v));
+                    yield return new WaitForSeconds(gap);
+                }
+                yield return new WaitForSeconds(1f);
+            }
+            // Còn thiếu thì cho chết ngẫu nhiên để đúng tỉ lệ
+            for (int t = 0; t < 2; t++)
+                foreach (var f in FighterManager.I.RandomAlive((Team)t, Mathf.Max(0, quota[t]))) { Fx.I.Dust(f.transform.position, 1.5f); f.Die(); }
+        }
+
+        static Mesh funnelMesh;
+        static Texture2D windTex;
+
+        /// <summary>Cột lốc xoáy: 2 lớp phễu xoắn (trong sẫm, ngoài sáng), loe rộng dần lên trên, vân gió chạy dọc.</summary>
+        GameObject MakeTornado()
+        {
+            if (funnelMesh == null) funnelMesh = BuildFunnel(16f, 0.5f, 6.5f, 28, 18, 1.4f);
+            if (windTex == null) windTex = BuildWindTexture();
+            var root = new GameObject("Tornado");
+            AddFunnelLayer(root, "Inner", 0.82f, new Color(0.42f, 0.38f, 0.34f, 0.85f));
+            AddFunnelLayer(root, "Outer", 1.0f, new Color(0.78f, 0.74f, 0.68f, 0.55f));
+            return root;
+        }
+
+        void AddFunnelLayer(GameObject root, string name, float scale, Color color)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(root.transform, false);
+            go.transform.localScale = new Vector3(scale, 1f, scale);
+            go.AddComponent<MeshFilter>().sharedMesh = funnelMesh;
+            var r = go.AddComponent<MeshRenderer>();
+            var m = new Material(GameAssets.I.fxSmokeMaterial);   // vật liệu hạt pha trộn: đã chạy được trong suốt
+            m.SetTexture("_BaseMap", windTex);
+            m.SetColor("_BaseColor", color);
+            m.SetFloat("_Cull", 0f);                                // thấy cả mặt trong phễu
+            r.sharedMaterial = m;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+
+        /// <summary>Phễu: các vòng tròn chồng lên nhau, bán kính tăng dần từ chân lên đỉnh, mỗi vòng xoắn lệch một góc.</summary>
+        static Mesh BuildFunnel(float height, float rBottom, float rTop, int seg, int rings, float twist)
+        {
+            var v = new System.Collections.Generic.List<Vector3>(); var uv = new System.Collections.Generic.List<Vector2>(); var t = new System.Collections.Generic.List<int>();
+            for (int j = 0; j <= rings; j++)
+            {
+                float k = (float)j / rings;
+                float r = Mathf.Lerp(rBottom, rTop, k * k * 0.7f + k * 0.3f) * (1f + 0.08f * Mathf.Sin(k * 9f));
+                float off = k * twist * Mathf.PI * 2f;
+                Vector3 wobble = new Vector3(Mathf.Sin(k * 4f) * 0.8f * k, 0f, Mathf.Cos(k * 3f) * 0.6f * k);
+                for (int i = 0; i <= seg; i++)
+                {
+                    float a = (float)i / seg * Mathf.PI * 2f + off;
+                    v.Add(new Vector3(Mathf.Cos(a) * r, k * height, Mathf.Sin(a) * r) + wobble);
+                    uv.Add(new Vector2((float)i / seg * 3f, k));
+                }
+            }
+            int w = seg + 1;
+            for (int j = 0; j < rings; j++)
+                for (int i = 0; i < seg; i++)
+                {
+                    int a = j * w + i;
+                    t.Add(a); t.Add(a + w); t.Add(a + 1);
+                    t.Add(a + 1); t.Add(a + w); t.Add(a + w + 1);
+                }
+            var m = new Mesh { name = "TornadoFunnel" };
+            m.SetVertices(v); m.SetUVs(0, uv); m.SetTriangles(t, 0);
+            m.RecalculateNormals(); m.RecalculateBounds();
+            return m;
+        }
+
+        /// <summary>Vân gió: các vệt xiên mờ dần ở chân và đỉnh phễu.</summary>
+        static Texture2D BuildWindTexture()
+        {
+            const int W = 128, H = 128;
+            var tex = new Texture2D(W, H, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat };
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    float u = (float)x / W, v = (float)y / H;
+                    float streak = 0.5f + 0.5f * Mathf.Sin((u * 6f + v * 2.5f) * Mathf.PI * 2f);
+                    streak = Mathf.Pow(streak, 3f) * 0.8f + Mathf.PerlinNoise(u * 12f, v * 6f) * 0.35f;
+                    float fade = Mathf.SmoothStep(0f, 0.15f, v) * Mathf.SmoothStep(1f, 0.8f, v);
+                    float a = Mathf.Clamp01(streak * fade);
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                }
+            tex.Apply();
+            return tex;
+        }
+
+        void KillNear(Vector3 center, float radius, int[] quota, float fling)
+        {
+            for (int t = 0; t < 2; t++)
+            {
+                if (quota[t] <= 0) continue;
+                var list = FighterManager.I.List((Team)t);
+                for (int i = list.Count - 1; i >= 0 && quota[t] > 0; i--)
+                {
+                    if (i >= list.Count) continue;
+                    var f = list[i];
+                    Vector3 d = f.transform.position - center; d.y = 0f;
+                    if (d.sqrMagnitude > radius * radius) continue;
+                    Fx.I.Dust(f.transform.position, fling);
+                    f.Die();
+                    quota[t]--;
+                }
+            }
+        }
+
+        IEnumerator LavaRock(Fighter victim)
+        {
+            Vector3 at = victim.transform.position;
+            yield return FallingRock(at, null, 0f, Random.Range(1.4f, 2.2f), true);
+            if (victim != null && victim.IsAlive) victim.Die();
         }
 
         // ---------------- Tiện ích ----------------
@@ -348,13 +532,14 @@ namespace DaiChienXanhDo
             var root = new GameObject($"Tank_{team}");
             var model = Instantiate(a.tankPrefab, root.transform, false);
             model.transform.localRotation = Quaternion.Euler(0f, a.tankYawOffset, 0f) * model.transform.localRotation; // model gốc quay ngược
-            TeamMaterials.MakeTeam(model, team, 0.7f);
+            TeamMaterials.DressVehicle(model, team); // thân màu phe, kim loại màu phe đậm, xích đen
             var b = Bounds(model);
             float length = Mathf.Max(b.size.x, b.size.z);
             if (length > 0.01f) model.transform.localScale *= a.tankLength / length;
             b = Bounds(model);
             model.transform.localPosition -= new Vector3(b.center.x, b.min.y, b.center.z); // tâm xe về gốc, bánh chạm đất
             foreach (var c in model.GetComponentsInChildren<Collider>()) Destroy(c);
+            AttachFlag(root, team, new Vector3(0.4f, 1.6f, -1.2f), 2.4f);
             return Track(root);
         }
 
@@ -367,13 +552,33 @@ namespace DaiChienXanhDo
             var model = Instantiate(a.robotPrefab, root.transform, false);
             float h = FighterManager.MeasureHeight(model);
             if (h > 0.01f) model.transform.localScale *= a.robotHeight / h;
-            TeamMaterials.MakeTeam(model, team, 0.75f, a.robotTexture); // robot theo màu lõi phe mình
+            TeamMaterials.MakeMatte(model, a.RobotTexture(team)); // họa tiết đã tô lại theo phe: sơn màu phe, chi tiết vàng, kim loại xám
             foreach (var c in model.GetComponentsInChildren<Collider>()) Destroy(c);
             anim = model.GetComponent<Animator>();
             if (anim == null) anim = model.AddComponent<Animator>();
             anim.runtimeAnimatorController = a.robotController;
             anim.applyRootMotion = false;
+            AttachFlag(root, team, new Vector3(0f, a.robotHeight * 0.75f, -1.4f), 3.5f);
             return Track(root);
+        }
+
+        /// <summary>Cắm cờ màu phe (Kenney Castle Kit) lên xe tăng/robot.</summary>
+        static void AttachFlag(GameObject root, Team team, Vector3 localPos, float height)
+        {
+            var prefab = GameAssets.I.flagPrefab;
+            if (prefab == null) return;
+            var f = Instantiate(prefab, root.transform, false);
+            f.name = "TeamFlag";
+            float h = FighterManager.MeasureHeight(f);
+            if (h > 0.01f) f.transform.localScale *= height / h;
+            f.transform.localPosition = localPos;
+            foreach (var c in f.GetComponentsInChildren<Collider>()) Destroy(c);
+            foreach (var r in f.GetComponentsInChildren<Renderer>())
+            {
+                var arr = new Material[r.sharedMaterials.Length];
+                for (int i = 0; i < arr.Length; i++) arr[i] = TeamMaterials.Flag(team);
+                r.sharedMaterials = arr;
+            }
         }
 
         GameObject MakeBox(Team team, Vector3 size, string name)
@@ -399,6 +604,17 @@ namespace DaiChienXanhDo
         {
             if (mat == null) return;
             foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = mat;
+        }
+
+        static Material meteorGlow;
+        static Material MeteorGlow()
+        {
+            if (meteorGlow != null) return meteorGlow;
+            meteorGlow = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "MeteorGlow" };
+            meteorGlow.SetColor("_BaseColor", new Color(0.35f, 0.12f, 0.06f));
+            meteorGlow.EnableKeyword("_EMISSION");
+            meteorGlow.SetColor("_EmissionColor", new Color(1f, 0.35f, 0.05f) * 2.2f);
+            return meteorGlow;
         }
 
         GameObject Track(GameObject go) { spawned.Add(go); return go; }

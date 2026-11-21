@@ -49,7 +49,7 @@ namespace DaiChienXanhDo
         {
             if (hpBar == null) return;
             float ratio = MaxHp > 0f ? Mathf.Clamp01(Hp / MaxHp) : 0f;
-            bool show = IsAlive && IsMain && ratio < 0.999f; // chỉ nhân vật chính, lính phụ không cần
+            bool show = IsAlive && (IsMain || IsSuper) && ratio < 0.999f; // nhân vật chính và siêu nhân
             if (hpBar.gameObject.activeSelf != show) hpBar.gameObject.SetActive(show);
             if (!show) return;
             var cam = CameraRig.I != null ? CameraRig.I.cam : null;
@@ -321,7 +321,8 @@ namespace DaiChienXanhDo
                 if (super)
                 {
                     var arr = new Material[renderers[i].sharedMaterials.Length];
-                    for (int k = 0; k < arr.Length; k++) arr[k] = TeamMaterials.Super(Team);
+                    for (int k = 0; k < arr.Length; k++)
+                        arr[k] = anim != null && k < originalMaterials[i].Length ? TeamMaterials.Hero(originalMaterials[i][k], Team) : TeamMaterials.Super(Team);
                     renderers[i].sharedMaterials = arr;
                 }
                 else if (greybox)

@@ -31,7 +31,7 @@ test("manifest Đại Chiến Xanh Đỏ: mỗi hiệu ứng có hàm cho cả h
   const { validateRule } = require("../core/live-events");
   const m = require("../Game/DaiChienXanhDo/manifest.json");
   const ids = new Set(m.actions.map((a) => a.id));
-  for (const effect of ["join", "spawn", "like_power", "punch", "combo_punch", "superhero", "lightning", "tank", "meteor", "giant_robot"]) {
+  for (const effect of ["join", "spawn", "like_power", "superhero", "lightning", "tank", "meteor", "giant_robot"]) {
     assert.ok(ids.has(`blue_${effect}`), `thiếu blue_${effect}`);
     assert.ok(ids.has(`red_${effect}`), `thiếu red_${effect}`);
   }

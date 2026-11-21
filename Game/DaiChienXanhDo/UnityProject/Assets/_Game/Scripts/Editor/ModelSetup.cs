@@ -57,6 +57,8 @@ namespace DaiChienXanhDo.EditorTools
                 var c = Clips(robot);
                 a.robotPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(robot);
                 a.robotTexture = AssetDatabase.LoadAssetAtPath<Texture2D>($"{Art}/Robot/Quaternius_Mechs/Textures/George_Texture.png");
+                a.robotTextureBlue = RecolorRobot(a.robotTexture, Team.Blue);
+                a.robotTextureRed = RecolorRobot(a.robotTexture, Team.Red);
                 a.robotController = BuildController($"{Out}/Robot.controller",
                     Pick(c, "Idle"), Pick(c, "Walk"), Pick(c, "Punch"), Pick(c, "HitRecieve_1"), Pick(c, "Death"), Pick(c, "Dance"),
                     walkSpeedRef: 2.5f, punchSpeed: 1.2f);
@@ -65,6 +67,7 @@ namespace DaiChienXanhDo.EditorTools
             // --- Xe tăng, thiên thạch ---
             a.tankPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{Art}/Vehicles/T12_Tank/T12_SovietTank.fbx");
             a.meteorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{Art}/Environment/Kenney_SpaceKit/meteor_detailed.fbx");
+            a.flagPrefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Art/Environment/Kenney_CastleKit/flag.fbx");
 
             // --- Vật liệu hạt ---
             var soft = SoftTexture();
@@ -217,6 +220,42 @@ namespace DaiChienXanhDo.EditorTools
             m.SetOverrideTag("RenderType", "Transparent");
             EditorUtility.SetDirty(m);
             return m;
+        }
+
+        /// <summary>
+        /// Tô lại họa tiết robot theo phe: sơn xanh lá -> màu phe, gỉ nâu -> màu phe đậm (như sơn sờn),
+        /// vạch cam -> vàng, kim loại xám giữ nguyên. Lưu thành ảnh riêng cho mỗi phe.
+        /// </summary>
+        static Texture2D RecolorRobot(Texture2D source, Team team)
+        {
+            if (source == null) return null;
+            string srcPath = AssetDatabase.GetAssetPath(source);
+            string outPath = srcPath.Replace(".png", $"_{team}.png");
+            var src = new Texture2D(2, 2);
+            src.LoadImage(File.ReadAllBytes(srcPath));
+            var px = src.GetPixels32();
+            Color.RGBToHSV(TeamMaterials.TeamMain(team), out float th, out _, out _);
+            Color gold = new Color(0.93f, 0.74f, 0.3f);
+            for (int i = 0; i < px.Length; i++)
+            {
+                Color c = px[i];
+                Color.RGBToHSV(c, out float h, out float s, out float v);
+                float deg = h * 360f;
+                if (s > 0.12f && deg > 80f && deg < 175f)                    // sơn xanh lá
+                    c = Color.HSVToRGB(th, Mathf.Clamp01(0.55f + s), Mathf.Clamp01(v * 1.12f));
+                else if (s > 0.35f && deg >= 10f && deg <= 50f && v < 0.6f)  // gỉ nâu
+                    c = Color.HSVToRGB(th, 0.7f, Mathf.Clamp01(v * 0.9f + 0.15f));
+                else if (s > 0.45f && deg > 20f && deg < 50f)                // vạch cam
+                    c = gold * Mathf.Lerp(0.85f, 1.1f, v);
+                c.a = 1f;
+                px[i] = c;
+            }
+            var dst = new Texture2D(src.width, src.height, TextureFormat.RGBA32, true);
+            dst.SetPixels32(px);
+            File.WriteAllBytes(outPath, dst.EncodeToPNG());
+            Object.DestroyImmediate(src); Object.DestroyImmediate(dst);
+            AssetDatabase.ImportAsset(outPath);
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(outPath);
         }
 
         static AudioClip[] Audio(params string[] paths) =>
