@@ -149,32 +149,300 @@ namespace DaiChienXanhDo
             }
         }
 
-        /// <summary>Xe tăng: thân màu phe tông quân sự, kim loại xám súng, xích đen.</summary>
-        public static void DressVehicle(GameObject model, Team team)
+        enum VehiclePart
         {
+            TurretArmor,
+            HullArmor,
+            GoldAccent,
+            GunmetalSilver,
+            TreadsWheels,
+            Headlight,
+            OpticVisor,
+        }
+
+        static readonly System.Collections.Generic.Dictionary<(Material, Team, VehiclePart), Material> vehicleMats =
+            new System.Collections.Generic.Dictionary<(Material, Team, VehiclePart), Material>();
+
+        static Material vehicleTrimGold;
+        static Material vehicleTrimSilver;
+        static Material vehicleTrimHeadlight;
+        static readonly Material[] vehicleTrimVisor = new Material[2];
+
+        static Color TankTurretColor(Team t) => t == Team.Blue ? Hex("3388FF") : Hex("FF3B3B");
+        static Color TankHullColor(Team t) => t == Team.Blue ? Hex("1A4BB8") : Hex("B81D24");
+        static Color TankVisorColor(Team t) => t == Team.Blue ? Hex("66C2FF") : Hex("FF7766");
+
+        static VehiclePart ClassifyVehiclePart(string rendererName, string matName)
+        {
+            string r = (rendererName ?? "").ToLowerInvariant();
+            string m = (matName ?? "").Replace(" (Instance)", "").ToLowerInvariant();
+
+            bool isTurret = r.Contains("tower") || r.Contains("turret") || r.Contains("cannon") || r.Contains("barrel");
+            bool isTrack = r.Contains("track") || r.Contains("tread") || r.Contains("wheel");
+
+            if (r.Contains("light") || r.Contains("lamp") || m.Contains("light") || m.Contains("lamp") || m.Contains("glow") || m.Contains("emissive"))
+                return VehiclePart.Headlight;
+            if (r.Contains("optic") || r.Contains("visor") || m.Contains("optic") || m.Contains("visor") || m.Contains("lens") || m.Contains("glass"))
+                return VehiclePart.OpticVisor;
+            if (m.Contains("brown") || m.Contains("gold") || m.Contains("brass") || m.Contains("copper")
+                || m.Contains("detail") || m.Contains("accent") || m.Contains("trim") || m.Contains("exhaust")
+                || r.Contains("exhaust") || r.Contains("trim") || r.Contains("hatch"))
+                return VehiclePart.GoldAccent;
+            if (m.Contains("camo") || m.Contains("armor") || m.Contains("paint") || m.Contains("body")
+                || m.Contains("hull") || m.Contains("main") || m.Contains("turret"))
+                return isTrack ? VehiclePart.TreadsWheels : (isTurret ? VehiclePart.TurretArmor : VehiclePart.HullArmor);
+            if (m.Contains("grey") || m.Contains("gray") || m.Contains("silver") || m.Contains("steel")
+                || m.Contains("chrome") || m.Contains("gun") || m.Contains("cannon") || m.Contains("barrel") || m.Contains("muzzle"))
+                return VehiclePart.GunmetalSilver;
+            if (m.Contains("track") || m.Contains("tread") || m.Contains("wheel") || m.Contains("rubber"))
+                return VehiclePart.TreadsWheels;
+            if (m.Contains("black") || m.Contains("dark") || m.Contains("metal"))
+                return isTurret ? VehiclePart.GunmetalSilver : VehiclePart.TreadsWheels;
+
+            if (isTrack) return VehiclePart.TreadsWheels;
+            return isTurret ? VehiclePart.TurretArmor : VehiclePart.HullArmor;
+        }
+
+        static void ApplyVehicleSurface(Material m, VehiclePart part, Team team)
+        {
+            Color baseCol;
+            float metallic;
+            float smoothness;
+            Color emission = Color.black;
+
+            switch (part)
+            {
+                case VehiclePart.TurretArmor:
+                    baseCol = TankTurretColor(team);
+                    metallic = 0.08f;
+                    smoothness = 0.34f;
+                    emission = baseCol * 0.12f;
+                    break;
+                case VehiclePart.HullArmor:
+                    baseCol = TankHullColor(team);
+                    metallic = 0.06f;
+                    smoothness = 0.28f;
+                    emission = baseCol * 0.07f;
+                    break;
+                case VehiclePart.GoldAccent:
+                    baseCol = Hex("F5C43D");
+                    metallic = 0.25f;
+                    smoothness = 0.46f;
+                    emission = baseCol * 0.10f;
+                    break;
+                case VehiclePart.GunmetalSilver:
+                    baseCol = Hex("D4DCE8");
+                    metallic = 0.28f;
+                    smoothness = 0.45f;
+                    emission = baseCol * 0.05f;
+                    break;
+                case VehiclePart.Headlight:
+                    baseCol = Hex("FFF2B2");
+                    metallic = 0f;
+                    smoothness = 0.6f;
+                    emission = Hex("FFE89A") * 0.9f;
+                    break;
+                case VehiclePart.OpticVisor:
+                    baseCol = TankVisorColor(team);
+                    metallic = 0.1f;
+                    smoothness = 0.7f;
+                    emission = baseCol * 0.85f;
+                    break;
+                default: // TreadsWheels
+                    baseCol = Hex("232736");
+                    metallic = 0.12f;
+                    smoothness = 0.26f;
+                    break;
+            }
+
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", baseCol);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smoothness);
+            if (m.HasProperty("_SpecularHighlights")) m.SetFloat("_SpecularHighlights", 1f);
+            if (emission.maxColorComponent > 0.001f)
+            {
+                m.EnableKeyword("_EMISSION");
+                m.SetColor("_EmissionColor", emission);
+            }
+            else
+            {
+                m.DisableKeyword("_EMISSION");
+                if (m.HasProperty("_EmissionColor")) m.SetColor("_EmissionColor", Color.black);
+            }
+        }
+
+        static Material VehicleTrimMat(VehiclePart part, Team team)
+        {
+            if (part == VehiclePart.GoldAccent)
+                return vehicleTrimGold ??= CreateVehicleTrimMat("TankTrim_Gold", part, team);
+            if (part == VehiclePart.OpticVisor)
+                return vehicleTrimVisor[(int)team] ??= CreateVehicleTrimMat($"TankTrim_Visor_{team}", part, team);
+            if (part == VehiclePart.Headlight)
+                return vehicleTrimHeadlight ??= CreateVehicleTrimMat("TankTrim_Headlight", part, team);
+            return vehicleTrimSilver ??= CreateVehicleTrimMat("TankTrim_Silver", VehiclePart.GunmetalSilver, team);
+        }
+
+        static Material CreateVehicleTrimMat(string name, VehiclePart part, Team team)
+        {
+            var baseMat = GameAssets.I.TeamMaterial(team);
+            var m = baseMat != null ? new Material(baseMat) : new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            m.name = name;
+            ApplyVehicleSurface(m, part, team);
+            if (part == VehiclePart.GunmetalSilver && m.HasProperty("_BaseColor"))
+                m.SetColor("_BaseColor", Hex("E6EEF9"));
+            return m;
+        }
+
+        static void AddTrimPiece(Transform parent, PrimitiveType primitive, string name, Vector3 localPos, Vector3 localEuler, Vector3 localScale, Material mat)
+        {
+            var go = GameObject.CreatePrimitive(primitive);
+            go.name = name;
+            var col = go.GetComponent<Collider>();
+            if (col != null) Object.Destroy(col);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = Quaternion.Euler(localEuler);
+            go.transform.localScale = localScale;
+            var r = go.GetComponent<Renderer>();
+            if (r != null)
+            {
+                r.sharedMaterial = mat;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+        }
+
+        static void AttachTankAccents(GameObject model, Team team)
+        {
+            Transform towerTf = null;
+            Transform bodyTf = null;
             foreach (var r in model.GetComponentsInChildren<Renderer>())
             {
+                string n = r.name.ToLowerInvariant();
+                if (n.Contains("t-26") && n.Contains("tower")) towerTf = r.transform;
+                else if (n.Contains("t-26") && n.Contains("body")) bodyTf = r.transform;
+            }
+
+            if (towerTf != null && towerTf.Find("TankTrim") == null)
+            {
+                var mf = towerTf.GetComponent<MeshFilter>();
+                if (mf != null && mf.sharedMesh != null)
+                {
+                    Bounds mb = mf.sharedMesh.bounds;
+                    if (mb.size.y > mb.size.z && mb.size.z > 0.0001f)
+                    {
+                        float u = mb.size.z / 1.2725f;
+                        float xSign = Mathf.Abs(mb.max.x) >= Mathf.Abs(mb.min.x) ? 1f : -1f;
+                        float ySign = Mathf.Abs(mb.min.y) >= Mathf.Abs(mb.max.y) ? 1f : -1f;
+                        float z0 = mb.min.z;
+
+                        var trim = new GameObject("TankTrim").transform;
+                        trim.SetParent(towerTf, false);
+
+                        var goldMat = VehicleTrimMat(VehiclePart.GoldAccent, team);
+                        var silverMat = VehicleTrimMat(VehiclePart.GunmetalSilver, team);
+                        var visorMat = VehicleTrimMat(VehiclePart.OpticVisor, team);
+
+                        // Vòng nòng vàng kim nổi bật ở đầu pháo chính + vòng bạc thân nòng
+                        AddTrimPiece(trim, PrimitiveType.Cylinder, "MuzzleGold",
+                            new Vector3(0.001f * xSign * u, -1.78f * ySign * u, z0 + 0.361f * u),
+                            Vector3.zero,
+                            new Vector3(0.16f * u, 0.11f * u, 0.16f * u),
+                            goldMat);
+                        AddTrimPiece(trim, PrimitiveType.Cylinder, "BarrelCollar",
+                            new Vector3(0.001f * xSign * u, -1.42f * ySign * u, z0 + 0.361f * u),
+                            Vector3.zero,
+                            new Vector3(0.125f * u, 0.14f * u, 0.125f * u),
+                            silverMat);
+
+                        // Nắp nóc chỉ huy vàng kim + kính ngắm phát sáng màu phe
+                        AddTrimPiece(trim, PrimitiveType.Cylinder, "CupolaCap",
+                            new Vector3(-0.142f * xSign * u, 0.383f * ySign * u, z0 + 1.278f * u),
+                            new Vector3(90f, 0f, 0f),
+                            new Vector3(0.42f * u, 0.032f * u, 0.42f * u),
+                            goldMat);
+                        AddTrimPiece(trim, PrimitiveType.Cube, "CommanderVisor",
+                            new Vector3(-0.142f * xSign * u, 0.095f * ySign * u, z0 + 1.13f * u),
+                            Vector3.zero,
+                            new Vector3(0.30f * u, 0.07f * u, 0.09f * u),
+                            visorMat);
+                    }
+                }
+            }
+
+            if (bodyTf != null && bodyTf.Find("TankTrim") == null)
+            {
+                var mf = bodyTf.GetComponent<MeshFilter>();
+                if (mf != null && mf.sharedMesh != null)
+                {
+                    Bounds mb = mf.sharedMesh.bounds;
+                    if (mb.size.y > mb.size.z && mb.size.z > 0.0001f)
+                    {
+                        float u = mb.size.z / 1.5684f;
+                        float frontSign = (towerTf != null && towerTf.parent == bodyTf && towerTf.localPosition.y > 0f) ? -1f : 1f;
+                        float z0 = mb.min.z;
+
+                        var trim = new GameObject("TankTrim").transform;
+                        trim.SetParent(bodyTf, false);
+
+                        var goldMat = VehicleTrimMat(VehiclePart.GoldAccent, team);
+                        var lightMat = VehicleTrimMat(VehiclePart.Headlight, team);
+                        var silverMat = VehicleTrimMat(VehiclePart.GunmetalSilver, team);
+
+                        // Đèn pha đôi phát sáng ấm với viền vàng kim ở hai mũi chắn bùn trước
+                        for (int s = -1; s <= 1; s += 2)
+                        {
+                            AddTrimPiece(trim, PrimitiveType.Cube, s < 0 ? "HeadlightBezel_L" : "HeadlightBezel_R",
+                                new Vector3(s * 1.06f * u, -2.42f * frontSign * u, z0 + 1.20f * u),
+                                Vector3.zero,
+                                new Vector3(0.28f * u, 0.24f * u, 0.15f * u),
+                                goldMat);
+                            AddTrimPiece(trim, PrimitiveType.Cube, s < 0 ? "HeadlightGlow_L" : "HeadlightGlow_R",
+                                new Vector3(s * 1.06f * u, -2.53f * frontSign * u, z0 + 1.20f * u),
+                                Vector3.zero,
+                                new Vector3(0.20f * u, 0.07f * u, 0.10f * u),
+                                lightMat);
+                        }
+
+                        // Nẹp giáp bạc sáng phía trước thân xe tăng tạo điểm nhấn 3 tông
+                        AddTrimPiece(trim, PrimitiveType.Cube, "FrontArmorTrim",
+                            new Vector3(0f, -2.02f * frontSign * u, z0 + 1.482f * u),
+                            Vector3.zero,
+                            new Vector3(1.18f * u, 0.22f * u, 0.05f * u),
+                            silverMat);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Phối màu xe tăng phong cách arcade rực rỡ, độ tương phản cao từ góc nhìn trên cao:
+        /// tháp pháo màu phe sáng, thân giáp màu phe đậm sạch (không xám đục), nòng phụ bạc thép,
+        /// ống xả/chi tiết vàng kim, bánh xích than hải quân, kèm đèn pha &amp; vòng nòng vàng kim.
+        /// </summary>
+        public static void DressVehicle(GameObject model, Team team)
+        {
+            if (model == null) return;
+            foreach (var r in model.GetComponentsInChildren<Renderer>())
+            {
+                if (r.transform.parent != null && r.transform.parent.name == "TankTrim") continue;
                 var mats = r.sharedMaterials;
                 for (int i = 0; i < mats.Length; i++)
                 {
-                    if (mats[i] == null) continue;
-                    bool turret = r.name.ToUpperInvariant().Contains("TOWER");
-                    var key = (mats[i], team, turret ? 98 : 99);
-                    if (!dressed.TryGetValue(key, out var c))
+                    var src = mats[i];
+                    if (src == null) continue;
+                    var part = ClassifyVehiclePart(r.name, src.name);
+                    var key = (src, team, part);
+                    if (!vehicleMats.TryGetValue(key, out var c))
                     {
-                        c = new Material(Matte(mats[i])) { name = mats[i].name + "_" + team + (turret ? "_turret" : "") };
-                        string n = mats[i].name.ToLowerInvariant();
-                        // Phối như robot: tháp pháo màu phe, thân thép xám pha màu phe đậm, chi tiết vàng đồng, xích đen
-                        Color col = n.Contains("camo") ? (turret ? TeamMain(team) : Color.Lerp(TeamDark(team), Hex("5C6168"), 0.55f))
-                                  : n.Contains("brown") ? Hex("C9A23F")
-                                  : Hex("2A2C30");
-                        c.SetColor("_BaseColor", col);
-                        dressed[key] = c;
+                        c = new Material(Matte(src)) { name = $"{src.name}_{team}_{part}" };
+                        ApplyVehicleSurface(c, part, team);
+                        vehicleMats[key] = c;
                     }
                     mats[i] = c;
                 }
                 r.sharedMaterials = mats;
             }
+            AttachTankAccents(model, team);
         }
 
         static readonly System.Collections.Generic.Dictionary<Material, Material> hero = new System.Collections.Generic.Dictionary<Material, Material>();
